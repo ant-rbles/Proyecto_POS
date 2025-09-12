@@ -1,0 +1,6 @@
+@Login_Análisis_HostAddress = http://localhost:5103
+
+GET {{Login_Análisis_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
