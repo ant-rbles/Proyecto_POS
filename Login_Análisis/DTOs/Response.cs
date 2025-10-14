@@ -2,9 +2,9 @@
 {
     public class Responses
     {
-        public bool Success { get; set; }
-        public string Message { get; set; }
-        public string Token { get; set; }
-        public UserResponse User { get; set; }
+        public required bool Success { get; set; }
+        public required string Message { get; set; }
+        public required string Token { get; set; }
+        public required UserResponse User { get; set; }
     }
 }

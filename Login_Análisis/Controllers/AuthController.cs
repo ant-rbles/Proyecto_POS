@@ -76,6 +76,13 @@ public class AuthController : ControllerBase
         });
     }
 
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await _authService.GetAllUsers();
+        return Ok(users);
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -180,7 +187,7 @@ public class AuthController : ControllerBase
         return Ok(new { valid = isValid });
     }
 
-    // NUEVA ACCIÓN PARA MOSTRAR FORMULARIO DE RESTABLECIMIENTO
+    // ACCIÓN PARA MOSTRAR FORMULARIO DE RESTABLECIMIENTO
     [HttpGet("/reset-password", Name = "ResetPasswordPage")]
     public IActionResult ResetPasswordPage(string token)
     {
@@ -190,7 +197,7 @@ public class AuthController : ControllerBase
         // Decodificar el token
         var decodedToken = WebUtility.UrlDecode(token);
 
-        // HTML profesional para restablecer contraseña
+        // HTML para restablecer contraseña
         var html = $@"
     <!DOCTYPE html>
     <html lang='es'>

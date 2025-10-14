@@ -20,6 +20,7 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<ProductoService>();
 
 // Configuración JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
