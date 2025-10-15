@@ -10,7 +10,7 @@ namespace Login_Análisis.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
-  
+
         public DbSet<User> Users { get; set; }
         public DbSet<Proveedor> Proveedores { get; set; }
         public DbSet<Categoria> Categorias { get; set; }
@@ -19,6 +19,8 @@ namespace Login_Análisis.Data
         public DbSet<Compra> Compras { get; set; }
         public DbSet<DetalleCompra> DetalleCompras { get; set; }
         public DbSet<MovimientoInventario> MovimientosInventario { get; set; }
+        public DbSet<Venta> Ventas { get; set; }
+        public DbSet<DetalleVenta> DetalleVentas { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +34,7 @@ namespace Login_Análisis.Data
                 entity.HasIndex(e => e.Usuario).IsUnique();
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
                 entity.HasIndex(e => e.Email).IsUnique();
+                entity.Property(e => e.PasswordResetToken).HasMaxLength(500);
             });
 
             // Configuración de Proveedor
@@ -41,6 +44,29 @@ namespace Login_Análisis.Data
                 entity.Property(e => e.Nombre).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.RUC).IsRequired().HasMaxLength(20);
                 entity.HasIndex(e => e.RUC).IsUnique();
+                entity.Property(e => e.Direccion).HasMaxLength(500);
+                entity.Property(e => e.Telefono).HasMaxLength(20);
+                entity.Property(e => e.Email).HasMaxLength(100);
+                entity.Property(e => e.Contacto).HasMaxLength(100);
+                entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
+            });
+
+            // Configuración de Categoria
+            modelBuilder.Entity<Categoria>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nombre).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Descripcion).HasMaxLength(500);
+                entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
+            });
+
+            // Configuración de UnidadMedida
+            modelBuilder.Entity<UnidadMedida>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nombre).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Abreviatura).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.FactorConversion).HasColumnType("decimal(18,6)");
                 entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
             });
 
@@ -51,9 +77,13 @@ namespace Login_Análisis.Data
                 entity.Property(e => e.Codigo).IsRequired().HasMaxLength(50);
                 entity.HasIndex(e => e.Codigo).IsUnique();
                 entity.Property(e => e.Nombre).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.PrecioCostoPromedio).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.PrecioVenta).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.MargenGanancia).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.Descripcion).HasMaxLength(500);
+                entity.Property(e => e.StockMinimo).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.StockActual).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.PrecioCostoPromedio).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.PrecioVenta).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.MargenGanancia).HasColumnType("decimal(5,2)").HasDefaultValue(30);
+                entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
 
                 entity.HasOne(p => p.Categoria)
                       .WithMany()
@@ -71,10 +101,12 @@ namespace Login_Análisis.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.NumeroFactura).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.NumeroFactura).IsUnique();
                 entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.Impuestos).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Impuestos).HasColumnType("decimal(18,2)").HasDefaultValue(0);
                 entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.Estado).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Observaciones).HasMaxLength(1000);
+                entity.Property(e => e.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("PENDIENTE");
 
                 entity.HasOne(c => c.Proveedor)
                       .WithMany()
@@ -99,6 +131,69 @@ namespace Login_Análisis.Data
                 entity.HasOne(d => d.Producto)
                       .WithMany()
                       .HasForeignKey(d => d.ProductoId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.UnidadMedida)
+                      .WithMany()
+                      .HasForeignKey(d => d.UnidadMedidaId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración de Venta
+            modelBuilder.Entity<Venta>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.NumeroFactura).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.NumeroFactura).IsUnique();
+                entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Impuestos).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Observaciones).HasMaxLength(1000);
+                entity.Property(e => e.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("COMPLETADA");
+                entity.Property(e => e.NombreCliente).HasMaxLength(200);
+            });
+
+            // Configuración de DetalleVenta
+            modelBuilder.Entity<DetalleVenta>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Cantidad).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CantidadBase).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PrecioUnitario).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.TotalLinea).HasColumnType("decimal(18,2)");
+
+                entity.HasOne(d => d.Venta)
+                      .WithMany(v => v.Detalles)
+                      .HasForeignKey(d => d.VentaId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.Producto)
+                      .WithMany()
+                      .HasForeignKey(d => d.ProductoId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.UnidadMedida)
+                      .WithMany()
+                      .HasForeignKey(d => d.UnidadMedidaId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración de MovimientoInventario
+            modelBuilder.Entity<MovimientoInventario>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.TipoMovimiento).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Cantidad).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CantidadAnterior).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CantidadNueva).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PrecioCosto).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PrecioVenta).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.ReferenciaTipo).HasMaxLength(50);
+                entity.Property(e => e.Observaciones).HasMaxLength(500);
+
+                entity.HasOne(m => m.Producto)
+                      .WithMany()
+                      .HasForeignKey(m => m.ProductoId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
         }

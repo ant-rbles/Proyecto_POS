@@ -125,6 +125,7 @@ async function handleProveedorSubmit(e) {
         let response;
         if (currentProveedorId) {
             // Editar proveedor existente
+            proveedor.id = currentProveedorId;
             response = await fetch(`/api/proveedores/${currentProveedorId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -132,7 +133,7 @@ async function handleProveedorSubmit(e) {
             });
         } else {
             // Crear nuevo proveedor
-            response = await fetch('/api/proveedores', {
+            response = await fetch('/api/productos/proveedores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(proveedor)
@@ -506,5 +507,145 @@ function resetForms() {
     hideCompraForm();
 }
 
-// Cargar este script en index.html agregando:
-// <script src="js/management.js"></script>
+// Variables globales para ventas
+let ventas = [];
+let detallesVenta = [];
+
+// Funciones para Ventas
+function showVentaForm() {
+    document.getElementById('ventaForm').style.display = 'block';
+    document.getElementById('ventaFecha').value = new Date().toISOString().split('T')[0];
+    detallesVenta = [];
+    renderDetallesVentaTable();
+    calcularTotalesVenta();
+}
+
+function hideVentaForm() {
+    document.getElementById('ventaForm').style.display = 'none';
+    document.getElementById('ventaFormElement').reset();
+    detallesVenta = [];
+}
+
+function agregarDetalleVenta() {
+    const productoId = document.getElementById('detalleVentaProducto').value;
+    const unidadId = document.getElementById('detalleVentaUnidad').value;
+    const cantidad = parseFloat(document.getElementById('detalleVentaCantidad').value);
+    const precio = parseFloat(document.getElementById('detalleVentaPrecio').value);
+
+    if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
+        showMessage('Complete todos los campos del detalle', 'error');
+        return;
+    }
+
+    const producto = productos.find(p => p.id == productoId);
+    const unidad = unidadesMedida.find(u => u.id == unidadId);
+
+    // Verificar stock
+    if (producto.stockActual < cantidad) {
+        showMessage(`Stock insuficiente. Stock actual: ${producto.stockActual}`, 'error');
+        return;
+    }
+
+    const detalle = {
+        productoId: parseInt(productoId),
+        unidadMedidaId: parseInt(unidadId),
+        cantidad: cantidad,
+        precioUnitario: precio,
+        totalLinea: cantidad * precio,
+        producto: producto,
+        unidadMedida: unidad
+    };
+
+    detallesVenta.push(detalle);
+    renderDetallesVentaTable();
+    calcularTotalesVenta();
+
+    // Limpiar campos del detalle
+    document.getElementById('detalleVentaCantidad').value = '0';
+    document.getElementById('detalleVentaPrecio').value = '0';
+    document.getElementById('detalleVentaTotal').value = '0';
+}
+
+function eliminarDetalleVenta(index) {
+    detallesVenta.splice(index, 1);
+    renderDetallesVentaTable();
+    calcularTotalesVenta();
+}
+
+function renderDetallesVentaTable() {
+    const tbody = document.getElementById('detallesVentaTableBody');
+    tbody.innerHTML = detallesVenta.map((detalle, index) => `
+        <tr>
+            <td>${detalle.producto.nombre}</td>
+            <td>${detalle.unidadMedida.nombre}</td>
+            <td>${detalle.cantidad}</td>
+            <td>$${detalle.precioUnitario.toFixed(2)}</td>
+            <td>$${detalle.totalLinea.toFixed(2)}</td>
+            <td>
+                <button class="action-btn delete-btn" onclick="eliminarDetalleVenta(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function calcularTotalLineaVenta() {
+    const cantidad = parseFloat(document.getElementById('detalleVentaCantidad').value) || 0;
+    const precio = parseFloat(document.getElementById('detalleVentaPrecio').value) || 0;
+    document.getElementById('detalleVentaTotal').value = (cantidad * precio).toFixed(2);
+}
+
+function calcularTotalesVenta() {
+    const subtotal = detallesVenta.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+    const impuestos = parseFloat(document.getElementById('ventaImpuestos').value) || 0;
+    const total = subtotal + impuestos;
+
+    document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+    document.getElementById('ventaTotal').textContent = total.toFixed(2);
+}
+
+async function handleVentaSubmit(e) {
+    e.preventDefault();
+
+    if (detallesVenta.length === 0) {
+        showMessage('Debe agregar al menos un detalle a la venta', 'error');
+        return;
+    }
+
+    const venta = {
+        numeroFactura: document.getElementById('ventaFactura').value,
+        fechaVenta: document.getElementById('ventaFecha').value,
+        impuestos: parseFloat(document.getElementById('ventaImpuestos').value) || 0,
+        observaciones: document.getElementById('ventaObservaciones').value,
+        nombreCliente: document.getElementById('ventaCliente').value,
+        usuarioCreacion: JSON.parse(localStorage.getItem('user')).id,
+        detalles: detallesVenta.map(d => ({
+            productoId: d.productoId,
+            unidadMedidaId: d.unidadMedidaId,
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario
+        }))
+    };
+
+    try {
+        const response = await fetch('/api/ventas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(venta)
+        });
+
+        if (response.ok) {
+            showMessage('Venta registrada exitosamente', 'success');
+            hideVentaForm();
+            loadVentas();
+            loadProductos(); // Recargar productos para actualizar stock
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al registrar la venta', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}

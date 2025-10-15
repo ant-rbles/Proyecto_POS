@@ -218,5 +218,117 @@ namespace Login_Análisis.Services
             var cantidadBase = cantidad * unidadDesde.FactorConversion;
             return cantidadBase / unidadHacia.FactorConversion;
         }
+
+        // Métodos para Ventas
+        public async Task<(bool success, string message, Venta venta)> CrearVenta(Venta venta, List<DetalleVenta> detalles)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Verificar si ya existe una venta con el mismo número de factura
+                if (await _context.Ventas.AnyAsync(c => c.NumeroFactura == venta.NumeroFactura))
+                {
+                    return (false, "Ya existe una venta con este número de factura", null);
+                }
+
+                // Calcular totales
+                venta.Subtotal = detalles.Sum(d => d.TotalLinea);
+                venta.Total = venta.Subtotal + venta.Impuestos;
+
+                // Guardar venta
+                _context.Ventas.Add(venta);
+                await _context.SaveChangesAsync();
+
+                // Procesar cada detalle
+                foreach (var detalle in detalles)
+                {
+                    detalle.VentaId = venta.Id;
+
+                    // Obtener producto y unidad de medida
+                    var producto = await _context.Productos.FindAsync(detalle.ProductoId);
+                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalle.UnidadMedidaId);
+
+                    if (producto == null || unidadMedida == null)
+                    {
+                        throw new Exception("Producto o unidad de medida no encontrado");
+                    }
+
+                    // Convertir cantidad a unidad base
+                    detalle.CantidadBase = detalle.Cantidad * unidadMedida.FactorConversion;
+
+                    // Guardar detalle
+                    _context.DetalleVentas.Add(detalle);
+
+                    // Actualizar inventario del producto (reducir stock)
+                    await ActualizarInventarioVenta(producto, detalle);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, "Venta registrada exitosamente", venta);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error: {ex.Message}", null);
+            }
+        }
+
+        private async Task ActualizarInventarioVenta(Producto producto, DetalleVenta detalle)
+        {
+            var cantidadAnterior = producto.StockActual;
+
+            // Verificar stock suficiente
+            if (producto.StockActual < detalle.CantidadBase)
+            {
+                throw new Exception($"Stock insuficiente para el producto {producto.Nombre}. Stock actual: {producto.StockActual}, Se requiere: {detalle.CantidadBase}");
+            }
+
+            // Reducir stock
+            producto.StockActual -= detalle.CantidadBase;
+            producto.FechaActualizacion = DateTime.UtcNow;
+
+            // Registrar movimiento de inventario
+            var movimiento = new MovimientoInventario
+            {
+                ProductoId = producto.Id,
+                TipoMovimiento = "SALIDA",
+                Cantidad = detalle.CantidadBase,
+                CantidadAnterior = cantidadAnterior,
+                CantidadNueva = producto.StockActual,
+                PrecioCosto = producto.PrecioCostoPromedio,
+                PrecioVenta = detalle.PrecioUnitario,
+                ReferenciaId = detalle.VentaId,
+                ReferenciaTipo = "VENTA",
+                Observaciones = $"Venta factura {detalle.Venta?.NumeroFactura}",
+                UsuarioId = detalle.Venta?.UsuarioCreacion,
+                FechaMovimiento = DateTime.UtcNow
+            };
+
+            _context.MovimientosInventario.Add(movimiento);
+        }
+
+        public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        {
+            var query = _context.Ventas
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .AsQueryable();
+
+            if (fechaInicio.HasValue)
+            {
+                query = query.Where(c => c.FechaVenta >= fechaInicio.Value);
+            }
+
+            if (fechaFin.HasValue)
+            {
+                query = query.Where(c => c.FechaVenta <= fechaFin.Value);
+            }
+
+            return await query.OrderByDescending(c => c.FechaVenta).ToListAsync();
+        }
     }
 }

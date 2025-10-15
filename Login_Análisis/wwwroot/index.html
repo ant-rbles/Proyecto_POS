@@ -118,13 +118,55 @@
         <div class="dashboard-body">
             <!-- Sidebar -->
             <div class="sidebar">
-                <ul>
-                    <li onclick="showWelcomeView()"><i class="fas fa-home"></i> Inicio</li>
-                    <li onclick="viewUsers()"><i class="fas fa-users"></i> Ver Usuarios</li>
-                    <li onclick="viewProducts()"><i class="fas fa-box"></i> Ver Productos</li>
-                    <li onclick="toggleRegistrationForm()"><i class="fas fa-user-plus"></i> Registrar Usuario</li>
-                    <li onclick="toggleProductRegistrationForm()"><i class="fas fa-plus-square"></i> Registrar Producto</li>
-                </ul>
+                <div class="sidebar-header">
+                    <h3>Centro Plástico Leonor</h3>
+                </div>
+
+                <div class="sidebar-section">Navegación Principal</div>
+                <a class="sidebar-item" onclick="showWelcomeView()">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+
+                <div class="sidebar-section">Gestión de Usuarios</div>
+                <a class="sidebar-item" onclick="viewUsers()">
+                    <i class="fas fa-users"></i> Ver Usuarios
+                </a>
+                <a class="sidebar-item" onclick="toggleRegistrationForm()">
+                    <i class="fas fa-user-plus"></i> Registrar Usuario
+                </a>
+
+                <div class="sidebar-section">Catálogos</div>
+                <a class="sidebar-item" onclick="openManagementTab('productos')">
+                    <i class="fas fa-boxes"></i> Productos
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('proveedores')">
+                    <i class="fas fa-truck"></i> Proveedores
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('categorias')">
+                    <i class="fas fa-tags"></i> Categorías
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('unidades')">
+                    <i class="fas fa-balance-scale"></i> Unidades Medida
+                </a>
+
+                <div class="sidebar-section">Operaciones</div>
+                <a class="sidebar-item" onclick="openManagementTab('compras')">
+                    <i class="fas fa-shopping-cart"></i> Compras
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('ventas')">
+                    <i class="fas fa-cash-register"></i> Ventas
+                </a>
+
+                <div class="sidebar-section">Reportes</div>
+                <a class="sidebar-item" onclick="openManagementTab('inventario')">
+                    <i class="fas fa-warehouse"></i> Inventario
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('movimientos')">
+                    <i class="fas fa-exchange-alt"></i> Movimientos
+                </a>
+                <a class="sidebar-item" onclick="openManagementTab('reportes')">
+                    <i class="fas fa-chart-bar"></i> Reportes
+                </a>
             </div>
 
             <div class="dashboard-content">

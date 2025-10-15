@@ -39,6 +39,64 @@ namespace Login_Análisis.Controllers
 
             return Ok(new { Message = result.message });
         }
+        [HttpPut("proveedores/{id}")]
+        public async Task<IActionResult> ActualizarProveedor(int id, [FromBody] Proveedor proveedor)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { Message = "Datos del proveedor inválidos" });
+            }
+
+            if (id != proveedor.Id)
+            {
+                return BadRequest(new { Message = "ID del proveedor no coincide" });
+            }
+
+            try
+            {
+                var proveedorExistente = await _productoService.ObtenerProveedor(id);
+                if (proveedorExistente == null)
+                    return NotFound(new { Message = "Proveedor no encontrado" });
+
+                // Actualizar propiedades
+                proveedorExistente.Nombre = proveedor.Nombre;
+                proveedorExistente.RUC = proveedor.RUC;
+                proveedorExistente.Telefono = proveedor.Telefono;
+                proveedorExistente.Email = proveedor.Email;
+                proveedorExistente.Direccion = proveedor.Direccion;
+                proveedorExistente.Contacto = proveedor.Contacto;
+                proveedorExistente.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Proveedor actualizado exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpDelete("proveedores/{id}")]
+        public async Task<IActionResult> EliminarProveedor(int id)
+        {
+            try
+            {
+                var proveedor = await _productoService.ObtenerProveedor(id);
+                if (proveedor == null)
+                    return NotFound(new { Message = "Proveedor no encontrado" });
+
+                // Cambiar estado a inactivo en lugar de eliminar
+                proveedor.Estado = false;
+                proveedor.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Proveedor eliminado exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
 
         // Unidades de Medida
         [HttpGet("unidades-medida")]
@@ -87,6 +145,64 @@ namespace Login_Análisis.Controllers
                 await _productoService.Context.SaveChangesAsync();
 
                 return Ok(new { Message = "Producto creado exitosamente", Producto = producto });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> ActualizarProducto(int id, [FromBody] Producto producto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { Message = "Datos del producto inválidos" });
+            }
+
+            if (id != producto.Id)
+            {
+                return BadRequest(new { Message = "ID del producto no coincide" });
+            }
+
+            try
+            {
+                var productoExistente = await _productoService.ObtenerProducto(id);
+                if (productoExistente == null)
+                    return NotFound(new { Message = "Producto no encontrado" });
+
+                // Actualizar propiedades
+                productoExistente.Nombre = producto.Nombre;
+                productoExistente.Descripcion = producto.Descripcion;
+                productoExistente.CategoriaId = producto.CategoriaId;
+                productoExistente.UnidadMedidaBaseId = producto.UnidadMedidaBaseId;
+                productoExistente.StockMinimo = producto.StockMinimo;
+                productoExistente.MargenGanancia = producto.MargenGanancia;
+                productoExistente.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Producto actualizado exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> EliminarProducto(int id)
+        {
+            try
+            {
+                var producto = await _productoService.ObtenerProducto(id);
+                if (producto == null)
+                    return NotFound(new { Message = "Producto no encontrado" });
+
+                producto.Estado = false;
+                producto.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Producto eliminado exitosamente" });
             }
             catch (Exception ex)
             {

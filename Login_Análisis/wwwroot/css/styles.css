@@ -569,43 +569,60 @@
         }
 
         /* Sidebar */
-        .sidebar {
-            width: 250px;
-            background: #224abe;
+        .sidebar-header {
+            padding: 20px;
+            background: #1a237e;
             color: white;
-            padding-top: 20px;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            text-align: center;
+            border-bottom: 1px solid #283593;
         }
 
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
         }
 
-        .sidebar ul li {
-            padding: 15px 20px;
+        .sidebar-section {
+            padding: 12px 20px;
+            color: #7986cb;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f8f9fc;
+            border-bottom: 1px solid #eaecf4;
+        }
+
+        .sidebar-item {
+            padding: 12px 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             font-weight: 500;
-            transition: background 0.3s;
+            transition: all 0.3s;
             border-left: 4px solid transparent;
+            color: #5a5c69;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        .sidebar ul li:hover {
+        .sidebar-item:hover {
             background: #4e73df;
+            color: white;
             border-left-color: #ffffff;
         }
 
-        .sidebar ul li.active {
+        .sidebar-item.active {
             background: #4e73df;
+            color: white;
             border-left-color: #ffffff;
         }
 
-        .sidebar ul li i {
-            width: 20px;
+        .sidebar-item i {
+            width: 18px;
             text-align: center;
+            font-size: 14px;
         }
 
         /* Contenido principal */
