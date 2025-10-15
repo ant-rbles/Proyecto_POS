@@ -105,7 +105,7 @@ function showWelcomeView() {
     hideAllContentSections();
     const welcomeCard = document.querySelector('.welcome-card');
     if (welcomeCard) welcomeCard.style.display = 'block';
-}
+    }
 
 // Maneja el inicio de sesión de usuario
 if (loginForm) {
