@@ -79,7 +79,17 @@ function validatePassword(password) {
 document.addEventListener('DOMContentLoaded', () => {
     const authToken = localStorage.getItem('authToken');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (authToken && user) showDashboard(user);
+    if (authToken && user) {
+        showDashboard(user);
+        // Asegurar que solo se muestre el welcome
+        showOnly('welcome-card');
+
+        // Marcar dashboard como activo
+        const dashboardItem = document.querySelector('.sidebar-item[onclick="showWelcomeView()"]');
+        if (dashboardItem) {
+            dashboardItem.classList.add('active');
+        }
+    }
     setupValidation();
     setupPasswordValidation();
 });
@@ -90,6 +100,72 @@ function hideAllForms() {
     if (forgotPasswordForm) forgotPasswordForm.classList.add('hidden');
     if (successView) successView.style.display = 'none';
     if (dashboard) dashboard.style.display = 'none';
+}
+
+// Función centralizada para gestionar las vistas del dashboard
+function showOnly(sectionId) {
+    // Lista de todas las secciones que pueden mostrarse
+    const allSections = [
+        'welcome-card',
+        'viewUsersContainer',
+        'userRegistrationForm',
+        'managementTabs',
+        'viewProductsContainer'
+    ];
+
+    // Ocultar todas las secciones
+    allSections.forEach(section => {
+        const element = document.getElementById(section) || document.querySelector(`.${section}`);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+
+    // Ocultar formularios de gestión específicos
+    const managementForms = ['proveedorForm', 'productoForm', 'compraForm', 'ventaForm'];
+    managementForms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.style.display = 'none';
+        }
+    });
+
+    // Mostrar solo la sección solicitada
+    if (sectionId) {
+        const targetElement = document.getElementById(sectionId) || document.querySelector(`.${sectionId}`);
+        if (targetElement) {
+            targetElement.style.display = 'block';
+        }
+    }
+
+    // Actualizar estado activo del sidebar
+    updateActiveSidebarItem(sectionId);
+}
+
+// Función para actualizar el item activo del sidebar
+function updateActiveSidebarItem(sectionId) {
+    const sidebarItems = document.querySelectorAll('.sidebar-item');
+    sidebarItems.forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Mapear secciones a funciones del sidebar
+    const sectionMap = {
+        'welcome-card': 'showWelcomeView()',
+        'viewUsersContainer': 'viewUsers()',
+        'userRegistrationForm': 'toggleRegistrationForm()',
+        'managementTabs': null // Se maneja por separado
+    };
+
+    // Buscar y activar el item correspondiente
+    for (const [section, functionName] of Object.entries(sectionMap)) {
+        if (section === sectionId && functionName) {
+            const activeItem = document.querySelector(`.sidebar-item[onclick="${functionName}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+            }
+        }
+    }
 }
 
 // Oculta secciones de contenido (tablas, formularios, inicio)
@@ -103,8 +179,7 @@ function hideAllContentSections() {
 // Muestra la vista de inicio (tarjeta de bienvenida)
 function showWelcomeView() {
     hideAllContentSections();
-    const welcomeCard = document.querySelector('.welcome-card');
-    if (welcomeCard) welcomeCard.style.display = 'block';
+    showOnly('welcome-card');
     }
 
 // Maneja el inicio de sesión de usuario
@@ -295,15 +370,7 @@ function clearMessage() {
 
 // Obtener y mostrar lista de usuarios
 async function viewUsers() {
-    hideAllContentSections();
-
-    // Ocultar formularios
-    if (userRegistrationForm) userRegistrationForm.style.display = 'none';
-    const productForm = document.getElementById('productRegistrationForm');
-    if (productForm) productForm.style.display = 'none';
-
-    const viewContainer = document.getElementById('viewUsersContainer');
-    if (viewContainer) viewContainer.style.display = 'block';
+    showOnly('viewUsersContainer');
 
     try {
         const authToken = localStorage.getItem('authToken');
@@ -495,15 +562,7 @@ async function registerUserByAdmin() {
 
 // Obtener lista de productos
 async function viewProducts() {
-    hideAllContentSections();
-
-    // Ocultar formularios
-    if (userRegistrationForm) userRegistrationForm.style.display = 'none';
-    const productForm = document.getElementById('productRegistrationForm');
-    if (productForm) productForm.style.display = 'none';
-
-    const viewContainer = document.getElementById('viewProductsContainer');
-    if (viewContainer) viewContainer.style.display = 'block';
+    showOnly('viewProductsContainer');
 
     try {
         const authToken = localStorage.getItem('authToken');
@@ -653,11 +712,12 @@ function togglePassword(inputId) {
 }
 
 function toggleRegistrationForm() {
-    hideAllContentSections();
     const userForm = document.getElementById('userRegistrationForm');
-    const productForm = document.getElementById('productRegistrationForm');
-    if (userForm) userForm.style.display = (userForm.style.display === 'block') ? 'none' : 'block';
-    if (productForm) productForm.style.display = 'none';
+    if (userForm && userForm.style.display === 'block') {
+        showOnly('welcome-card');
+    } else {
+        showOnly('userRegistrationForm');
+    }
 }
 
 function toggleProductRegistrationForm() {
@@ -760,8 +820,6 @@ function loadManagementScript() {
     document.head.appendChild(script);
 }
 
-// Llamar esta función cuando se muestre el dashboard
-// En la función showDashboard, agregar:
 function showDashboard(user) {
     hideAllForms();
     dashboard.style.display = 'block';

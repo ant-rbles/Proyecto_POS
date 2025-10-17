@@ -41,7 +41,7 @@ function setupEventListeners() {
 
 // Navegación entre pestañas
 function openManagementTab(tabName) {
-    document.getElementById('managementTabs').style.display = 'block';
+    showOnly('managementTabs');
 
     // Ocultar todas las pestañas
     const tabs = document.querySelectorAll('.management-tab');
@@ -49,6 +49,14 @@ function openManagementTab(tabName) {
 
     // Mostrar la pestaña seleccionada
     document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // Actualizar sidebar activo
+    const sidebarItem = document.querySelector(`.sidebar-item[onclick="openManagementTab('${tabName}')"]`);
+    if (sidebarItem) {
+        const allItems = document.querySelectorAll('.sidebar-item');
+        allItems.forEach(item => item.classList.remove('active'));
+        sidebarItem.classList.add('active');
+    }
 
     // Cargar datos específicos de la pestaña
     switch (tabName) {
@@ -71,9 +79,16 @@ function openManagementTab(tabName) {
     }
 }
 
+
 function closeManagementTabs() {
-    document.getElementById('managementTabs').style.display = 'none';
+    showOnly('welcome-card');
     resetForms();
+
+    // Marcar dashboard como activo
+    const dashboardItem = document.querySelector('.sidebar-item[onclick="showWelcomeView()"]');
+    if (dashboardItem) {
+        dashboardItem.classList.add('active');
+    }
 }
 
 // Funciones para Proveedores
@@ -93,7 +108,6 @@ function showProveedorForm(proveedor = null) {
 
     form.style.display = 'block';
 }
-
 function hideProveedorForm() {
     document.getElementById('proveedorForm').style.display = 'none';
     currentProveedorId = null;
