@@ -41,7 +41,11 @@ function setupEventListeners() {
 
 // Navegación entre pestañas
 function openManagementTab(tabName) {
-    showOnly('managementTabs');
+    // Primero ocultar todas las secciones
+    hideAllSections();
+
+    // Mostrar el contenedor de gestión
+    document.getElementById('managementTabs').style.display = 'block';
 
     // Ocultar todas las pestañas
     const tabs = document.querySelectorAll('.management-tab');
@@ -51,12 +55,7 @@ function openManagementTab(tabName) {
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
     // Actualizar sidebar activo
-    const sidebarItem = document.querySelector(`.sidebar-item[onclick="openManagementTab('${tabName}')"]`);
-    if (sidebarItem) {
-        const allItems = document.querySelectorAll('.sidebar-item');
-        allItems.forEach(item => item.classList.remove('active'));
-        sidebarItem.classList.add('active');
-    }
+    updateActiveSidebarItem('managementTabs');
 
     // Cargar datos específicos de la pestaña
     switch (tabName) {
@@ -79,16 +78,8 @@ function openManagementTab(tabName) {
     }
 }
 
-
 function closeManagementTabs() {
-    showOnly('welcome-card');
-    resetForms();
-
-    // Marcar dashboard como activo
-    const dashboardItem = document.querySelector('.sidebar-item[onclick="showWelcomeView()"]');
-    if (dashboardItem) {
-        dashboardItem.classList.add('active');
-    }
+    showMainDashboard();
 }
 
 // Funciones para Proveedores
@@ -217,7 +208,7 @@ async function deleteProveedor(id) {
     }
 }
 
-// Funciones para Productos (similar estructura a proveedores)
+// Funciones para Productos 
 function showProductoForm(producto = null) {
     const form = document.getElementById('productoForm');
     const title = document.getElementById('productoFormTitle');

@@ -122,50 +122,50 @@
                 </div>
 
                 <div class="sidebar-section">Gestión Principal</div>
-                <a class="sidebar-item" onclick="showWelcomeView()">
+                <a class="sidebar-item" data-section="welcome-card" onclick="showMainDashboard()">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
 
                 <div class="sidebar-section">Usuarios y Seguridad</div>
-                <a class="sidebar-item" onclick="viewUsers()">
+                <a class="sidebar-item" data-section="viewUsersContainer" onclick="showSection('viewUsersContainer'); viewUsers();">
                     <i class="fas fa-users"></i> Ver Usuarios
                 </a>
-                <a class="sidebar-item" onclick="toggleRegistrationForm()">
+                <a class="sidebar-item" data-section="userRegistrationForm" onclick="showSection('userRegistrationForm')">
                     <i class="fas fa-user-plus"></i> Registrar Usuario
                 </a>
 
                 <div class="sidebar-section">Inventario y Productos</div>
-                <a class="sidebar-item" onclick="openManagementTab('productos')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('productos')">
                     <i class="fas fa-boxes"></i> Productos
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('categorias')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('categorias')">
                     <i class="fas fa-tags"></i> Categorías
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('unidades')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('unidades')">
                     <i class="fas fa-balance-scale"></i> Unidades Medida
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('inventario')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('inventario')">
                     <i class="fas fa-warehouse"></i> Inventario
                 </a>
 
                 <div class="sidebar-section">Compras y Proveedores</div>
-                <a class="sidebar-item" onclick="openManagementTab('proveedores')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('proveedores')">
                     <i class="fas fa-truck"></i> Proveedores
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('compras')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('compras')">
                     <i class="fas fa-shopping-cart"></i> Compras
                 </a>
 
                 <div class="sidebar-section">Ventas y Clientes</div>
-                <a class="sidebar-item" onclick="openManagementTab('ventas')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('ventas')">
                     <i class="fas fa-cash-register"></i> Ventas
                 </a>
 
                 <div class="sidebar-section">Reportes y Análisis</div>
-                <a class="sidebar-item" onclick="openManagementTab('movimientos')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('movimientos')">
                     <i class="fas fa-exchange-alt"></i> Movimientos
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('reportes')">
+                <a class="sidebar-item" data-section="managementTabs" onclick="openManagementTab('reportes')">
                     <i class="fas fa-chart-bar"></i> Reportes
                 </a>
             </div>

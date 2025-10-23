@@ -81,14 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (authToken && user) {
         showDashboard(user);
-        // Asegurar que solo se muestre el welcome
-        showOnly('welcome-card');
-
-        // Marcar dashboard como activo
-        const dashboardItem = document.querySelector('.sidebar-item[onclick="showWelcomeView()"]');
-        if (dashboardItem) {
-            dashboardItem.classList.add('active');
-        }
+        initializeDashboard(); // Inicializar el dashboard correctamente
     }
     setupValidation();
     setupPasswordValidation();
@@ -178,9 +171,8 @@ function hideAllContentSections() {
 
 // Muestra la vista de inicio (tarjeta de bienvenida)
 function showWelcomeView() {
-    hideAllContentSections();
-    showOnly('welcome-card');
-    }
+    showMainDashboard();
+}
 
 // Maneja el inicio de sesión de usuario
 if (loginForm) {
@@ -370,8 +362,7 @@ function clearMessage() {
 
 // Obtener y mostrar lista de usuarios
 async function viewUsers() {
-    showOnly('viewUsersContainer');
-
+    showSection('viewUsersContainer');
     try {
         const authToken = localStorage.getItem('authToken');
         const response = await fetch('https://localhost:7000/api/auth/users', {
@@ -562,8 +553,7 @@ async function registerUserByAdmin() {
 
 // Obtener lista de productos
 async function viewProducts() {
-    showOnly('viewProductsContainer');
-
+    showSection('viewProductsContainer');
     try {
         const authToken = localStorage.getItem('authToken');
         const response = await fetch('https://localhost:7000/api/products', {
@@ -714,9 +704,9 @@ function togglePassword(inputId) {
 function toggleRegistrationForm() {
     const userForm = document.getElementById('userRegistrationForm');
     if (userForm && userForm.style.display === 'block') {
-        showOnly('welcome-card');
+        showMainDashboard();
     } else {
-        showOnly('userRegistrationForm');
+        showSection('userRegistrationForm');
     }
 }
 
@@ -812,6 +802,12 @@ window.showWelcomeView = showWelcomeView;
 window.checkAdminPasswordStrength = checkAdminPasswordStrength;
 window.checkAdminPasswordMatch = checkAdminPasswordMatch;
 window.logout = logout;
+window.showMainDashboard = showMainDashboard;
+window.showSection = showSection;
+window.hideAllSections = hideAllSections;
+window.resetAllForms = resetAllForms;
+window.initializeDashboard = initializeDashboard;
+window.navigateTo = navigateTo;
 
 // Cargar el script de gestión
 function loadManagementScript() {
@@ -843,4 +839,109 @@ function showDashboard(user) {
     } else {
         databasePanel.style.display = 'none';
     }
+}
+
+// Sistema de gestión de vistas - Oculta todas las secciones excepto la activa
+let currentSection = 'welcome-card';
+
+function navigateTo(sectionId) {
+    console.log('Navegando a:', sectionId);
+
+    // Ocultar todas las secciones
+    const allSections = [
+        'welcome-card',
+        'viewUsersContainer',
+        'userRegistrationForm',
+        'managementTabs',
+        'viewProductsContainer'
+    ];
+
+    allSections.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.style.display = 'none';
+    });
+
+    // Mostrar la sección solicitada
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        currentSection = sectionId;
+    }
+
+    // Actualizar sidebar
+    updateActiveSidebarItem(sectionId);
+}
+
+function updateActiveSidebarItem(sectionId) {
+    const sidebarItems = document.querySelectorAll('.sidebar-item');
+    sidebarItems.forEach(item => {
+        item.classList.remove('active');
+    });
+
+    const activeItem = document.querySelector(`.sidebar-item[data-section="${sectionId}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+}
+
+// Función para mostrar el dashboard principal
+function showMainDashboard() {
+    navigateTo('welcome-card');
+}
+
+async function viewUsers() {
+    navigateTo('viewUsersContainer');
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/auth/users', {
+            method: 'GET',
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        if (response.ok) {
+            const users = await response.json();
+            displayUsers(users);
+        } else {
+            showMessage('Error al cargar los usuarios', 'error');
+        }
+    } catch (err) {
+        console.error('viewUsers error:', err);
+        showMessage('Error de conexión. Intenta nuevamente.', 'error');
+    }
+}
+
+function toggleRegistrationForm() {
+    navigateTo('userRegistrationForm');
+}
+
+function showWelcomeView() {
+    showMainDashboard();
+}
+// Función para resetear formularios
+function resetAllForms() {
+    const forms = [
+        'proveedorFormElement',
+        'productoFormElement',
+        'compraFormElement',
+        'ventaFormElement',
+        'userRegistrationForm'
+    ];
+
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.reset();
+        }
+    });
+
+    // Limpiar variables globales
+    if (typeof detallesCompra !== 'undefined') detallesCompra = [];
+    if (typeof detallesVenta !== 'undefined') detallesVenta = [];
+    if (typeof currentProveedorId !== 'undefined') currentProveedorId = null;
+    if (typeof currentProductoId !== 'undefined') currentProductoId = null;
+}
+
+// Inicialización mejorada del dashboard
+function initializeDashboard() {
+    showMainDashboard();
+    resetAllForms();
 }
