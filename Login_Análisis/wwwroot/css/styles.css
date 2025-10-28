@@ -997,3 +997,70 @@ body {
     background: #f8d7da;
     color: #721c24;
 }
+/* Estilos para las pestañas de gestión */
+.management-tab {
+    display: none;
+}
+
+    .management-tab.active {
+        display: block;
+    }
+
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.form-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #007bff;
+}
+
+/* Estilos para badges de stock */
+.stock-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+    .stock-badge.critical {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .stock-badge.warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .stock-badge.normal {
+        background: #d1edff;
+        color: #004085;
+    }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+    .status-badge.critical {
+        background: #dc3545;
+        color: white;
+    }
+
+    .status-badge.warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .status-badge.normal {
+        background: #28a745;
+        color: white;
+    }
