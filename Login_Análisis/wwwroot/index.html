@@ -511,7 +511,121 @@
                                 </table>
                             </div>
                         </div>
+                        <!-- Pestaña de Categorías -->
+                        <div id="tab-categorias" class="management-tab">
+                            <div class="tab-header">
+                                <h3><i class="fas fa-tags"></i> Gestión de Categorías</h3>
+                                <button class="btn btn-primary" onclick="showCategoriaForm()">
+                                    <i class="fas fa-plus"></i> Nueva Categoría
+                                </button>
+                            </div>
 
+                            <!-- Formulario de Categoría -->
+                            <div id="categoriaForm" class="form-panel" style="display: none;">
+                                <h4 id="categoriaFormTitle">Nueva Categoría</h4>
+                                <form id="categoriaFormElement">
+                                    <input type="hidden" id="categoriaId">
+                                    <div class="form-group">
+                                        <label for="categoriaNombre">Nombre *</label>
+                                        <input type="text" id="categoriaNombre" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="categoriaDescripcion">Descripción</label>
+                                        <textarea id="categoriaDescripcion" rows="3"></textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-secondary" onclick="hideCategoriaForm()">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Lista de Categorías -->
+                            <div class="table-container">
+                                <table id="categoriasTable" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Descripción</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="categoriasTableBody">
+                                        <!-- Los datos se cargarán dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Pestaña de Unidades de Medida -->
+                        <div id="tab-unidades" class="management-tab">
+                            <div class="tab-header">
+                                <h3><i class="fas fa-balance-scale"></i> Gestión de Unidades de Medida</h3>
+                                <button class="btn btn-primary" onclick="showUnidadForm()">
+                                    <i class="fas fa-plus"></i> Nueva Unidad
+                                </button>
+                            </div>
+
+                            <!-- Formulario de Unidad de Medida -->
+                            <div id="unidadForm" class="form-panel" style="display: none;">
+                                <h4 id="unidadFormTitle">Nueva Unidad de Medida</h4>
+                                <form id="unidadFormElement">
+                                    <input type="hidden" id="unidadId">
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="unidadNombre">Nombre *</label>
+                                                <input type="text" id="unidadNombre" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="unidadAbreviatura">Abreviatura *</label>
+                                                <input type="text" id="unidadAbreviatura" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="unidadFactor">Factor de Conversión *</label>
+                                                <input type="number" id="unidadFactor" value="1" step="0.001" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="unidadEsBase" style="display: flex; align-items: center; margin-top: 25px;">
+                                                    <input type="checkbox" id="unidadEsBase" style="margin-right: 10px;">
+                                                    Es Unidad Base
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-secondary" onclick="hideUnidadForm()">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar Unidad</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Lista de Unidades de Medida -->
+                            <div class="table-container">
+                                <table id="unidadesTable" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Abreviatura</th>
+                                            <th>Es Base</th>
+                                            <th>Factor</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unidadesTableBody">
+                                        <!-- Los datos se cargarán dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                         <!-- Pestaña de Inventario -->
                         <div id="tab-inventario" class="management-tab">
                             <div class="tab-header">

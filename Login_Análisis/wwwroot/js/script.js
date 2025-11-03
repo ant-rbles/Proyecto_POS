@@ -20,11 +20,14 @@ const recoveryEmailGroup = document.getElementById('recoveryEmailGroup');
 let currentSection = 'welcome';
 let proveedores = [];
 let productos = [];
+let categorias = [];
 let compras = [];
 let unidadesMedida = [];
 let detallesCompra = [];
 let currentProveedorId = null;
 let currentProductoId = null;
+let currentCategoriaId = null;
+let currentUnidadId = null;
 
 // Configura validaciones en tiempo real para email y contraseña
 function setupValidation() {
@@ -1127,6 +1130,397 @@ function checkAdminPasswordMatch() {
         if (noMatchEl) noMatchEl.style.display = 'block';
     }
 }
+// Funciones para Categorías
+function showCategoriaForm(categoria = null) {
+    console.log('Mostrando formulario de categoría');
+    openManagementTab('categorias');
+    const form = document.getElementById('categoriaForm');
+    const title = document.getElementById('categoriaFormTitle');
+
+    if (form) {
+        if (categoria) {
+            title.textContent = 'Editar Categoría';
+            currentCategoriaId = categoria.id;
+            fillCategoriaForm(categoria);
+        } else {
+            title.textContent = 'Nueva Categoría';
+            currentCategoriaId = null;
+            const categoriaFormElement = document.getElementById('categoriaFormElement');
+            if (categoriaFormElement) categoriaFormElement.reset();
+        }
+        form.style.display = 'block';
+    }
+}
+
+function hideCategoriaForm() {
+    const form = document.getElementById('categoriaForm');
+    if (form) form.style.display = 'none';
+    currentCategoriaId = null;
+}
+
+function fillCategoriaForm(categoria) {
+    document.getElementById('categoriaId').value = categoria.id;
+    document.getElementById('categoriaNombre').value = categoria.nombre;
+    document.getElementById('categoriaDescripcion').value = categoria.descripcion || '';
+}
+
+async function handleCategoriaSubmit(e) {
+    e.preventDefault();
+    console.log('Enviando formulario de categoría');
+
+    const categoria = {
+        nombre: document.getElementById('categoriaNombre').value,
+        descripcion: document.getElementById('categoriaDescripcion').value
+    };
+
+    try {
+        let response;
+        if (currentCategoriaId) {
+            categoria.id = currentCategoriaId;
+            response = await fetch(`/api/categorias/${currentCategoriaId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoria)
+            });
+        } else {
+            response = await fetch('/api/categorias', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoria)
+            });
+        }
+
+        if (response.ok) {
+            showMessage('Categoría guardada exitosamente', 'success');
+            hideCategoriaForm();
+            loadCategorias();
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al guardar la categoría', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function loadCategorias() {
+    try {
+        console.log('Cargando categorías...');
+        const response = await fetch('/api/categorias');
+        if (response.ok) {
+            categorias = await response.json();
+            renderCategoriasTable();
+            updateCategoriasSelect();
+        } else {
+            showMessage('Error al cargar las categorías', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión al cargar categorías', 'error');
+    }
+}
+
+function renderCategoriasTable() {
+    const tbody = document.getElementById('categoriasTableBody');
+    if (!tbody) {
+        console.error('No se encontró categoriasTableBody');
+        return;
+    }
+
+    tbody.innerHTML = categorias.map(categoria => `
+        <tr>
+            <td>${categoria.nombre}</td>
+            <td>${categoria.descripcion || '-'}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="showCategoriaForm(${JSON.stringify(categoria).replace(/"/g, '&quot;')})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteCategoria(${categoria.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateCategoriasSelect() {
+    const select = document.getElementById('productoCategoria');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Seleccionar categoría</option>' +
+        categorias.map(cat =>
+            `<option value="${cat.id}">${cat.nombre}</option>`
+        ).join('');
+}
+
+async function deleteCategoria(id) {
+    if (!confirm('¿Está seguro de eliminar esta categoría?')) return;
+
+    try {
+        const response = await fetch(`/api/categorias/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('Categoría eliminada exitosamente', 'success');
+            loadCategorias();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Funciones para Unidades de Medida
+function showUnidadForm(unidad = null) {
+    console.log('Mostrando formulario de unidad de medida');
+    openManagementTab('unidades');
+    const form = document.getElementById('unidadForm');
+    const title = document.getElementById('unidadFormTitle');
+
+    if (form) {
+        if (unidad) {
+            title.textContent = 'Editar Unidad de Medida';
+            currentUnidadId = unidad.id;
+            fillUnidadForm(unidad);
+        } else {
+            title.textContent = 'Nueva Unidad de Medida';
+            currentUnidadId = null;
+            const unidadFormElement = document.getElementById('unidadFormElement');
+            if (unidadFormElement) unidadFormElement.reset();
+        }
+        form.style.display = 'block';
+    }
+}
+
+function hideUnidadForm() {
+    const form = document.getElementById('unidadForm');
+    if (form) form.style.display = 'none';
+    currentUnidadId = null;
+}
+
+function fillUnidadForm(unidad) {
+    document.getElementById('unidadId').value = unidad.id;
+    document.getElementById('unidadNombre').value = unidad.nombre;
+    document.getElementById('unidadAbreviatura').value = unidad.abreviatura;
+    document.getElementById('unidadEsBase').checked = unidad.esUnidadBase || false;
+    document.getElementById('unidadFactor').value = unidad.factorConversion || 1;
+}
+
+async function handleUnidadSubmit(e) {
+    e.preventDefault();
+    console.log('Enviando formulario de unidad de medida');
+
+    const unidad = {
+        nombre: document.getElementById('unidadNombre').value,
+        abreviatura: document.getElementById('unidadAbreviatura').value,
+        esUnidadBase: document.getElementById('unidadEsBase').checked,
+        factorConversion: parseFloat(document.getElementById('unidadFactor').value) || 1
+    };
+
+    try {
+        let response;
+        if (currentUnidadId) {
+            unidad.id = currentUnidadId;
+            response = await fetch(`/api/unidadesmedida/${currentUnidadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(unidad)
+            });
+        } else {
+            response = await fetch('/api/unidadesmedida', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(unidad)
+            });
+        }
+
+        if (response.ok) {
+            showMessage('Unidad de medida guardada exitosamente', 'success');
+            hideUnidadForm();
+            loadUnidadesMedida();
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al guardar la unidad de medida', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function loadUnidadesMedida() {
+    try {
+        console.log('Cargando unidades de medida...');
+        const response = await fetch('/api/productos/unidades-medida');
+        if (response.ok) {
+            unidadesMedida = await response.json();
+            renderUnidadesTable();
+            updateUnidadesSelect();
+        } else {
+            showMessage('Error al cargar las unidades de medida', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión al cargar unidades de medida', 'error');
+    }
+}
+
+function renderUnidadesTable() {
+    const tbody = document.getElementById('unidadesTableBody');
+    if (!tbody) {
+        console.error('No se encontró unidadesTableBody');
+        return;
+    }
+
+    tbody.innerHTML = unidadesMedida.map(unidad => `
+        <tr>
+            <td>${unidad.nombre}</td>
+            <td>${unidad.abreviatura}</td>
+            <td>${unidad.esUnidadBase ? 'Sí' : 'No'}</td>
+            <td>${unidad.factorConversion}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="showUnidadForm(${JSON.stringify(unidad).replace(/"/g, '&quot;')})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteUnidad(${unidad.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateUnidadesSelect() {
+    const selectProducto = document.getElementById('productoUnidadBase');
+    const selectDetalle = document.getElementById('detalleUnidad');
+
+    if (selectProducto) {
+        selectProducto.innerHTML = '<option value="">Seleccionar unidad</option>' +
+            unidadesMedida.map(unidad =>
+                `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+            ).join('');
+    }
+
+    if (selectDetalle) {
+        selectDetalle.innerHTML = '<option value="">Seleccionar unidad</option>' +
+            unidadesMedida.map(unidad =>
+                `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+            ).join('');
+    }
+}
+
+async function deleteUnidad(id) {
+    if (!confirm('¿Está seguro de eliminar esta unidad de medida?')) return;
+
+    try {
+        const response = await fetch(`/api/unidadesmedida/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('Unidad de medida eliminada exitosamente', 'success');
+            loadUnidadesMedida();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Actualizar la función setupManagementEventListeners
+function setupManagementEventListeners() {
+    console.log('Configurando event listeners de gestión...');
+
+    // Formulario de proveedores
+    const proveedorForm = document.getElementById('proveedorFormElement');
+    if (proveedorForm) {
+        proveedorForm.addEventListener('submit', handleProveedorSubmit);
+        console.log('Event listener agregado para proveedorForm');
+    }
+
+    // Formulario de productos
+    const productoForm = document.getElementById('productoFormElement');
+    if (productoForm) {
+        productoForm.addEventListener('submit', handleProductoSubmit);
+        console.log('Event listener agregado para productoForm');
+    }
+
+    // Formulario de compras
+    const compraForm = document.getElementById('compraFormElement');
+    if (compraForm) {
+        compraForm.addEventListener('submit', handleCompraSubmit);
+        console.log('Event listener agregado para compraForm');
+    }
+
+    // Formulario de categorías
+    const categoriaForm = document.getElementById('categoriaFormElement');
+    if (categoriaForm) {
+        categoriaForm.addEventListener('submit', handleCategoriaSubmit);
+        console.log('Event listener agregado para categoriaForm');
+    }
+
+    // Formulario de unidades de medida
+    const unidadForm = document.getElementById('unidadFormElement');
+    if (unidadForm) {
+        unidadForm.addEventListener('submit', handleUnidadSubmit);
+        console.log('Event listener agregado para unidadForm');
+    }
+
+    // Eventos para detalles de compra
+    const detalleCantidad = document.getElementById('detalleCantidad');
+    const detallePrecio = document.getElementById('detallePrecio');
+    const compraImpuestos = document.getElementById('compraImpuestos');
+
+    if (detalleCantidad) detalleCantidad.addEventListener('input', calcularTotalLinea);
+    if (detallePrecio) detallePrecio.addEventListener('input', calcularTotalLinea);
+    if (compraImpuestos) compraImpuestos.addEventListener('input', calcularTotalesCompra);
+}
+
+// Actualizar la función openManagementTab
+function openManagementTab(tabName) {
+    console.log('Abriendo pestaña:', tabName);
+
+    hideAllContentSections();
+    const managementTabs = document.getElementById('managementTabs');
+
+    if (managementTabs) {
+        managementTabs.style.display = 'block';
+
+        const tabs = document.querySelectorAll('.management-tab');
+        tabs.forEach(tab => {
+            tab.style.display = 'none';
+        });
+
+        const selectedTab = document.getElementById(`tab-${tabName}`);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+            console.log('Pestaña mostrada:', selectedTab.id);
+
+            switch (tabName) {
+                case 'proveedores':
+                    loadProveedores();
+                    break;
+                case 'productos':
+                    loadProductos();
+                    break;
+                case 'compras':
+                    loadCompras();
+                    break;
+                case 'categorias':
+                    loadCategorias();
+                    break;
+                case 'unidades':
+                    loadUnidadesMedida();
+                    break;
+                case 'inventario':
+                    loadInventario();
+                    break;
+            }
+        }
+    }
+}
 
 window.registerUserByAdmin = registerUserByAdmin;
 window.clearRegistrationForm = clearRegistrationForm;
@@ -1155,3 +1549,9 @@ window.deleteProveedor = deleteProveedor;
 window.deleteProducto = deleteProducto;
 window.loadCompras = loadCompras;
 window.loadInventario = loadInventario;
+window.showCategoriaForm = showCategoriaForm;
+window.hideCategoriaForm = hideCategoriaForm;
+window.showUnidadForm = showUnidadForm;
+window.hideUnidadForm = hideUnidadForm;
+window.deleteCategoria = deleteCategoria;
+window.deleteUnidad = deleteUnidad;

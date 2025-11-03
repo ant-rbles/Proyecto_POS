@@ -330,5 +330,44 @@ namespace Login_Análisis.Services
 
             return await query.OrderByDescending(c => c.FechaVenta).ToListAsync();
         }
+        // Métodos para Categorías
+        public async Task<List<Categoria>> ObtenerCategorias()
+        {
+            return await _context.Categorias
+                .Where(c => c.Estado)
+                .OrderBy(c => c.Nombre)
+                .ToListAsync();
+        }
+
+        public async Task<Categoria> ObtenerCategoria(int id)
+        {
+            return await _context.Categorias.FindAsync(id);
+        }
+
+        public async Task<Categoria> ObtenerCategoriaPorNombre(string nombre)
+        {
+            return await _context.Categorias
+                .FirstOrDefaultAsync(c => c.Nombre == nombre && c.Estado);
+        }
+
+        public async Task<(bool success, string message)> CrearCategoria(Categoria categoria)
+        {
+            try
+            {
+                _context.Categorias.Add(categoria);
+                await _context.SaveChangesAsync();
+                return (true, "Categoría creada exitosamente");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // Método para obtener unidad de medida por ID
+        public async Task<UnidadMedida> ObtenerUnidadMedida(int id)
+        {
+            return await _context.UnidadesMedida.FindAsync(id);
+        }
     }
 }
