@@ -50,14 +50,89 @@ namespace Login_Análisis.Controllers
             if (!result.success)
                 return BadRequest(new { Message = result.message });
 
-            return Ok(new { Message = result.message, Venta = result.venta });
+            return Ok(new
+            {
+                Message = result.message,
+                Venta = result.venta,
+                VentaId = result.venta.Id
+            });
         }
 
         [HttpGet]
-        public async Task<IActionResult> ObtenerVentas([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
+        public async Task<IActionResult> ObtenerVentas(
+            [FromQuery] DateTime? fechaInicio,
+            [FromQuery] DateTime? fechaFin,
+            [FromQuery] string? estado = null)
         {
-            var ventas = await _productoService.ObtenerVentas(fechaInicio, fechaFin);
+            var ventas = await _productoService.ObtenerVentas(fechaInicio, fechaFin, estado);
             return Ok(ventas);
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> ObtenerVenta(int id)
+        {
+            var venta = await _productoService.ObtenerVenta(id);
+            if (venta == null)
+                return NotFound(new { Message = "Venta no encontrada" });
+
+            return Ok(venta);
+        }
+
+        [HttpPut("{id}/estado")]
+        public async Task<IActionResult> CambiarEstadoVenta(int id, [FromBody] CambiarEstadoVentaRequest request)
+        {
+            try
+            {
+                var result = await _productoService.CambiarEstadoVenta(id, request.Estado);
+                if (!result.success)
+                    return BadRequest(new { Message = result.message });
+
+                return Ok(new { Message = result.message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpGet("{id}/pdf")]
+        public async Task<IActionResult> DescargarFacturaPdf(int id)
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarFacturaPdf(id);
+                if (pdfBytes == null)
+                    return NotFound(new { Message = "Venta no encontrada" });
+
+                return File(pdfBytes, "application/pdf", $"factura_{id}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
+            }
+        }
+
+        // Método para obtener estadísticas de ventas
+        [HttpGet("estadisticas")]
+        public async Task<IActionResult> ObtenerEstadisticasVentas(
+            [FromQuery] DateTime? fechaInicio,
+            [FromQuery] DateTime? fechaFin)
+        {
+            try
+            {
+                var estadisticas = await _productoService.ObtenerEstadisticasVentas(fechaInicio, fechaFin);
+                return Ok(estadisticas);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+    }
+
+    public class CambiarEstadoVentaRequest
+    {
+        [Required]
+        public string Estado { get; set; }
     }
 }

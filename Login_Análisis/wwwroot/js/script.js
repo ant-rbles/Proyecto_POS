@@ -19,15 +19,18 @@ const recoveryEmailGroup = document.getElementById('recoveryEmailGroup');
 // Variables globales
 let currentSection = 'welcome';
 let proveedores = [];
+let ventas = [];
 let productos = [];
 let categorias = [];
 let compras = [];
 let unidadesMedida = [];
+let detallesVenta = [];
 let detallesCompra = [];
 let currentProveedorId = null;
 let currentProductoId = null;
 let currentCategoriaId = null;
 let currentUnidadId = null;
+let currentVentaId = null;
 
 // Configura validaciones en tiempo real para email y contraseña
 function setupValidation() {
@@ -1020,6 +1023,651 @@ function deleteProducto(id) {
     showMessage('Función de eliminación de producto en desarrollo', 'info');
 }
 
+// Funciones para Ventas
+function showVentaForm() {
+    console.log('Mostrando formulario de venta');
+    openManagementTab('ventas');
+    const form = document.getElementById('ventaForm');
+    if (form) {
+        form.style.display = 'block';
+        document.getElementById('ventaFecha').value = new Date().toISOString().split('T')[0];
+        detallesVenta = [];
+        renderVentaDetallesTable();
+        calcularTotalesVenta();
+        cargarEstadisticasVentas();
+        cargarProductosParaVenta();
+        cargarUnidadesParaVenta();
+    }
+}
+
+function hideVentaForm() {
+    const form = document.getElementById('ventaForm');
+    if (form) form.style.display = 'none';
+    const ventaFormElement = document.getElementById('ventaFormElement');
+    if (ventaFormElement) ventaFormElement.reset();
+    detallesVenta = [];
+}
+
+function cargarProductosParaVenta() {
+    const select = document.getElementById('ventaDetalleProducto');
+    if (!select) return;
+
+    // Simular carga de productos
+    select.innerHTML = '<option value="">Seleccionar producto</option>' +
+        productos.map(p =>
+            `<option value="${p.id}" data-precio="${p.precioVenta}">${p.nombre} - Stock: ${p.stockActual}</option>`
+        ).join('');
+}
+
+function cargarUnidadesParaVenta() {
+    const select = document.getElementById('ventaDetalleUnidad');
+    if (!select) return;
+
+    // Simular carga de unidades
+    select.innerHTML = '<option value="">Seleccionar unidad</option>' +
+        unidadesMedida.map(u =>
+            `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
+        ).join('');
+}
+
+function cargarPrecioProducto() {
+    const productoSelect = document.getElementById('ventaDetalleProducto');
+    const precioInput = document.getElementById('ventaDetallePrecio');
+
+    if (productoSelect && precioInput) {
+        const selectedOption = productoSelect.options[productoSelect.selectedIndex];
+        const precio = selectedOption.getAttribute('data-precio');
+        if (precio) {
+            precioInput.value = parseFloat(precio).toFixed(2);
+            calcularTotalLineaVenta();
+        }
+    }
+}
+
+function calcularTotalLineaVenta() {
+    const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
+    const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
+    const total = cantidad * precio;
+    document.getElementById('ventaDetalleTotal').value = total.toFixed(2);
+}
+
+function agregarDetalleVenta() {
+    const productoId = document.getElementById('ventaDetalleProducto')?.value;
+    const unidadId = document.getElementById('ventaDetalleUnidad')?.value;
+    const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
+    const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
+
+    if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
+        showMessage('Complete todos los campos del detalle', 'error');
+        return;
+    }
+
+    const producto = productos.find(p => p.id == productoId);
+    const unidad = unidadesMedida.find(u => u.id == unidadId);
+
+    const detalle = {
+        productoId: parseInt(productoId),
+        unidadMedidaId: parseInt(unidadId),
+        cantidad: cantidad,
+        precioUnitario: precio,
+        totalLinea: cantidad * precio,
+        producto: producto,
+        unidad: unidad
+    };
+
+    detallesVenta.push(detalle);
+    renderVentaDetallesTable();
+    calcularTotalesVenta();
+
+    // Limpiar campos
+    document.getElementById('ventaDetalleCantidad').value = '1';
+    document.getElementById('ventaDetallePrecio').value = '0';
+    document.getElementById('ventaDetalleTotal').value = '0';
+    document.getElementById('ventaDetalleProducto').selectedIndex = 0;
+}
+
+function eliminarDetalleVenta(index) {
+    detallesVenta.splice(index, 1);
+    renderVentaDetallesTable();
+    calcularTotalesVenta();
+}
+
+function renderVentaDetallesTable() {
+    const tbody = document.getElementById('ventaDetallesTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = detallesVenta.map((detalle, index) => `
+        <tr>
+            <td>${detalle.producto?.nombre || 'Producto ' + detalle.productoId}</td>
+            <td>${detalle.unidad?.nombre || 'Unidad ' + detalle.unidadMedidaId}</td>
+            <td>${detalle.cantidad}</td>
+            <td>$${detalle.precioUnitario.toFixed(2)}</td>
+            <td>$${detalle.totalLinea.toFixed(2)}</td>
+            <td>
+                <button class="action-btn delete-btn" onclick="eliminarDetalleVenta(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function calcularTotalesVenta() {
+    const subtotal = detallesVenta.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+    const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
+    const total = subtotal + impuestos;
+
+    document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+    document.getElementById('ventaTotal').textContent = total.toFixed(2);
+}
+
+async function handleVentaSubmit(e) {
+    e.preventDefault();
+
+    if (detallesVenta.length === 0) {
+        showMessage('Debe agregar al menos un detalle a la venta', 'error');
+        return;
+    }
+
+    const venta = {
+        numeroFactura: document.getElementById('ventaFactura').value,
+        fechaVenta: document.getElementById('ventaFecha').value,
+        impuestos: parseFloat(document.getElementById('ventaImpuestos').value) || 0,
+        observaciones: document.getElementById('ventaObservaciones').value,
+        nombreCliente: document.getElementById('ventaCliente').value,
+        usuarioCreacion: JSON.parse(localStorage.getItem('user')).id,
+        detalles: detallesVenta.map(d => ({
+            productoId: d.productoId,
+            unidadMedidaId: d.unidadMedidaId,
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario
+        }))
+    };
+
+    try {
+        const response = await fetch('/api/ventas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(venta)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showMessage('Venta registrada exitosamente', 'success');
+
+            // Opción para descargar factura
+            if (confirm('¿Desea descargar la factura en PDF?')) {
+                descargarFacturaPdf(result.ventaId);
+            }
+
+            hideVentaForm();
+            cargarVentas();
+            cargarEstadisticasVentas();
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al registrar la venta', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function cargarVentas() {
+    try {
+        const response = await fetch('/api/ventas');
+        if (response.ok) {
+            ventas = await response.json();
+            renderVentasTable();
+        } else {
+            showMessage('Error al cargar las ventas', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+function renderVentasTable() {
+    const tbody = document.getElementById('ventasTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = ventas.map(venta => `
+        <tr>
+            <td>${venta.numeroFactura}</td>
+            <td>${venta.nombreCliente || 'Cliente General'}</td>
+            <td>${new Date(venta.fechaVenta).toLocaleDateString()}</td>
+            <td>$${venta.subtotal.toFixed(2)}</td>
+            <td>$${venta.impuestos.toFixed(2)}</td>
+            <td>$${venta.total.toFixed(2)}</td>
+            <td>
+                <span class="status-badge ${venta.estado === 'COMPLETADA' ? 'normal' : 'warning'}">
+                    ${venta.estado}
+                </span>
+            </td>
+            <td>
+                <button class="action-btn view-btn" onclick="descargarFacturaPdf(${venta.id})" title="Descargar PDF">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="action-btn edit-btn" onclick="verDetalleVenta(${venta.id})" title="Ver Detalle">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function descargarFacturaPdf(ventaId) {
+    try {
+        const response = await fetch(`/api/ventas/${ventaId}/pdf`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `factura_${ventaId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showMessage('Factura descargada exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error al descargar la factura', 'error');
+    }
+}
+
+async function cargarEstadisticasVentas() {
+    try {
+        const response = await fetch('/api/ventas/estadisticas');
+        if (response.ok) {
+            const estadisticas = await response.json();
+            document.getElementById('ventasHoy').textContent = estadisticas.ventasHoy || 0;
+            document.getElementById('ingresosHoy').textContent = `$${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
+            document.getElementById('ventasMes').textContent = estadisticas.ventasMes || 0;
+            document.getElementById('ingresosMes').textContent = `$${(estadisticas.ingresosMes || 0).toFixed(2)}`;
+        }
+    } catch (error) {
+        console.error('Error al cargar estadísticas:', error);
+    }
+}
+
+// Funciones para Reportes
+function cambiarTipoReporte() {
+    actualizarBotonesReporte();
+    // Limpiar resultados al cambiar tipo
+    document.getElementById('reporteTableHead').innerHTML = '';
+    document.getElementById('reporteTableBody').innerHTML = '';
+}
+
+async function cargarReporte() {
+    const tipo = document.getElementById('reporteTipo').value;
+    const fechaInicio = document.getElementById('reporteFechaInicio').value;
+    const fechaFin = document.getElementById('reporteFechaFin').value;
+
+    try {
+        let url = `/api/reportes/${tipo}`;
+        const params = new URLSearchParams();
+
+        if (fechaInicio) params.append('fechaInicio', fechaInicio);
+        if (fechaFin) params.append('fechaFin', fechaFin);
+
+        if (tipo === 'productos-mas-vendidos') {
+            params.append('top', '10');
+        }
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const reporte = await response.json();
+            renderReporte(tipo, reporte);
+        } else {
+            showMessage('Error al cargar el reporte', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+function renderReporte(tipo, datos) {
+    const thead = document.getElementById('reporteTableHead');
+    const tbody = document.getElementById('reporteTableBody');
+
+    switch (tipo) {
+        case 'ventas':
+            renderReporteVentas(thead, tbody, datos);
+            break;
+        case 'inventario':
+            renderReporteInventario(thead, tbody, datos);
+            break;
+        case 'productos-mas-vendidos':
+            renderReporteProductosMasVendidos(thead, tbody, datos);
+            break;
+        case 'movimientos':
+            renderReporteMovimientos(thead, tbody, datos);
+            break;
+        case 'compras':
+            renderReporteCompras(thead, tbody, datos);
+            break;
+    }
+}
+
+function renderReporteVentas(thead, tbody, datos) {
+    thead.innerHTML = `
+        <tr>
+            <th>Período</th>
+            <th>Total Ventas</th>
+            <th>Total Ingresos</th>
+            <th>Promedio por Venta</th>
+        </tr>
+    `;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Reporte General</td>
+            <td>${datos.totalVentas}</td>
+            <td>$${datos.totalIngresos.toFixed(2)}</td>
+            <td>$${datos.promedioVenta.toFixed(2)}</td>
+        </tr>
+    `;
+}
+
+function renderReporteInventario(thead, tbody, datos) {
+    thead.innerHTML = `
+        <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
+        </tr>
+    `;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Total Productos</td>
+            <td>${datos.totalProductos}</td>
+        </tr>
+        <tr>
+            <td>Valor Total Inventario</td>
+            <td>$${datos.valorTotalInventario.toFixed(2)}</td>
+        </tr>
+        <tr>
+            <td>Productos con Stock Bajo</td>
+            <td>${datos.productosStockBajo}</td>
+        </tr>
+        <tr>
+            <td>Productos sin Stock</td>
+            <td>${datos.productosStockCritico}</td>
+        </tr>
+    `;
+}
+
+function renderReporteProductosMasVendidos(thead, tbody, datos) {
+    thead.innerHTML = `
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad Vendida</th>
+            <th>Total Vendido</th>
+        </tr>
+    `;
+
+    tbody.innerHTML = datos.map(item => `
+        <tr>
+            <td>${item.productoNombre}</td>
+            <td>${item.cantidadVendida}</td>
+            <td>$${item.totalVendido.toFixed(2)}</td>
+        </tr>
+    `).join('');
+}
+
+async function generarReporteVentas() {
+    const fechaInicio = document.getElementById('reporteFechaInicio').value;
+    const fechaFin = document.getElementById('reporteFechaFin').value;
+
+    try {
+        let url = '/api/reportes/pdf/ventas';
+        const params = new URLSearchParams();
+
+        if (fechaInicio) params.append('fechaInicio', fechaInicio);
+        if (fechaFin) params.append('fechaFin', fechaFin);
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const blob = await response.blob();
+            const urlPdf = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = urlPdf;
+            a.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(urlPdf);
+            showMessage('Reporte descargado exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error al generar el reporte', 'error');
+    }
+}
+
+// Funciones para descargar reportes adicionales
+async function descargarReporteInventarioPdf() {
+    try {
+        const response = await fetch('/api/reportes/pdf/inventario');
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `reporte_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showMessage('Reporte de inventario descargado exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error al descargar el reporte', 'error');
+    }
+}
+
+async function descargarReporteComprasPdf() {
+    const fechaInicio = document.getElementById('reporteFechaInicio').value;
+    const fechaFin = document.getElementById('reporteFechaFin').value;
+
+    try {
+        let url = '/api/reportes/pdf/compras';
+        const params = new URLSearchParams();
+
+        if (fechaInicio) params.append('fechaInicio', fechaInicio);
+        if (fechaFin) params.append('fechaFin', fechaFin);
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const blob = await response.blob();
+            const urlPdf = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = urlPdf;
+            a.download = `reporte_compras_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(urlPdf);
+            showMessage('Reporte de compras descargado exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error al generar el reporte', 'error');
+    }
+}
+
+// Actualizar la interfaz para incluir botones adicionales
+function actualizarBotonesReporte() {
+    const tipoReporte = document.getElementById('reporteTipo').value;
+    const botonesContainer = document.getElementById('botonesReporteContainer');
+
+    if (!botonesContainer) return;
+
+    let botonesHTML = '';
+
+    if (tipoReporte === 'ventas') {
+        botonesHTML = `
+            <button class="btn btn-primary" onclick="generarReporteVentas()">
+                <i class="fas fa-download"></i> Descargar PDF
+            </button>
+        `;
+    } else if (tipoReporte === 'inventario') {
+        botonesHTML = `
+            <button class="btn btn-primary" onclick="descargarReporteInventarioPdf()">
+                <i class="fas fa-download"></i> Descargar PDF
+            </button>
+        `;
+    } else if (tipoReporte === 'compras') {
+        botonesHTML = `
+            <button class="btn btn-primary" onclick="descargarReporteComprasPdf()">
+                <i class="fas fa-download"></i> Descargar PDF
+            </button>
+        `;
+    } else {
+        botonesHTML = `
+            <button class="btn btn-primary" onclick="showMessage('Descarga de PDF no disponible para este reporte', 'info')">
+                <i class="fas fa-download"></i> Descargar PDF
+            </button>
+        `;
+    }
+
+    botonesContainer.innerHTML = botonesHTML;
+}
+
+// Funciones para Movimientos
+function showAjusteForm() {
+    console.log('Mostrando formulario de ajuste');
+    openManagementTab('movimientos');
+    const form = document.getElementById('ajusteForm');
+    if (form) {
+        form.style.display = 'block';
+        cargarProductosParaAjuste();
+    }
+}
+
+function hideAjusteForm() {
+    const form = document.getElementById('ajusteForm');
+    if (form) form.style.display = 'none';
+    const ajusteFormElement = document.getElementById('ajusteFormElement');
+    if (ajusteFormElement) ajusteFormElement.reset();
+}
+
+function cargarProductosParaAjuste() {
+    const select = document.getElementById('ajusteProducto');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Seleccionar producto</option>' +
+        productos.map(p =>
+            `<option value="${p.id}">${p.nombre} - Stock: ${p.stockActual}</option>`
+        ).join('');
+}
+
+async function handleAjusteSubmit(e) {
+    e.preventDefault();
+
+    const ajuste = {
+        productoId: parseInt(document.getElementById('ajusteProducto').value),
+        cantidad: parseFloat(document.getElementById('ajusteCantidad').value),
+        observaciones: document.getElementById('ajusteObservaciones').value,
+        usuarioId: JSON.parse(localStorage.getItem('user')).id
+    };
+
+    try {
+        const response = await fetch('/api/movimientos/ajuste', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ajuste)
+        });
+
+        if (response.ok) {
+            showMessage('Ajuste aplicado exitosamente', 'success');
+            hideAjusteForm();
+            cargarMovimientos();
+            loadProductos(); // Recargar productos para actualizar stock
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al aplicar el ajuste', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function cargarMovimientos() {
+    const tipo = document.getElementById('movimientoTipo').value;
+    const fechaInicio = document.getElementById('movimientoFechaInicio').value;
+    const fechaFin = document.getElementById('movimientoFechaFin').value;
+
+    try {
+        let url = '/api/movimientos';
+        const params = new URLSearchParams();
+
+        if (fechaInicio) params.append('fechaInicio', fechaInicio);
+        if (fechaFin) params.append('fechaFin', fechaFin);
+        if (tipo) params.append('tipoMovimiento', tipo);
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const movimientos = await response.json();
+            renderMovimientosTable(movimientos);
+        } else {
+            showMessage('Error al cargar los movimientos', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+function renderMovimientosTable(movimientos) {
+    const tbody = document.getElementById('movimientosTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = movimientos.map(mov => `
+        <tr>
+            <td>${new Date(mov.fechaMovimiento).toLocaleString()}</td>
+            <td>${mov.producto?.nombre}</td>
+            <td>
+                <span class="status-badge ${mov.tipoMovimiento === 'ENTRADA' ? 'normal' :
+            mov.tipoMovimiento === 'SALIDA' ? 'warning' : 'critical'
+        }">
+                    ${mov.tipoMovimiento}
+                </span>
+            </td>
+            <td>${mov.cantidad}</td>
+            <td>${mov.cantidadAnterior}</td>
+            <td>${mov.cantidadNueva}</td>
+            <td>${mov.observaciones || '-'}</td>
+        </tr>
+    `).join('');
+}
+
 // Mostrar mensajes en pantalla
 function showMessage(text, type) {
     if (!messageDiv) return;
@@ -1468,6 +2116,18 @@ function setupManagementEventListeners() {
         console.log('Event listener agregado para unidadForm');
     }
 
+    // Formulario de ventas
+    const ventaForm = document.getElementById('ventaFormElement');
+    if (ventaForm) {
+        ventaForm.addEventListener('submit', handleVentaSubmit);
+    }
+
+    // Formulario de ajuste
+    const ajusteForm = document.getElementById('ajusteFormElement');
+    if (ajusteForm) {
+        ajusteForm.addEventListener('submit', handleAjusteSubmit);
+    }
+
     // Eventos para detalles de compra
     const detalleCantidad = document.getElementById('detalleCantidad');
     const detallePrecio = document.getElementById('detallePrecio');
@@ -1476,6 +2136,12 @@ function setupManagementEventListeners() {
     if (detalleCantidad) detalleCantidad.addEventListener('input', calcularTotalLinea);
     if (detallePrecio) detallePrecio.addEventListener('input', calcularTotalLinea);
     if (compraImpuestos) compraImpuestos.addEventListener('input', calcularTotalesCompra);
+
+    // Eventos para ventas
+    const ventaImpuestos = document.getElementById('ventaImpuestos');
+    if (ventaImpuestos) {
+        ventaImpuestos.addEventListener('input', calcularTotalesVenta);
+    }
 }
 
 // Actualizar la función openManagementTab
@@ -1516,6 +2182,27 @@ function openManagementTab(tabName) {
                     break;
                 case 'inventario':
                     loadInventario();
+                    break;
+                case 'ventas':
+                    cargarVentas();
+                    cargarEstadisticasVentas();
+                    break;
+                case 'reportes':
+                    // Configurar fecha por defecto para reportes
+                    const hoy = new Date();
+                    document.getElementById('reporteFechaFin').value = hoy.toISOString().split('T')[0];
+                    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                    document.getElementById('reporteFechaInicio').value = inicioMes.toISOString().split('T')[0];
+                    actualizarBotonesReporte();
+                    break;
+                case 'movimientos':
+                    // Configurar fecha por defecto para movimientos
+                    const hoyMov = new Date();
+                    document.getElementById('movimientoFechaFin').value = hoyMov.toISOString().split('T')[0];
+                    const inicioSemana = new Date(hoyMov);
+                    inicioSemana.setDate(hoyMov.getDate() - 7);
+                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];
+                    cargarMovimientos();
                     break;
             }
         }

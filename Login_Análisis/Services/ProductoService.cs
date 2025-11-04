@@ -7,11 +7,14 @@ namespace Login_Análisis.Services
     public class ProductoService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPdfService _pdfService;
 
-        public ProductoService(ApplicationDbContext context)
+        public ProductoService(ApplicationDbContext context, IPdfService pdfService)
         {
             _context = context;
+            _pdfService = pdfService;
         }
+
         public ApplicationDbContext Context => _context;
 
         // Métodos para Proveedores
@@ -61,6 +64,11 @@ namespace Login_Análisis.Services
         {
             return await _context.UnidadesMedida
                 .FirstOrDefaultAsync(u => u.EsUnidadBase && u.Estado);
+        }
+
+        public async Task<UnidadMedida> ObtenerUnidadMedida(int id)
+        {
+            return await _context.UnidadesMedida.FindAsync(id);
         }
 
         // Métodos para Productos
@@ -309,27 +317,62 @@ namespace Login_Análisis.Services
             _context.MovimientosInventario.Add(movimiento);
         }
 
-        public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null)
         {
             var query = _context.Ventas
-                .Include(c => c.Detalles)
+                .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
-                .Include(c => c.Detalles)
+                .Include(v => v.Detalles)
                     .ThenInclude(d => d.UnidadMedida)
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
             {
-                query = query.Where(c => c.FechaVenta >= fechaInicio.Value);
+                query = query.Where(v => v.FechaVenta >= fechaInicio.Value);
             }
 
             if (fechaFin.HasValue)
             {
-                query = query.Where(c => c.FechaVenta <= fechaFin.Value);
+                query = query.Where(v => v.FechaVenta <= fechaFin.Value);
             }
 
-            return await query.OrderByDescending(c => c.FechaVenta).ToListAsync();
+            if (!string.IsNullOrEmpty(estado))
+            {
+                query = query.Where(v => v.Estado == estado);
+            }
+
+            return await query.OrderByDescending(v => v.FechaVenta).ToListAsync();
         }
+
+        public async Task<Venta> ObtenerVenta(int id)
+        {
+            return await _context.Ventas
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(v => v.Id == id);
+        }
+
+        public async Task<(bool success, string message)> CambiarEstadoVenta(int ventaId, string estado)
+        {
+            try
+            {
+                var venta = await _context.Ventas.FindAsync(ventaId);
+                if (venta == null)
+                    return (false, "Venta no encontrada");
+
+                venta.Estado = estado;
+                await _context.SaveChangesAsync();
+
+                return (true, $"Estado de venta actualizado a {estado}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
         // Métodos para Categorías
         public async Task<List<Categoria>> ObtenerCategorias()
         {
@@ -364,10 +407,215 @@ namespace Login_Análisis.Services
             }
         }
 
-        // Método para obtener unidad de medida por ID
-        public async Task<UnidadMedida> ObtenerUnidadMedida(int id)
+        // Métodos para Movimientos de Inventario
+        public async Task<List<MovimientoInventario>> ObtenerMovimientosInventario(
+            DateTime? fechaInicio = null,
+            DateTime? fechaFin = null,
+            string? tipoMovimiento = null,
+            int? productoId = null)
         {
-            return await _context.UnidadesMedida.FindAsync(id);
+            var query = _context.MovimientosInventario
+                .Include(m => m.Producto)
+                .AsQueryable();
+
+            if (fechaInicio.HasValue)
+            {
+                query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value);
+            }
+
+            if (fechaFin.HasValue)
+            {
+                query = query.Where(m => m.FechaMovimiento <= fechaFin.Value);
+            }
+
+            if (!string.IsNullOrEmpty(tipoMovimiento))
+            {
+                query = query.Where(m => m.TipoMovimiento == tipoMovimiento);
+            }
+
+            if (productoId.HasValue)
+            {
+                query = query.Where(m => m.ProductoId == productoId.Value);
+            }
+
+            return await query.OrderByDescending(m => m.FechaMovimiento).ToListAsync();
+        }
+
+        public async Task<List<MovimientoInventario>> ObtenerMovimientosPorProducto(int productoId)
+        {
+            return await _context.MovimientosInventario
+                .Include(m => m.Producto)
+                .Where(m => m.ProductoId == productoId)
+                .OrderByDescending(m => m.FechaMovimiento)
+                .ToListAsync();
+        }
+
+        public async Task<(bool success, string message)> CrearAjusteInventario(
+            int productoId,
+            decimal cantidad,
+            string observaciones,
+            int? usuarioId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var producto = await _context.Productos.FindAsync(productoId);
+                if (producto == null)
+                    return (false, "Producto no encontrado");
+
+                var cantidadAnterior = producto.StockActual;
+                producto.StockActual += cantidad;
+                producto.FechaActualizacion = DateTime.UtcNow;
+
+                var movimiento = new MovimientoInventario
+                {
+                    ProductoId = productoId,
+                    TipoMovimiento = cantidad > 0 ? "AJUSTE_POSITIVO" : "AJUSTE_NEGATIVO",
+                    Cantidad = Math.Abs(cantidad),
+                    CantidadAnterior = cantidadAnterior,
+                    CantidadNueva = producto.StockActual,
+                    PrecioCosto = producto.PrecioCostoPromedio,
+                    PrecioVenta = producto.PrecioVenta,
+                    ReferenciaTipo = "AJUSTE_MANUAL",
+                    Observaciones = observaciones,
+                    UsuarioId = usuarioId,
+                    FechaMovimiento = DateTime.UtcNow
+                };
+
+                _context.MovimientosInventario.Add(movimiento);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, "Ajuste de inventario realizado exitosamente");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // Métodos para Reportes (JSON para pantalla)
+        public async Task<object> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin, string tipoReporte)
+        {
+            var ventas = await ObtenerVentas(fechaInicio, fechaFin);
+
+            var reporte = new
+            {
+                TotalVentas = ventas.Count,
+                TotalIngresos = ventas.Sum(v => v.Total),
+                PromedioVenta = ventas.Any() ? ventas.Average(v => v.Total) : 0,
+                VentasPorEstado = ventas.GroupBy(v => v.Estado)
+                               .Select(g => new { Estado = g.Key, Cantidad = g.Count() }),
+                VentasPorDia = ventas.GroupBy(v => v.FechaVenta.Date)
+                            .Select(g => new { Fecha = g.Key, Total = g.Sum(v => v.Total), Cantidad = g.Count() })
+            };
+
+            return reporte;
+        }
+
+        public async Task<object> GenerarReporteInventario()
+        {
+            var productos = await ObtenerProductos();
+
+            var reporte = new
+            {
+                TotalProductos = productos.Count,
+                ValorTotalInventario = productos.Sum(p => p.StockActual * p.PrecioCostoPromedio),
+                ProductosStockBajo = productos.Count(p => p.StockActual <= p.StockMinimo && p.StockActual > 0),
+                ProductosStockCritico = productos.Count(p => p.StockActual == 0),
+                ProductosPorCategoria = productos.GroupBy(p => p.Categoria?.Nombre ?? "Sin Categoría")
+                                       .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
+            };
+
+            return reporte;
+        }
+
+        public async Task<object> GenerarReporteProductosMasVendidos(DateTime? fechaInicio, DateTime? fechaFin, int top)
+        {
+            var ventas = await ObtenerVentas(fechaInicio, fechaFin);
+
+            var productosMasVendidos = ventas
+                .SelectMany(v => v.Detalles)
+                .GroupBy(d => new { d.ProductoId, d.Producto.Nombre })
+                .Select(g => new
+                {
+                    ProductoId = g.Key.ProductoId,
+                    ProductoNombre = g.Key.Nombre,
+                    CantidadVendida = g.Sum(d => d.CantidadBase),
+                    TotalVendido = g.Sum(d => d.TotalLinea)
+                })
+                .OrderByDescending(p => p.CantidadVendida)
+                .Take(top)
+                .ToList();
+
+            return productosMasVendidos;
+        }
+
+        public async Task<object> GenerarReporteMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipoMovimiento)
+        {
+            var movimientos = await ObtenerMovimientosInventario(fechaInicio, fechaFin, tipoMovimiento);
+
+            var reporte = new
+            {
+                TotalMovimientos = movimientos.Count,
+                MovimientosPorTipo = movimientos.GroupBy(m => m.TipoMovimiento)
+                                      .Select(g => new { Tipo = g.Key, Cantidad = g.Count() }),
+                MovimientosPorProducto = movimientos.GroupBy(m => new { m.ProductoId, m.Producto.Nombre })
+                                          .Select(g => new { Producto = g.Key.Nombre, Cantidad = g.Count() })
+            };
+
+            return reporte;
+        }
+
+        public async Task<object> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var compras = await ObtenerCompras(fechaInicio, fechaFin);
+
+            var reporte = new
+            {
+                TotalCompras = compras.Count,
+                TotalInvertido = compras.Sum(c => c.Total),
+                ComprasPorProveedor = compras.GroupBy(c => c.Proveedor.Nombre)
+                                   .Select(g => new { Proveedor = g.Key, Total = g.Sum(c => c.Total), Cantidad = g.Count() })
+            };
+
+            return reporte;
+        }
+
+        public async Task<object> ObtenerEstadisticasVentas(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var ventas = await ObtenerVentas(fechaInicio, fechaFin);
+            var hoy = DateTime.Today;
+
+            return new
+            {
+                VentasHoy = ventas.Count(v => v.FechaVenta.Date == hoy),
+                IngresosHoy = ventas.Where(v => v.FechaVenta.Date == hoy).Sum(v => v.Total),
+                VentasMes = ventas.Count(v => v.FechaVenta.Month == hoy.Month && v.FechaVenta.Year == hoy.Year),
+                IngresosMes = ventas.Where(v => v.FechaVenta.Month == hoy.Month && v.FechaVenta.Year == hoy.Year).Sum(v => v.Total)
+            };
+        }
+
+        // Métodos para PDF (usando QuestPDF profesional)
+        public async Task<byte[]> GenerarFacturaPdf(int ventaId)
+        {
+            return await _pdfService.GenerarFacturaVenta(ventaId);
+        }
+
+        public async Task<byte[]> GenerarReporteVentasPdf(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            return await _pdfService.GenerarReporteVentas(fechaInicio, fechaFin);
+        }
+
+        public async Task<byte[]> GenerarReporteInventarioPdf()
+        {
+            return await _pdfService.GenerarReporteInventario();
+        }
+
+        public async Task<byte[]> GenerarReporteComprasPdf(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            return await _pdfService.GenerarReporteCompras(fechaInicio, fechaFin);
         }
     }
 }
