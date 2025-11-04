@@ -20,42 +20,72 @@ namespace Login_Análisis.Controllers
         [HttpPost]
         public async Task<IActionResult> CrearVenta([FromBody] VentaRequest request)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(new { Message = "Datos de la venta inválidos" });
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Datos de la venta inválidos",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                    });
+                }
+
+                // Validar stock antes de procesar
+                foreach (var detalle in request.Detalles)
+                {
+                    var producto = await _productoService.ObtenerProducto(detalle.ProductoId);
+                    if (producto == null || producto.StockActual < detalle.Cantidad)
+                    {
+                        return BadRequest(new
+                        {
+                            Message = $"Stock insuficiente para el producto {producto?.Nombre}"
+                        });
+                    }
+                }
+
+                var venta = new Venta
+                {
+                    NumeroFactura = GenerarNumeroFactura(),
+                    FechaVenta = request.FechaVenta,
+                    Impuestos = request.Impuestos,
+                    Observaciones = request.Observaciones,
+                    ClienteId = request.ClienteId,
+                    NombreCliente = request.NombreCliente,
+                    UsuarioCreacion = request.UsuarioCreacion,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                var detalles = request.Detalles.Select(d => new DetalleVenta
+                {
+                    ProductoId = d.ProductoId,
+                    UnidadMedidaId = d.UnidadMedidaId,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    TotalLinea = d.Cantidad * d.PrecioUnitario
+                }).ToList();
+
+                var result = await _productoService.CrearVenta(venta, detalles);
+
+                if (!result.success)
+                    return BadRequest(new { Message = result.message });
+
+                return Ok(new
+                {
+                    Message = result.message,
+                    Venta = result.venta,
+                    VentaId = result.venta.Id
+                });
             }
-
-            var venta = new Venta
+            catch (Exception ex)
             {
-                NumeroFactura = request.NumeroFactura,
-                FechaVenta = request.FechaVenta,
-                Impuestos = request.Impuestos,
-                Observaciones = request.Observaciones,
-                ClienteId = request.ClienteId,
-                NombreCliente = request.NombreCliente,
-                UsuarioCreacion = request.UsuarioCreacion,
-                FechaCreacion = DateTime.UtcNow
-            };
+                return StatusCode(500, new { Message = "Error interno del servidor", Error = ex.Message });
+            }
+        }
 
-            var detalles = request.Detalles.Select(d => new DetalleVenta
-            {
-                ProductoId = d.ProductoId,
-                UnidadMedidaId = d.UnidadMedidaId,
-                Cantidad = d.Cantidad,
-                PrecioUnitario = d.PrecioUnitario,
-                TotalLinea = d.Cantidad * d.PrecioUnitario
-            }).ToList();
-
-            var result = await _productoService.CrearVenta(venta, detalles);
-            if (!result.success)
-                return BadRequest(new { Message = result.message });
-
-            return Ok(new
-            {
-                Message = result.message,
-                Venta = result.venta,
-                VentaId = result.venta.Id
-            });
+        private string GenerarNumeroFactura()
+        {
+            return $"F{DateTime.Now:yyyyMMddHHmmss}";
         }
 
         [HttpGet]

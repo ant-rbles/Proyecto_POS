@@ -258,6 +258,7 @@ function showDashboard(user) {
     hideAllForms();
     if (dashboard) dashboard.style.display = 'block';
 
+
     // Información básica del usuario
     if (document.getElementById('welcomeName'))
         document.getElementById('welcomeName').textContent = user.nombre || user.name || 'Usuario';
@@ -282,6 +283,16 @@ function showDashboard(user) {
         } else {
             databasePanel.style.display = 'none';
         }
+    }
+
+    // AGREGAR BOTÓN DE TOGGLE AL SIDEBAR EXISTENTE
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && !document.querySelector('.toggle-sidebar-btn')) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'toggle-sidebar-btn';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        toggleBtn.onclick = toggleSidebar;
+        sidebar.appendChild(toggleBtn);
     }
 
     // Mostrar vista de bienvenida
@@ -1334,6 +1345,51 @@ async function cargarReporte() {
     }
 }
 
+// Función mejorada para procesar ventas
+async function procesarVenta(ventaData) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('/api/ventas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(ventaData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            return { success: true, data: result };
+        } else {
+            const error = await response.json();
+            return { success: false, error: error.message };
+        }
+    } catch (error) {
+        return { success: false, error: 'Error de conexión' };
+    }
+}
+
+// Función para calcular totales en tiempo real
+function calcularTotalesVentaEnTiempoReal() {
+    const detalles = detallesVenta;
+    const subtotal = detalles.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+    const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
+    const total = subtotal + impuestos;
+
+    // Actualizar UI
+    if (document.getElementById('ventaSubtotal')) {
+        document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+    }
+    if (document.getElementById('ventaImpuestosTotal')) {
+        document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+    }
+    if (document.getElementById('ventaTotal')) {
+        document.getElementById('ventaTotal').textContent = total.toFixed(2);
+    }
+
+    return { subtotal, impuestos, total };
+}
 function renderReporte(tipo, datos) {
     const thead = document.getElementById('reporteTableHead');
     const tbody = document.getElementById('reporteTableBody');
@@ -1711,6 +1767,23 @@ function toggleProductRegistrationForm() {
     hideAllContentSections();
     const productForm = document.getElementById('productRegistrationForm');
     if (productForm) productForm.style.display = 'block';
+}
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const dashboardContent = document.querySelector('.dashboard-content');
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
+
+    if (sidebar && dashboardContent) {
+        sidebar.classList.toggle('sidebar-collapsed');
+
+        if (sidebar.classList.contains('sidebar-collapsed')) {
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            dashboardContent.style.marginLeft = '60px';
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            dashboardContent.style.marginLeft = '250px';
+        }
+    }
 }
 
 // Configurar validación de contraseña

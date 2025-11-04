@@ -597,7 +597,7 @@ namespace Login_Análisis.Services
             };
         }
 
-        // Métodos para PDF (usando QuestPDF profesional)
+        // Métodos para PDF 
         public async Task<byte[]> GenerarFacturaPdf(int ventaId)
         {
             return await _pdfService.GenerarFacturaVenta(ventaId);
