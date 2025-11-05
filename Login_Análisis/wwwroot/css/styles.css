@@ -1021,49 +1021,17 @@ body {
     border-left: 4px solid #007bff;
 }
 
-/* Estilos para badges de stock */
-.stock-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
+/* Estilos mejorados para el sidebar */
+.sidebar {
+    width: 250px;
+    background: white;
+    border-right: 1px solid #e3e6f0;
+    overflow-y: auto;
+    height: calc(100vh - 70px);
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.3s ease;
 }
-
-    .stock-badge.critical {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .stock-badge.warning {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .stock-badge.normal {
-        background: #d1edff;
-        color: #004085;
-    }
-
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-    .status-badge.critical {
-        background: #dc3545;
-        color: white;
-    }
-
-    .status-badge.warning {
-        background: #ffc107;
-        color: #212529;
-    }
-
-    .status-badge.normal {
-        background: #28a745;
-        color: white;
-    }
 
 .sidebar-collapsed {
     width: 60px !important;
@@ -1102,9 +1070,10 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     z-index: 1000;
     font-size: 12px;
+    transition: all 0.3s ease;
 }
 
-.sidebar {
-    position: relative;
-    transition: width 0.3s ease;
-}
+    .toggle-sidebar-btn:hover {
+        background: #224abe;
+        transform: scale(1.1);
+    }

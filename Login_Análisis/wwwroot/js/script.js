@@ -258,7 +258,6 @@ function showDashboard(user) {
     hideAllForms();
     if (dashboard) dashboard.style.display = 'block';
 
-
     // Información básica del usuario
     if (document.getElementById('welcomeName'))
         document.getElementById('welcomeName').textContent = user.nombre || user.name || 'Usuario';
@@ -283,16 +282,6 @@ function showDashboard(user) {
         } else {
             databasePanel.style.display = 'none';
         }
-    }
-
-    // AGREGAR BOTÓN DE TOGGLE AL SIDEBAR EXISTENTE
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && !document.querySelector('.toggle-sidebar-btn')) {
-        const toggleBtn = document.createElement('button');
-        toggleBtn.className = 'toggle-sidebar-btn';
-        toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-        toggleBtn.onclick = toggleSidebar;
-        sidebar.appendChild(toggleBtn);
     }
 
     // Mostrar vista de bienvenida
@@ -649,18 +638,27 @@ async function handleProveedorSubmit(e) {
     };
 
     try {
+        const authToken = localStorage.getItem('authToken');
         let response;
+
         if (currentProveedorId) {
-            proveedor.id = currentProveedorId;
-            response = await fetch(`/api/proveedores/${currentProveedorId}`, {
+            // Actualizar
+            response = await fetch(`https://localhost:7000/api/proveedores/${currentProveedorId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify(proveedor)
             });
         } else {
-            response = await fetch('/api/productos/proveedores', {
+            // Crear
+            response = await fetch('https://localhost:7000/api/proveedores', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify(proveedor)
             });
         }
@@ -671,24 +669,57 @@ async function handleProveedorSubmit(e) {
             loadProveedores();
         } else {
             const error = await response.json();
-            showMessage(error.message || 'Error al guardar el proveedor', 'error');
+            showMessage(error.message || 'Error al guardar proveedor', 'error');
         }
     } catch (error) {
+        console.error('Error:', error);
         showMessage('Error de conexión', 'error');
+    }
+}
+
+
+function updateProveedoresSelect() {
+    console.log('Actualizando select de proveedores...');
+
+    try {
+        const selectProveedor = document.getElementById('compraProveedor');
+        if (selectProveedor && proveedores) {
+            selectProveedor.innerHTML = '<option value="">Seleccionar proveedor</option>' +
+                proveedores.filter(p => p.estado).map(p =>
+                    `<option value="${p.id}">${p.nombre}</option>`
+                ).join('');
+            console.log('Select de proveedores actualizado');
+        }
+    } catch (error) {
+        console.error('Error en updateProveedoresSelect:', error);
     }
 }
 
 async function loadProveedores() {
     try {
-        console.log('Cargando proveedores...');
-        // Simular datos de prueba
-        proveedores = [
-            { id: 1, nombre: 'Proveedor 1', ruc: '12345678901', telefono: '123-456-7890', email: 'proveedor1@ejemplo.com', direccion: 'Dirección 1', contacto: 'Contacto 1' },
-            { id: 2, nombre: 'Proveedor 2', ruc: '12345678902', telefono: '123-456-7891', email: 'proveedor2@ejemplo.com', direccion: 'Dirección 2', contacto: 'Contacto 2' }
-        ];
-        renderProveedoresTable();
+        console.log('Cargando proveedores desde la base de datos...');
+
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/proveedores', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            proveedores = await response.json();
+            console.log('Proveedores cargados:', proveedores);
+            renderProveedoresTable();
+            updateProveedoresSelect();
+        } else {
+            const error = await response.text();
+            console.error('Error al cargar proveedores:', error);
+            showMessage('Error al cargar proveedores', 'error');
+        }
     } catch (error) {
-        showMessage('Error al cargar proveedores', 'error');
+        console.error('Error de conexión:', error);
+        showMessage('Error de conexión', 'error');
     }
 }
 
@@ -722,15 +753,20 @@ async function deleteProveedor(id) {
     if (!confirm('¿Está seguro de eliminar este proveedor?')) return;
 
     try {
-        const response = await fetch(`/api/proveedores/${id}`, {
-            method: 'DELETE'
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/proveedores/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
 
         if (response.ok) {
             showMessage('Proveedor eliminado exitosamente', 'success');
             loadProveedores();
         } else {
-            showMessage('Error al eliminar el proveedor', 'error');
+            const error = await response.json();
+            showMessage(error.message, 'error');
         }
     } catch (error) {
         showMessage('Error de conexión', 'error');
@@ -777,30 +813,39 @@ function fillProductoForm(producto) {
 
 async function handleProductoSubmit(e) {
     e.preventDefault();
-    console.log('Enviando formulario de producto');
+    console.log('Guardando producto...');
 
     const producto = {
         codigo: document.getElementById('productoCodigo').value,
         nombre: document.getElementById('productoNombre').value,
         descripcion: document.getElementById('productoDescripcion').value,
-        categoriaId: document.getElementById('productoCategoria').value || null,
+        categoriaId: document.getElementById('productoCategoria').value ? parseInt(document.getElementById('productoCategoria').value) : null,
         unidadMedidaBaseId: parseInt(document.getElementById('productoUnidadBase').value),
         stockMinimo: parseFloat(document.getElementById('productoStockMinimo').value) || 0,
-        margenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30
+        margenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30,
+        estado: true
     };
 
     try {
+        const authToken = localStorage.getItem('authToken');
         let response;
+
         if (currentProductoId) {
-            response = await fetch(`/api/productos/${currentProductoId}`, {
+            response = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify(producto)
             });
         } else {
-            response = await fetch('/api/productos', {
+            response = await fetch('https://localhost:7000/api/productos', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
                 body: JSON.stringify(producto)
             });
         }
@@ -808,12 +853,13 @@ async function handleProductoSubmit(e) {
         if (response.ok) {
             showMessage('Producto guardado exitosamente', 'success');
             hideProductoForm();
-            loadProductos();
+            await loadProductos();
         } else {
-            const error = await response.json();
-            showMessage(error.message || 'Error al guardar el producto', 'error');
+            const errorData = await response.json();
+            showMessage(errorData.message || 'Error al guardar producto', 'error');
         }
     } catch (error) {
+        console.error('Error:', error);
         showMessage('Error de conexión', 'error');
     }
 }
@@ -821,14 +867,29 @@ async function handleProductoSubmit(e) {
 async function loadProductos() {
     try {
         console.log('Cargando productos...');
-        // Simular datos de prueba
-        productos = [
-            { id: 1, codigo: 'PROD001', nombre: 'Producto 1', categoria: { nombre: 'Categoría 1' }, stockActual: 10, stockMinimo: 5, precioCostoPromedio: 10.50, precioVenta: 15.75 },
-            { id: 2, codigo: 'PROD002', nombre: 'Producto 2', categoria: { nombre: 'Categoría 2' }, stockActual: 20, stockMinimo: 10, precioCostoPromedio: 20.00, precioVenta: 30.00 }
-        ];
-        renderProductosTable();
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/productos', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            productos = await response.json();
+            console.log('Productos cargados:', productos);
+            renderProductosTable();
+            updateProductosSelects();
+            updateProductosSelectsVentas();
+        } else {
+            const error = await response.text();
+            console.error('Error al cargar productos:', error);
+            showMessage('Error al cargar productos', 'error');
+        }
     } catch (error) {
-        showMessage('Error al cargar productos', 'error');
+        console.error('Error de conexión:', error);
+        showMessage('Error de conexión', 'error');
     }
 }
 
@@ -883,57 +944,74 @@ function showCompraForm() {
         console.error('No se encontró el formulario de compra');
     }
 }
+    function updateProductosSelects() {
+        console.log('Actualizando selects de productos para COMPRAS...');
 
-function hideCompraForm() {
-    const form = document.getElementById('compraForm');
-    if (form) form.style.display = 'none';
-    const compraFormElement = document.getElementById('compraFormElement');
-    if (compraFormElement) compraFormElement.reset();
-    detallesCompra = [];
-}
-
-function agregarDetalle() {
-    const productoId = document.getElementById('detalleProducto')?.value;
-    const unidadId = document.getElementById('detalleUnidad')?.value;
-    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
-    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
-
-    if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
-        showMessage('Complete todos los campos del detalle', 'error');
-        return;
+        try {
+            // SOLO select en compras
+            const selectCompra = document.getElementById('detalleProducto');
+            if (selectCompra && productos) {
+                selectCompra.innerHTML = '<option value="">Seleccionar producto</option>' +
+                    productos.filter(p => p.estado).map(p =>
+                        `<option value="${p.id}" data-stock="${p.stockActual}">${p.nombre} - Stock: ${p.stockActual}</option>`
+                    ).join('');
+                console.log('Select de COMPRAS actualizado');
+            }
+        } catch (error) {
+            console.error('Error en updateProductosSelects:', error);
+        }
     }
 
-    const detalle = {
-        productoId: parseInt(productoId),
-        unidadMedidaId: parseInt(unidadId),
-        cantidad: cantidad,
-        precioUnitario: precio,
-        totalLinea: cantidad * precio
-    };
+        function hideCompraForm() {
+            const form = document.getElementById('compraForm');
+            if (form) form.style.display = 'none';
+            const compraFormElement = document.getElementById('compraFormElement');
+            if (compraFormElement) compraFormElement.reset();
+            detallesCompra = [];
+        }
 
-    detallesCompra.push(detalle);
-    renderDetallesTable();
-    calcularTotalesCompra();
+        function agregarDetalle() {
+            const productoId = document.getElementById('detalleProducto')?.value;
+            const unidadId = document.getElementById('detalleUnidad')?.value;
+            const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+            const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
 
-    document.getElementById('detalleCantidad').value = '0';
-    document.getElementById('detallePrecio').value = '0';
-    document.getElementById('detalleTotal').value = '0';
-}
+            if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
+                showMessage('Complete todos los campos del detalle', 'error');
+                return;
+            }
 
-function eliminarDetalle(index) {
-    detallesCompra.splice(index, 1);
-    renderDetallesTable();
-    calcularTotalesCompra();
-}
+            const detalle = {
+                productoId: parseInt(productoId),
+                unidadMedidaId: parseInt(unidadId),
+                cantidad: cantidad,
+                precioUnitario: precio,
+                totalLinea: cantidad * precio
+            };
 
-function renderDetallesTable() {
-    const tbody = document.getElementById('detallesTableBody');
-    if (!tbody) {
-        console.error('No se encontró detallesTableBody');
-        return;
-    }
+            detallesCompra.push(detalle);
+            renderDetallesTable();
+            calcularTotalesCompra();
 
-    tbody.innerHTML = detallesCompra.map((detalle, index) => `
+            document.getElementById('detalleCantidad').value = '0';
+            document.getElementById('detallePrecio').value = '0';
+            document.getElementById('detalleTotal').value = '0';
+        }
+
+        function eliminarDetalle(index) {
+            detallesCompra.splice(index, 1);
+            renderDetallesTable();
+            calcularTotalesCompra();
+        }
+
+        function renderDetallesTable() {
+            const tbody = document.getElementById('detallesTableBody');
+            if (!tbody) {
+                console.error('No se encontró detallesTableBody');
+                return;
+            }
+
+            tbody.innerHTML = detallesCompra.map((detalle, index) => `
         <tr>
             <td>Producto ${detalle.productoId}</td>
             <td>Unidad ${detalle.unidadMedidaId}</td>
@@ -947,24 +1025,24 @@ function renderDetallesTable() {
             </td>
         </tr>
     `).join('');
-}
+        }
 
-function calcularTotalLinea() {
-    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
-    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
-    const total = cantidad * precio;
-    document.getElementById('detalleTotal').value = total.toFixed(2);
-}
+        function calcularTotalLinea() {
+            const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+            const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
+            const total = cantidad * precio;
+            document.getElementById('detalleTotal').value = total.toFixed(2);
+        }
 
-function calcularTotalesCompra() {
-    const subtotal = detallesCompra.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
-    const impuestos = parseFloat(document.getElementById('compraImpuestos')?.value) || 0;
-    const total = subtotal + impuestos;
+        function calcularTotalesCompra() {
+            const subtotal = detallesCompra.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+            const impuestos = parseFloat(document.getElementById('compraImpuestos')?.value) || 0;
+            const total = subtotal + impuestos;
 
-    document.getElementById('compraSubtotal').textContent = subtotal.toFixed(2);
-    document.getElementById('compraImpuestosTotal').textContent = impuestos.toFixed(2);
-    document.getElementById('compraTotal').textContent = total.toFixed(2);
-}
+            document.getElementById('compraSubtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('compraImpuestosTotal').textContent = impuestos.toFixed(2);
+            document.getElementById('compraTotal').textContent = total.toFixed(2);
+        }
 
 async function handleCompraSubmit(e) {
     e.preventDefault();
@@ -991,9 +1069,13 @@ async function handleCompraSubmit(e) {
     };
 
     try {
-        const response = await fetch('/api/productos/compras', {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/compras', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify(compra)
         });
 
@@ -1004,37 +1086,37 @@ async function handleCompraSubmit(e) {
             loadProductos();
         } else {
             const error = await response.json();
-            showMessage(error.message || 'Error al registrar la compra', 'error');
+            showMessage(error.message || 'Error al registrar compra', 'error');
         }
     } catch (error) {
+        console.error('Error:', error);
         showMessage('Error de conexión', 'error');
     }
 }
+        function loadInventario() {
+            console.log('Cargando inventario...');
+            // Simular datos de inventario
+            const totalProductos = productos.length;
+            const totalStock = productos.reduce((sum, p) => sum + (p.stockActual || 0), 0);
+            const stockBajo = productos.filter(p => p.stockActual <= (p.stockMinimo || 0)).length;
+            const valorInventario = productos.reduce((sum, p) => sum + ((p.stockActual || 0) * (p.precioCostoPromedio || 0)), 0);
 
-function loadInventario() {
-    console.log('Cargando inventario...');
-    // Simular datos de inventario
-    const totalProductos = productos.length;
-    const totalStock = productos.reduce((sum, p) => sum + (p.stockActual || 0), 0);
-    const stockBajo = productos.filter(p => p.stockActual <= (p.stockMinimo || 0)).length;
-    const valorInventario = productos.reduce((sum, p) => sum + ((p.stockActual || 0) * (p.precioCostoPromedio || 0)), 0);
+            document.getElementById('totalProductos').textContent = totalProductos;
+            document.getElementById('totalStock').textContent = totalStock;
+            document.getElementById('stockBajo').textContent = stockBajo;
+            document.getElementById('valorInventario').textContent = `$${valorInventario.toFixed(2)}`;
+        }
 
-    document.getElementById('totalProductos').textContent = totalProductos;
-    document.getElementById('totalStock').textContent = totalStock;
-    document.getElementById('stockBajo').textContent = stockBajo;
-    document.getElementById('valorInventario').textContent = `$${valorInventario.toFixed(2)}`;
-}
+        function loadCompras() {
+            console.log('Cargando compras...');
+        }
 
-function loadCompras() {
-    console.log('Cargando compras...');
-}
+        function deleteProducto(id) {
+            if (!confirm('¿Está seguro de eliminar este producto?')) return;
+            showMessage('Función de eliminación de producto en desarrollo', 'info');
+        }
 
-function deleteProducto(id) {
-    if (!confirm('¿Está seguro de eliminar este producto?')) return;
-    showMessage('Función de eliminación de producto en desarrollo', 'info');
-}
-
-// Funciones para Ventas
+        // Funciones para Ventas
 function showVentaForm() {
     console.log('Mostrando formulario de venta');
     openManagementTab('ventas');
@@ -1045,109 +1127,118 @@ function showVentaForm() {
         detallesVenta = [];
         renderVentaDetallesTable();
         calcularTotalesVenta();
-        cargarEstadisticasVentas();
-        cargarProductosParaVenta();
+
+        // Cargar datos necesarios para ventas
+        updateProductosSelectsVentas();
         cargarUnidadesParaVenta();
+    } else {
+        console.error('No se encontró el formulario de venta');
     }
 }
+        function hideVentaForm() {
+            const form = document.getElementById('ventaForm');
+            if (form) form.style.display = 'none';
+            const ventaFormElement = document.getElementById('ventaFormElement');
+            if (ventaFormElement) ventaFormElement.reset();
+            detallesVenta = [];
+        }
 
-function hideVentaForm() {
-    const form = document.getElementById('ventaForm');
-    if (form) form.style.display = 'none';
-    const ventaFormElement = document.getElementById('ventaFormElement');
-    if (ventaFormElement) ventaFormElement.reset();
-    detallesVenta = [];
+        function updateProductosSelectsVentas() {
+            console.log('Actualizando selects de productos para VENTAS...');
+
+            try {
+                // SOLO select en ventas
+                const selectVenta = document.getElementById('ventaDetalleProducto');
+                if (selectVenta && productos) {
+                    selectVenta.innerHTML = '<option value="">Seleccionar producto</option>' +
+                        productos.filter(p => p.estado && p.stockActual > 0).map(p =>
+                            `<option value="${p.id}" data-precio="${p.precioVenta}" data-stock="${p.stockActual}">
+                                ${p.nombre} - Stock: ${p.stockActual} - Precio: $${p.precioVenta.toFixed(2)}
+                            </option>`
+                        ).join('');
+                    console.log('Select de VENTAS actualizado');
+                }
+            } catch (error) {
+                console.error('Error en updateProductosSelectsVentas:', error);
+    }
 }
+            function cargarUnidadesParaVenta() {
+                const select = document.getElementById('ventaDetalleUnidad');
+                if (!select) return;
 
-function cargarProductosParaVenta() {
-    const select = document.getElementById('ventaDetalleProducto');
-    if (!select) return;
+                select.innerHTML = '<option value="">Seleccionar unidad</option>' +
+                    unidadesMedida.map(u =>
+                        `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
+                    ).join('');
+            }
 
-    // Simular carga de productos
-    select.innerHTML = '<option value="">Seleccionar producto</option>' +
-        productos.map(p =>
-            `<option value="${p.id}" data-precio="${p.precioVenta}">${p.nombre} - Stock: ${p.stockActual}</option>`
-        ).join('');
-}
+        function cargarPrecioProductoVenta() {
+            const productoSelect = document.getElementById('ventaDetalleProducto');
+            const precioInput = document.getElementById('ventaDetallePrecio');
 
-function cargarUnidadesParaVenta() {
-    const select = document.getElementById('ventaDetalleUnidad');
-    if (!select) return;
-
-    // Simular carga de unidades
-    select.innerHTML = '<option value="">Seleccionar unidad</option>' +
-        unidadesMedida.map(u =>
-            `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
-        ).join('');
-}
-
-function cargarPrecioProducto() {
-    const productoSelect = document.getElementById('ventaDetalleProducto');
-    const precioInput = document.getElementById('ventaDetallePrecio');
-
-    if (productoSelect && precioInput) {
-        const selectedOption = productoSelect.options[productoSelect.selectedIndex];
-        const precio = selectedOption.getAttribute('data-precio');
-        if (precio) {
-            precioInput.value = parseFloat(precio).toFixed(2);
-            calcularTotalLineaVenta();
+            if (productoSelect && precioInput) {
+                const selectedOption = productoSelect.options[productoSelect.selectedIndex];
+                const precio = selectedOption.getAttribute('data-precio');
+                if (precio) {
+                    precioInput.value = parseFloat(precio).toFixed(2);
+                    calcularTotalLineaVenta();
+             }
         }
     }
-}
 
-function calcularTotalLineaVenta() {
-    const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
-    const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
-    const total = cantidad * precio;
-    document.getElementById('ventaDetalleTotal').value = total.toFixed(2);
-}
+            function calcularTotalLineaVenta() {
+                const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
+                const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
+                const total = cantidad * precio;
+                document.getElementById('ventaDetalleTotal').value = total.toFixed(2);
+            }
 
-function agregarDetalleVenta() {
-    const productoId = document.getElementById('ventaDetalleProducto')?.value;
-    const unidadId = document.getElementById('ventaDetalleUnidad')?.value;
-    const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
-    const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
+            function agregarDetalleVenta() {
+                const productoId = document.getElementById('ventaDetalleProducto')?.value;
+                const unidadId = document.getElementById('ventaDetalleUnidad')?.value;
+                const cantidad = parseFloat(document.getElementById('ventaDetalleCantidad')?.value) || 0;
+                const precio = parseFloat(document.getElementById('ventaDetallePrecio')?.value) || 0;
 
-    if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
-        showMessage('Complete todos los campos del detalle', 'error');
-        return;
-    }
+                if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
+                    showMessage('Complete todos los campos del detalle', 'error');
+                    return;
+                }
 
-    const producto = productos.find(p => p.id == productoId);
-    const unidad = unidadesMedida.find(u => u.id == unidadId);
+                const producto = productos.find(p => p.id == productoId);
+                const unidad = unidadesMedida.find(u => u.id == unidadId);
 
-    const detalle = {
-        productoId: parseInt(productoId),
-        unidadMedidaId: parseInt(unidadId),
-        cantidad: cantidad,
-        precioUnitario: precio,
-        totalLinea: cantidad * precio,
-        producto: producto,
-        unidad: unidad
-    };
+                const detalle = {
+                    productoId: parseInt(productoId),
+                    unidadMedidaId: parseInt(unidadId),
+                    cantidad: cantidad,
+                    precioUnitario: precio,
+                    totalLinea: cantidad * precio,
+                    producto: producto,
+                    unidad: unidad
+                };
 
-    detallesVenta.push(detalle);
-    renderVentaDetallesTable();
-    calcularTotalesVenta();
+                detallesVenta.push(detalle);
+                renderVentaDetallesTable();
+                calcularTotalesVenta();
 
-    // Limpiar campos
-    document.getElementById('ventaDetalleCantidad').value = '1';
-    document.getElementById('ventaDetallePrecio').value = '0';
-    document.getElementById('ventaDetalleTotal').value = '0';
-    document.getElementById('ventaDetalleProducto').selectedIndex = 0;
-}
+                // Limpiar campos
+                document.getElementById('ventaDetalleCantidad').value = '1';
+                document.getElementById('ventaDetallePrecio').value = '0';
+                document.getElementById('ventaDetalleTotal').value = '0';
+                document.getElementById('ventaDetalleProducto').selectedIndex = 0;
+            }
 
-function eliminarDetalleVenta(index) {
-    detallesVenta.splice(index, 1);
-    renderVentaDetallesTable();
-    calcularTotalesVenta();
-}
+            function eliminarDetalleVenta(index) {
+                detallesVenta.splice(index, 1);
+                renderVentaDetallesTable();
+                calcularTotalesVenta();
+            }
 
-function renderVentaDetallesTable() {
-    const tbody = document.getElementById('ventaDetallesTableBody');
-    if (!tbody) return;
+            function renderVentaDetallesTable() {
+                const tbody = document.getElementById('ventaDetallesTableBody');
+                if (!tbody) return;
 
-    tbody.innerHTML = detallesVenta.map((detalle, index) => `
+                tbody.innerHTML = detallesVenta.map((detalle, index) => `
         <tr>
             <td>${detalle.producto?.nombre || 'Producto ' + detalle.productoId}</td>
             <td>${detalle.unidad?.nombre || 'Unidad ' + detalle.unidadMedidaId}</td>
@@ -1161,17 +1252,17 @@ function renderVentaDetallesTable() {
             </td>
         </tr>
     `).join('');
-}
+            }
 
-function calcularTotalesVenta() {
-    const subtotal = detallesVenta.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
-    const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
-    const total = subtotal + impuestos;
+            function calcularTotalesVenta() {
+                const subtotal = detallesVenta.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+                const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
+                const total = subtotal + impuestos;
 
-    document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
-    document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
-    document.getElementById('ventaTotal').textContent = total.toFixed(2);
-}
+                document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+                document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+                document.getElementById('ventaTotal').textContent = total.toFixed(2);
+            }
 
 async function handleVentaSubmit(e) {
     e.preventDefault();
@@ -1197,52 +1288,51 @@ async function handleVentaSubmit(e) {
     };
 
     try {
-        const response = await fetch('/api/ventas', {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/ventas', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify(venta)
         });
 
         if (response.ok) {
             const result = await response.json();
             showMessage('Venta registrada exitosamente', 'success');
-
-            // Opción para descargar factura
-            if (confirm('¿Desea descargar la factura en PDF?')) {
-                descargarFacturaPdf(result.ventaId);
-            }
-
             hideVentaForm();
             cargarVentas();
             cargarEstadisticasVentas();
         } else {
             const error = await response.json();
-            showMessage(error.message || 'Error al registrar la venta', 'error');
+            showMessage(error.message || 'Error al registrar venta', 'error');
         }
     } catch (error) {
+        console.error('Error:', error);
         showMessage('Error de conexión', 'error');
     }
 }
 
-async function cargarVentas() {
-    try {
-        const response = await fetch('/api/ventas');
-        if (response.ok) {
-            ventas = await response.json();
-            renderVentasTable();
-        } else {
-            showMessage('Error al cargar las ventas', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+            async function cargarVentas() {
+                try {
+                    const response = await fetch('/api/ventas');
+                    if (response.ok) {
+                        ventas = await response.json();
+                        renderVentasTable();
+                    } else {
+                        showMessage('Error al cargar las ventas', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-function renderVentasTable() {
-    const tbody = document.getElementById('ventasTableBody');
-    if (!tbody) return;
+            function renderVentasTable() {
+                const tbody = document.getElementById('ventasTableBody');
+                if (!tbody) return;
 
-    tbody.innerHTML = ventas.map(venta => `
+                tbody.innerHTML = ventas.map(venta => `
         <tr>
             <td>${venta.numeroFactura}</td>
             <td>${venta.nombreCliente || 'Cliente General'}</td>
@@ -1265,156 +1355,156 @@ function renderVentasTable() {
             </td>
         </tr>
     `).join('');
-}
+            }
 
-async function descargarFacturaPdf(ventaId) {
-    try {
-        const response = await fetch(`/api/ventas/${ventaId}/pdf`);
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `factura_${ventaId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            showMessage('Factura descargada exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al descargar la factura', 'error');
-    }
-}
+            async function descargarFacturaPdf(ventaId) {
+                try {
+                    const response = await fetch(`/api/ventas/${ventaId}/pdf`);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `factura_${ventaId}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        showMessage('Factura descargada exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error al descargar la factura', 'error');
+                }
+            }
 
-async function cargarEstadisticasVentas() {
-    try {
-        const response = await fetch('/api/ventas/estadisticas');
-        if (response.ok) {
-            const estadisticas = await response.json();
-            document.getElementById('ventasHoy').textContent = estadisticas.ventasHoy || 0;
-            document.getElementById('ingresosHoy').textContent = `$${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
-            document.getElementById('ventasMes').textContent = estadisticas.ventasMes || 0;
-            document.getElementById('ingresosMes').textContent = `$${(estadisticas.ingresosMes || 0).toFixed(2)}`;
-        }
-    } catch (error) {
-        console.error('Error al cargar estadísticas:', error);
-    }
-}
+            async function cargarEstadisticasVentas() {
+                try {
+                    const response = await fetch('/api/ventas/estadisticas');
+                    if (response.ok) {
+                        const estadisticas = await response.json();
+                        document.getElementById('ventasHoy').textContent = estadisticas.ventasHoy || 0;
+                        document.getElementById('ingresosHoy').textContent = `$${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
+                        document.getElementById('ventasMes').textContent = estadisticas.ventasMes || 0;
+                        document.getElementById('ingresosMes').textContent = `$${(estadisticas.ingresosMes || 0).toFixed(2)}`;
+                    }
+                } catch (error) {
+                    console.error('Error al cargar estadísticas:', error);
+                }
+            }
 
-// Funciones para Reportes
-function cambiarTipoReporte() {
-    actualizarBotonesReporte();
-    // Limpiar resultados al cambiar tipo
-    document.getElementById('reporteTableHead').innerHTML = '';
-    document.getElementById('reporteTableBody').innerHTML = '';
-}
+            // Funciones para Reportes
+            function cambiarTipoReporte() {
+                actualizarBotonesReporte();
+                // Limpiar resultados al cambiar tipo
+                document.getElementById('reporteTableHead').innerHTML = '';
+                document.getElementById('reporteTableBody').innerHTML = '';
+            }
 
-async function cargarReporte() {
-    const tipo = document.getElementById('reporteTipo').value;
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
+            async function cargarReporte() {
+                const tipo = document.getElementById('reporteTipo').value;
+                const fechaInicio = document.getElementById('reporteFechaInicio').value;
+                const fechaFin = document.getElementById('reporteFechaFin').value;
 
-    try {
-        let url = `/api/reportes/${tipo}`;
-        const params = new URLSearchParams();
+                try {
+                    let url = `/api/reportes/${tipo}`;
+                    const params = new URLSearchParams();
 
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
+                    if (fechaInicio) params.append('fechaInicio', fechaInicio);
+                    if (fechaFin) params.append('fechaFin', fechaFin);
 
-        if (tipo === 'productos-mas-vendidos') {
-            params.append('top', '10');
-        }
+                    if (tipo === 'productos-mas-vendidos') {
+                        params.append('top', '10');
+                    }
 
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
 
-        const response = await fetch(url);
-        if (response.ok) {
-            const reporte = await response.json();
-            renderReporte(tipo, reporte);
-        } else {
-            showMessage('Error al cargar el reporte', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const reporte = await response.json();
+                        renderReporte(tipo, reporte);
+                    } else {
+                        showMessage('Error al cargar el reporte', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-// Función mejorada para procesar ventas
-async function procesarVenta(ventaData) {
-    try {
-        const authToken = localStorage.getItem('authToken');
-        const response = await fetch('/api/ventas', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(ventaData)
-        });
+            // Función mejorada para procesar ventas
+            async function procesarVenta(ventaData) {
+                try {
+                    const authToken = localStorage.getItem('authToken');
+                    const response = await fetch('/api/ventas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(ventaData)
+                    });
 
-        if (response.ok) {
-            const result = await response.json();
-            return { success: true, data: result };
-        } else {
-            const error = await response.json();
-            return { success: false, error: error.message };
-        }
-    } catch (error) {
-        return { success: false, error: 'Error de conexión' };
-    }
-}
+                    if (response.ok) {
+                        const result = await response.json();
+                        return { success: true, data: result };
+                    } else {
+                        const error = await response.json();
+                        return { success: false, error: error.message };
+                    }
+                } catch (error) {
+                    return { success: false, error: 'Error de conexión' };
+                }
+            }
 
-// Función para calcular totales en tiempo real
-function calcularTotalesVentaEnTiempoReal() {
-    const detalles = detallesVenta;
-    const subtotal = detalles.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
-    const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
-    const total = subtotal + impuestos;
+            // Función para calcular totales en tiempo real
+            function calcularTotalesVentaEnTiempoReal() {
+                const detalles = detallesVenta;
+                const subtotal = detalles.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+                const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
+                const total = subtotal + impuestos;
 
-    // Actualizar UI
-    if (document.getElementById('ventaSubtotal')) {
-        document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
-    }
-    if (document.getElementById('ventaImpuestosTotal')) {
-        document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
-    }
-    if (document.getElementById('ventaTotal')) {
-        document.getElementById('ventaTotal').textContent = total.toFixed(2);
-    }
+                // Actualizar UI
+                if (document.getElementById('ventaSubtotal')) {
+                    document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+                }
+                if (document.getElementById('ventaImpuestosTotal')) {
+                    document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+                }
+                if (document.getElementById('ventaTotal')) {
+                    document.getElementById('ventaTotal').textContent = total.toFixed(2);
+                }
 
-    return { subtotal, impuestos, total };
-}
-function renderReporte(tipo, datos) {
-    const thead = document.getElementById('reporteTableHead');
-    const tbody = document.getElementById('reporteTableBody');
+                return { subtotal, impuestos, total };
+            }
+            function renderReporte(tipo, datos) {
+                const thead = document.getElementById('reporteTableHead');
+                const tbody = document.getElementById('reporteTableBody');
 
-    switch (tipo) {
-        case 'ventas':
-            renderReporteVentas(thead, tbody, datos);
-            break;
-        case 'inventario':
-            renderReporteInventario(thead, tbody, datos);
-            break;
-        case 'productos-mas-vendidos':
-            renderReporteProductosMasVendidos(thead, tbody, datos);
-            break;
-        case 'movimientos':
-            renderReporteMovimientos(thead, tbody, datos);
-            break;
-        case 'compras':
-            renderReporteCompras(thead, tbody, datos);
-            break;
-    }
-}
+                switch (tipo) {
+                    case 'ventas':
+                        renderReporteVentas(thead, tbody, datos);
+                        break;
+                    case 'inventario':
+                        renderReporteInventario(thead, tbody, datos);
+                        break;
+                    case 'productos-mas-vendidos':
+                        renderReporteProductosMasVendidos(thead, tbody, datos);
+                        break;
+                    case 'movimientos':
+                        renderReporteMovimientos(thead, tbody, datos);
+                        break;
+                    case 'compras':
+                        renderReporteCompras(thead, tbody, datos);
+                        break;
+                }
+            }
 
-function renderReporteVentas(thead, tbody, datos) {
-    thead.innerHTML = `
+            function renderReporteVentas(thead, tbody, datos) {
+                thead.innerHTML = `
         <tr>
             <th>Período</th>
             <th>Total Ventas</th>
@@ -1423,7 +1513,7 @@ function renderReporteVentas(thead, tbody, datos) {
         </tr>
     `;
 
-    tbody.innerHTML = `
+                tbody.innerHTML = `
         <tr>
             <td>Reporte General</td>
             <td>${datos.totalVentas}</td>
@@ -1431,17 +1521,17 @@ function renderReporteVentas(thead, tbody, datos) {
             <td>$${datos.promedioVenta.toFixed(2)}</td>
         </tr>
     `;
-}
+            }
 
-function renderReporteInventario(thead, tbody, datos) {
-    thead.innerHTML = `
+            function renderReporteInventario(thead, tbody, datos) {
+                thead.innerHTML = `
         <tr>
             <th>Métrica</th>
             <th>Valor</th>
         </tr>
     `;
 
-    tbody.innerHTML = `
+                tbody.innerHTML = `
         <tr>
             <td>Total Productos</td>
             <td>${datos.totalProductos}</td>
@@ -1459,10 +1549,10 @@ function renderReporteInventario(thead, tbody, datos) {
             <td>${datos.productosStockCritico}</td>
         </tr>
     `;
-}
+            }
 
-function renderReporteProductosMasVendidos(thead, tbody, datos) {
-    thead.innerHTML = `
+            function renderReporteProductosMasVendidos(thead, tbody, datos) {
+                thead.innerHTML = `
         <tr>
             <th>Producto</th>
             <th>Cantidad Vendida</th>
@@ -1470,249 +1560,249 @@ function renderReporteProductosMasVendidos(thead, tbody, datos) {
         </tr>
     `;
 
-    tbody.innerHTML = datos.map(item => `
+                tbody.innerHTML = datos.map(item => `
         <tr>
             <td>${item.productoNombre}</td>
             <td>${item.cantidadVendida}</td>
             <td>$${item.totalVendido.toFixed(2)}</td>
         </tr>
     `).join('');
-}
+            }
 
-async function generarReporteVentas() {
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
+            async function generarReporteVentas() {
+                const fechaInicio = document.getElementById('reporteFechaInicio').value;
+                const fechaFin = document.getElementById('reporteFechaFin').value;
 
-    try {
-        let url = '/api/reportes/pdf/ventas';
-        const params = new URLSearchParams();
+                try {
+                    let url = '/api/reportes/pdf/ventas';
+                    const params = new URLSearchParams();
 
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
+                    if (fechaInicio) params.append('fechaInicio', fechaInicio);
+                    if (fechaFin) params.append('fechaFin', fechaFin);
 
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
 
-        const response = await fetch(url);
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlPdf = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = urlPdf;
-            a.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(urlPdf);
-            showMessage('Reporte descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al generar el reporte', 'error');
-    }
-}
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const urlPdf = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = urlPdf;
+                        a.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(urlPdf);
+                        showMessage('Reporte descargado exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error al generar el reporte', 'error');
+                }
+            }
 
-// Funciones para descargar reportes adicionales
-async function descargarReporteInventarioPdf() {
-    try {
-        const response = await fetch('/api/reportes/pdf/inventario');
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `reporte_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            showMessage('Reporte de inventario descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al descargar el reporte', 'error');
-    }
-}
+            // Funciones para descargar reportes adicionales
+            async function descargarReporteInventarioPdf() {
+                try {
+                    const response = await fetch('/api/reportes/pdf/inventario');
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `reporte_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        showMessage('Reporte de inventario descargado exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error al descargar el reporte', 'error');
+                }
+            }
 
-async function descargarReporteComprasPdf() {
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
+            async function descargarReporteComprasPdf() {
+                const fechaInicio = document.getElementById('reporteFechaInicio').value;
+                const fechaFin = document.getElementById('reporteFechaFin').value;
 
-    try {
-        let url = '/api/reportes/pdf/compras';
-        const params = new URLSearchParams();
+                try {
+                    let url = '/api/reportes/pdf/compras';
+                    const params = new URLSearchParams();
 
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
+                    if (fechaInicio) params.append('fechaInicio', fechaInicio);
+                    if (fechaFin) params.append('fechaFin', fechaFin);
 
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
 
-        const response = await fetch(url);
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlPdf = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = urlPdf;
-            a.download = `reporte_compras_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(urlPdf);
-            showMessage('Reporte de compras descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al generar el reporte', 'error');
-    }
-}
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const urlPdf = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = urlPdf;
+                        a.download = `reporte_compras_${new Date().toISOString().split('T')[0]}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(urlPdf);
+                        showMessage('Reporte de compras descargado exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error al generar el reporte', 'error');
+                }
+            }
 
-// Actualizar la interfaz para incluir botones adicionales
-function actualizarBotonesReporte() {
-    const tipoReporte = document.getElementById('reporteTipo').value;
-    const botonesContainer = document.getElementById('botonesReporteContainer');
+            // Actualizar la interfaz para incluir botones adicionales
+            function actualizarBotonesReporte() {
+                const tipoReporte = document.getElementById('reporteTipo').value;
+                const botonesContainer = document.getElementById('botonesReporteContainer');
 
-    if (!botonesContainer) return;
+                if (!botonesContainer) return;
 
-    let botonesHTML = '';
+                let botonesHTML = '';
 
-    if (tipoReporte === 'ventas') {
-        botonesHTML = `
+                if (tipoReporte === 'ventas') {
+                    botonesHTML = `
             <button class="btn btn-primary" onclick="generarReporteVentas()">
                 <i class="fas fa-download"></i> Descargar PDF
             </button>
         `;
-    } else if (tipoReporte === 'inventario') {
-        botonesHTML = `
+                } else if (tipoReporte === 'inventario') {
+                    botonesHTML = `
             <button class="btn btn-primary" onclick="descargarReporteInventarioPdf()">
                 <i class="fas fa-download"></i> Descargar PDF
             </button>
         `;
-    } else if (tipoReporte === 'compras') {
-        botonesHTML = `
+                } else if (tipoReporte === 'compras') {
+                    botonesHTML = `
             <button class="btn btn-primary" onclick="descargarReporteComprasPdf()">
                 <i class="fas fa-download"></i> Descargar PDF
             </button>
         `;
-    } else {
-        botonesHTML = `
+                } else {
+                    botonesHTML = `
             <button class="btn btn-primary" onclick="showMessage('Descarga de PDF no disponible para este reporte', 'info')">
                 <i class="fas fa-download"></i> Descargar PDF
             </button>
         `;
-    }
+                }
 
-    botonesContainer.innerHTML = botonesHTML;
-}
+                botonesContainer.innerHTML = botonesHTML;
+            }
 
-// Funciones para Movimientos
-function showAjusteForm() {
-    console.log('Mostrando formulario de ajuste');
-    openManagementTab('movimientos');
-    const form = document.getElementById('ajusteForm');
-    if (form) {
-        form.style.display = 'block';
-        cargarProductosParaAjuste();
-    }
-}
+            // Funciones para Movimientos
+            function showAjusteForm() {
+                console.log('Mostrando formulario de ajuste');
+                openManagementTab('movimientos');
+                const form = document.getElementById('ajusteForm');
+                if (form) {
+                    form.style.display = 'block';
+                    cargarProductosParaAjuste();
+                }
+            }
 
-function hideAjusteForm() {
-    const form = document.getElementById('ajusteForm');
-    if (form) form.style.display = 'none';
-    const ajusteFormElement = document.getElementById('ajusteFormElement');
-    if (ajusteFormElement) ajusteFormElement.reset();
-}
+            function hideAjusteForm() {
+                const form = document.getElementById('ajusteForm');
+                if (form) form.style.display = 'none';
+                const ajusteFormElement = document.getElementById('ajusteFormElement');
+                if (ajusteFormElement) ajusteFormElement.reset();
+            }
 
-function cargarProductosParaAjuste() {
-    const select = document.getElementById('ajusteProducto');
-    if (!select) return;
+            function cargarProductosParaAjuste() {
+                const selectAjuste = document.getElementById('ajusteProducto');
+                if (selectAjuste) {
+                    selectAjuste.innerHTML = '<option value="">Seleccionar producto</option>' +
+                        productos.filter(p => p.estado).map(p =>
+                            `<option value="${p.id}">${p.nombre} - Stock actual: ${p.stockActual}</option>`
+                        ).join('');
+                }
+            }
 
-    select.innerHTML = '<option value="">Seleccionar producto</option>' +
-        productos.map(p =>
-            `<option value="${p.id}">${p.nombre} - Stock: ${p.stockActual}</option>`
-        ).join('');
-}
+            async function handleAjusteSubmit(e) {
+                e.preventDefault();
 
-async function handleAjusteSubmit(e) {
-    e.preventDefault();
+                const ajuste = {
+                    productoId: parseInt(document.getElementById('ajusteProducto').value),
+                    cantidad: parseFloat(document.getElementById('ajusteCantidad').value),
+                    observaciones: document.getElementById('ajusteObservaciones').value,
+                    usuarioId: JSON.parse(localStorage.getItem('user')).id
+                };
 
-    const ajuste = {
-        productoId: parseInt(document.getElementById('ajusteProducto').value),
-        cantidad: parseFloat(document.getElementById('ajusteCantidad').value),
-        observaciones: document.getElementById('ajusteObservaciones').value,
-        usuarioId: JSON.parse(localStorage.getItem('user')).id
-    };
+                try {
+                    const response = await fetch('/api/movimientos/ajuste', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(ajuste)
+                    });
 
-    try {
-        const response = await fetch('/api/movimientos/ajuste', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ajuste)
-        });
+                    if (response.ok) {
+                        showMessage('Ajuste aplicado exitosamente', 'success');
+                        hideAjusteForm();
+                        cargarMovimientos();
+                        loadProductos(); // Recargar productos para actualizar stock
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message || 'Error al aplicar el ajuste', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-        if (response.ok) {
-            showMessage('Ajuste aplicado exitosamente', 'success');
-            hideAjusteForm();
-            cargarMovimientos();
-            loadProductos(); // Recargar productos para actualizar stock
-        } else {
-            const error = await response.json();
-            showMessage(error.message || 'Error al aplicar el ajuste', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+            async function cargarMovimientos() {
+                const tipo = document.getElementById('movimientoTipo').value;
+                const fechaInicio = document.getElementById('movimientoFechaInicio').value;
+                const fechaFin = document.getElementById('movimientoFechaFin').value;
 
-async function cargarMovimientos() {
-    const tipo = document.getElementById('movimientoTipo').value;
-    const fechaInicio = document.getElementById('movimientoFechaInicio').value;
-    const fechaFin = document.getElementById('movimientoFechaFin').value;
+                try {
+                    let url = '/api/movimientos';
+                    const params = new URLSearchParams();
 
-    try {
-        let url = '/api/movimientos';
-        const params = new URLSearchParams();
+                    if (fechaInicio) params.append('fechaInicio', fechaInicio);
+                    if (fechaFin) params.append('fechaFin', fechaFin);
+                    if (tipo) params.append('tipoMovimiento', tipo);
 
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
-        if (tipo) params.append('tipoMovimiento', tipo);
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
 
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const movimientos = await response.json();
+                        renderMovimientosTable(movimientos);
+                    } else {
+                        showMessage('Error al cargar los movimientos', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-        const response = await fetch(url);
-        if (response.ok) {
-            const movimientos = await response.json();
-            renderMovimientosTable(movimientos);
-        } else {
-            showMessage('Error al cargar los movimientos', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+            function renderMovimientosTable(movimientos) {
+                const tbody = document.getElementById('movimientosTableBody');
+                if (!tbody) return;
 
-function renderMovimientosTable(movimientos) {
-    const tbody = document.getElementById('movimientosTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = movimientos.map(mov => `
+                tbody.innerHTML = movimientos.map(mov => `
         <tr>
             <td>${new Date(mov.fechaMovimiento).toLocaleString()}</td>
             <td>${mov.producto?.nombre}</td>
             <td>
                 <span class="status-badge ${mov.tipoMovimiento === 'ENTRADA' ? 'normal' :
-            mov.tipoMovimiento === 'SALIDA' ? 'warning' : 'critical'
-        }">
+                        mov.tipoMovimiento === 'SALIDA' ? 'warning' : 'critical'
+                    }">
                     ${mov.tipoMovimiento}
                 </span>
             </td>
@@ -1722,232 +1812,243 @@ function renderMovimientosTable(movimientos) {
             <td>${mov.observaciones || '-'}</td>
         </tr>
     `).join('');
-}
+            }
 
-// Mostrar mensajes en pantalla
-function showMessage(text, type) {
-    if (!messageDiv) return;
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = 'block';
-    setTimeout(clearMessage, 5000);
-}
+            // Mostrar mensajes en pantalla
+            function showMessage(text, type) {
+                if (!messageDiv) return;
+                messageDiv.textContent = text;
+                messageDiv.className = `message ${type}`;
+                messageDiv.style.display = 'block';
+                setTimeout(clearMessage, 5000);
+            }
 
-// Limpiar mensajes
-function clearMessage() {
-    if (!messageDiv) return;
-    messageDiv.style.display = 'none';
-    messageDiv.className = 'message';
-}
+            // Limpiar mensajes
+            function clearMessage() {
+                if (!messageDiv) return;
+                messageDiv.style.display = 'none';
+                messageDiv.className = 'message';
+            }
 
-function togglePassword(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
+            function togglePassword(inputId) {
+                const input = document.getElementById(inputId);
+                if (!input) return;
 
-    const toggleButton = input.parentNode.querySelector('.toggle-password');
-    if (!toggleButton) return;
+                const toggleButton = input.parentNode.querySelector('.toggle-password');
+                if (!toggleButton) return;
 
-    const icon = toggleButton.querySelector('i');
-    if (input.type === 'password') {
-        input.type = 'text';
-        if (icon) icon.classList.replace('fa-eye', 'fa-eye-slash');
-    } else {
-        input.type = 'password';
-        if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
-    }
-}
+                const icon = toggleButton.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    if (icon) icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            }
 
-function toggleRegistrationForm() {
-    hideAllContentSections();
-    const userForm = document.getElementById('userRegistrationForm');
-    if (userForm) userForm.style.display = 'block';
-}
+            function toggleRegistrationForm() {
+                hideAllContentSections();
+                const userForm = document.getElementById('userRegistrationForm');
+                if (userForm) userForm.style.display = 'block';
+            }
 
-function toggleProductRegistrationForm() {
-    hideAllContentSections();
-    const productForm = document.getElementById('productRegistrationForm');
-    if (productForm) productForm.style.display = 'block';
-}
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const dashboardContent = document.querySelector('.dashboard-content');
-    const toggleBtn = document.getElementById('toggleSidebarBtn');
+            function toggleProductRegistrationForm() {
+                hideAllContentSections();
+                const productForm = document.getElementById('productRegistrationForm');
+                if (productForm) productForm.style.display = 'block';
+            }
+            function toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const toggleBtn = document.querySelector('.toggle-sidebar-btn');
+                const dashboardContent = document.querySelector('.dashboard-content');
 
-    if (sidebar && dashboardContent) {
-        sidebar.classList.toggle('sidebar-collapsed');
+                if (sidebar && dashboardContent && toggleBtn) {
+                    sidebar.classList.toggle('sidebar-collapsed');
 
-        if (sidebar.classList.contains('sidebar-collapsed')) {
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-            dashboardContent.style.marginLeft = '60px';
-        } else {
-            toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-            dashboardContent.style.marginLeft = '250px';
-        }
-    }
-}
+                    if (sidebar.classList.contains('sidebar-collapsed')) {
+                        toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                        dashboardContent.style.marginLeft = '60px';
+                    } else {
+                        toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                        dashboardContent.style.marginLeft = '250px';
+                    }
+                }
+            }
 
-// Configurar validación de contraseña
-function setupPasswordValidation() {
-    const adminPassword = document.getElementById('adminRegPassword');
-    const adminConfirmPassword = document.getElementById('adminConfirmPassword');
+            function setupSidebarToggle() {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar && !document.querySelector('.toggle-sidebar-btn')) {
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'toggle-sidebar-btn';
+                    toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                    toggleBtn.onclick = toggleSidebar;
+                    sidebar.appendChild(toggleBtn);
+                    console.log('Botón de sidebar agregado');
+                }
+            }
+            // Configurar validación de contraseña
+            function setupPasswordValidation() {
+                const adminPassword = document.getElementById('adminRegPassword');
+                const adminConfirmPassword = document.getElementById('adminConfirmPassword');
 
-    if (adminPassword) {
-        adminPassword.addEventListener('input', checkAdminPasswordStrength);
-        adminPassword.addEventListener('input', checkAdminPasswordMatch);
-    }
+                if (adminPassword) {
+                    adminPassword.addEventListener('input', checkAdminPasswordStrength);
+                    adminPassword.addEventListener('input', checkAdminPasswordMatch);
+                }
 
-    if (adminConfirmPassword) {
-        adminConfirmPassword.addEventListener('input', checkAdminPasswordMatch);
-    }
-}
+                if (adminConfirmPassword) {
+                    adminConfirmPassword.addEventListener('input', checkAdminPasswordMatch);
+                }
+            }
 
-// Función para verificar fortaleza de contraseña
-function checkAdminPasswordStrength() {
-    const pwd = document.getElementById('adminRegPassword');
-    const bar = document.getElementById('adminPasswordStrengthBar');
-    if (!pwd || !bar) return;
+            // Función para verificar fortaleza de contraseña
+            function checkAdminPasswordStrength() {
+                const pwd = document.getElementById('adminRegPassword');
+                const bar = document.getElementById('adminPasswordStrengthBar');
+                if (!pwd || !bar) return;
 
-    const v = pwd.value || '';
-    let score = 0;
+                const v = pwd.value || '';
+                let score = 0;
 
-    if (v.length >= 8) score++;
-    if (/[A-Z]/.test(v)) score++;
-    if (/[a-z]/.test(v)) score++;
-    if (/[0-9]/.test(v)) score++;
-    if (/[^A-Za-z0-9]/.test(v)) score++;
+                if (v.length >= 8) score++;
+                if (/[A-Z]/.test(v)) score++;
+                if (/[a-z]/.test(v)) score++;
+                if (/[0-9]/.test(v)) score++;
+                if (/[^A-Za-z0-9]/.test(v)) score++;
 
-    const pct = Math.round((score / 5) * 100);
-    bar.style.width = pct + '%';
+                const pct = Math.round((score / 5) * 100);
+                bar.style.width = pct + '%';
 
-    if (pct < 40) {
-        bar.style.backgroundColor = '#e74c3c';
-    } else if (pct < 80) {
-        bar.style.backgroundColor = '#f39c12';
-    } else {
-        bar.style.backgroundColor = '#2ecc71';
-    }
-}
+                if (pct < 40) {
+                    bar.style.backgroundColor = '#e74c3c';
+                } else if (pct < 80) {
+                    bar.style.backgroundColor = '#f39c12';
+                } else {
+                    bar.style.backgroundColor = '#2ecc71';
+                }
+            }
 
-// Función para verificar coincidencia de contraseñas
-function checkAdminPasswordMatch() {
-    const pwd = document.getElementById('adminRegPassword')?.value || '';
-    const conf = document.getElementById('adminConfirmPassword')?.value || '';
-    const matchEl = document.getElementById('adminPasswordMatchSuccess');
-    const noMatchEl = document.getElementById('adminPasswordMatch');
+            // Función para verificar coincidencia de contraseñas
+            function checkAdminPasswordMatch() {
+                const pwd = document.getElementById('adminRegPassword')?.value || '';
+                const conf = document.getElementById('adminConfirmPassword')?.value || '';
+                const matchEl = document.getElementById('adminPasswordMatchSuccess');
+                const noMatchEl = document.getElementById('adminPasswordMatch');
 
-    if (!matchEl && !noMatchEl) return;
+                if (!matchEl && !noMatchEl) return;
 
-    if (pwd === '' && conf === '') {
-        if (matchEl) matchEl.style.display = 'none';
-        if (noMatchEl) noMatchEl.style.display = 'none';
-        return;
-    }
+                if (pwd === '' && conf === '') {
+                    if (matchEl) matchEl.style.display = 'none';
+                    if (noMatchEl) noMatchEl.style.display = 'none';
+                    return;
+                }
 
-    if (pwd === conf && pwd.length >= 8) {
-        if (matchEl) matchEl.style.display = 'block';
-        if (noMatchEl) noMatchEl.style.display = 'none';
-    } else {
-        if (matchEl) matchEl.style.display = 'none';
-        if (noMatchEl) noMatchEl.style.display = 'block';
-    }
-}
-// Funciones para Categorías
-function showCategoriaForm(categoria = null) {
-    console.log('Mostrando formulario de categoría');
-    openManagementTab('categorias');
-    const form = document.getElementById('categoriaForm');
-    const title = document.getElementById('categoriaFormTitle');
+                if (pwd === conf && pwd.length >= 8) {
+                    if (matchEl) matchEl.style.display = 'block';
+                    if (noMatchEl) noMatchEl.style.display = 'none';
+                } else {
+                    if (matchEl) matchEl.style.display = 'none';
+                    if (noMatchEl) noMatchEl.style.display = 'block';
+                }
+            }
+            // Funciones para Categorías
+            function showCategoriaForm(categoria = null) {
+                console.log('Mostrando formulario de categoría');
+                openManagementTab('categorias');
+                const form = document.getElementById('categoriaForm');
+                const title = document.getElementById('categoriaFormTitle');
 
-    if (form) {
-        if (categoria) {
-            title.textContent = 'Editar Categoría';
-            currentCategoriaId = categoria.id;
-            fillCategoriaForm(categoria);
-        } else {
-            title.textContent = 'Nueva Categoría';
-            currentCategoriaId = null;
-            const categoriaFormElement = document.getElementById('categoriaFormElement');
-            if (categoriaFormElement) categoriaFormElement.reset();
-        }
-        form.style.display = 'block';
-    }
-}
+                if (form) {
+                    if (categoria) {
+                        title.textContent = 'Editar Categoría';
+                        currentCategoriaId = categoria.id;
+                        fillCategoriaForm(categoria);
+                    } else {
+                        title.textContent = 'Nueva Categoría';
+                        currentCategoriaId = null;
+                        const categoriaFormElement = document.getElementById('categoriaFormElement');
+                        if (categoriaFormElement) categoriaFormElement.reset();
+                    }
+                    form.style.display = 'block';
+                }
+            }
 
-function hideCategoriaForm() {
-    const form = document.getElementById('categoriaForm');
-    if (form) form.style.display = 'none';
-    currentCategoriaId = null;
-}
+            function hideCategoriaForm() {
+                const form = document.getElementById('categoriaForm');
+                if (form) form.style.display = 'none';
+                currentCategoriaId = null;
+            }
 
-function fillCategoriaForm(categoria) {
-    document.getElementById('categoriaId').value = categoria.id;
-    document.getElementById('categoriaNombre').value = categoria.nombre;
-    document.getElementById('categoriaDescripcion').value = categoria.descripcion || '';
-}
+            function fillCategoriaForm(categoria) {
+                document.getElementById('categoriaId').value = categoria.id;
+                document.getElementById('categoriaNombre').value = categoria.nombre;
+                document.getElementById('categoriaDescripcion').value = categoria.descripcion || '';
+            }
 
-async function handleCategoriaSubmit(e) {
-    e.preventDefault();
-    console.log('Enviando formulario de categoría');
+            async function handleCategoriaSubmit(e) {
+                e.preventDefault();
+                console.log('Enviando formulario de categoría');
 
-    const categoria = {
-        nombre: document.getElementById('categoriaNombre').value,
-        descripcion: document.getElementById('categoriaDescripcion').value
-    };
+                const categoria = {
+                    nombre: document.getElementById('categoriaNombre').value,
+                    descripcion: document.getElementById('categoriaDescripcion').value
+                };
 
-    try {
-        let response;
-        if (currentCategoriaId) {
-            categoria.id = currentCategoriaId;
-            response = await fetch(`/api/categorias/${currentCategoriaId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoria)
-            });
-        } else {
-            response = await fetch('/api/categorias', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoria)
-            });
-        }
+                try {
+                    let response;
+                    if (currentCategoriaId) {
+                        categoria.id = currentCategoriaId;
+                        response = await fetch(`/api/categorias/${currentCategoriaId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(categoria)
+                        });
+                    } else {
+                        response = await fetch('/api/categorias', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(categoria)
+                        });
+                    }
 
-        if (response.ok) {
-            showMessage('Categoría guardada exitosamente', 'success');
-            hideCategoriaForm();
-            loadCategorias();
-        } else {
-            const error = await response.json();
-            showMessage(error.message || 'Error al guardar la categoría', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+                    if (response.ok) {
+                        showMessage('Categoría guardada exitosamente', 'success');
+                        hideCategoriaForm();
+                        loadCategorias();
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message || 'Error al guardar la categoría', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-async function loadCategorias() {
-    try {
-        console.log('Cargando categorías...');
-        const response = await fetch('/api/categorias');
-        if (response.ok) {
-            categorias = await response.json();
-            renderCategoriasTable();
-            updateCategoriasSelect();
-        } else {
-            showMessage('Error al cargar las categorías', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión al cargar categorías', 'error');
-    }
-}
+            async function loadCategorias() {
+                try {
+                    console.log('Cargando categorías...');
+                    const response = await fetch('/api/categorias');
+                    if (response.ok) {
+                        categorias = await response.json();
+                        renderCategoriasTable();
+                        updateCategoriasSelect();
+                    } else {
+                        showMessage('Error al cargar las categorías', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión al cargar categorías', 'error');
+                }
+            }
 
-function renderCategoriasTable() {
-    const tbody = document.getElementById('categoriasTableBody');
-    if (!tbody) {
-        console.error('No se encontró categoriasTableBody');
-        return;
-    }
+            function renderCategoriasTable() {
+                const tbody = document.getElementById('categoriasTableBody');
+                if (!tbody) {
+                    console.error('No se encontró categoriasTableBody');
+                    return;
+                }
 
-    tbody.innerHTML = categorias.map(categoria => `
+                tbody.innerHTML = categorias.map(categoria => `
         <tr>
             <td>${categoria.nombre}</td>
             <td>${categoria.descripcion || '-'}</td>
@@ -1961,139 +2062,139 @@ function renderCategoriasTable() {
             </td>
         </tr>
     `).join('');
-}
+            }
 
-function updateCategoriasSelect() {
-    const select = document.getElementById('productoCategoria');
-    if (!select) return;
+            function updateCategoriasSelect() {
+                const select = document.getElementById('productoCategoria');
+                if (!select) return;
 
-    select.innerHTML = '<option value="">Seleccionar categoría</option>' +
-        categorias.map(cat =>
-            `<option value="${cat.id}">${cat.nombre}</option>`
-        ).join('');
-}
+                select.innerHTML = '<option value="">Seleccionar categoría</option>' +
+                    categorias.map(cat =>
+                        `<option value="${cat.id}">${cat.nombre}</option>`
+                    ).join('');
+            }
 
-async function deleteCategoria(id) {
-    if (!confirm('¿Está seguro de eliminar esta categoría?')) return;
+            async function deleteCategoria(id) {
+                if (!confirm('¿Está seguro de eliminar esta categoría?')) return;
 
-    try {
-        const response = await fetch(`/api/categorias/${id}`, {
-            method: 'DELETE'
-        });
+                try {
+                    const response = await fetch(`/api/categorias/${id}`, {
+                        method: 'DELETE'
+                    });
 
-        if (response.ok) {
-            showMessage('Categoría eliminada exitosamente', 'success');
-            loadCategorias();
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+                    if (response.ok) {
+                        showMessage('Categoría eliminada exitosamente', 'success');
+                        loadCategorias();
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-// Funciones para Unidades de Medida
-function showUnidadForm(unidad = null) {
-    console.log('Mostrando formulario de unidad de medida');
-    openManagementTab('unidades');
-    const form = document.getElementById('unidadForm');
-    const title = document.getElementById('unidadFormTitle');
+            // Funciones para Unidades de Medida
+            function showUnidadForm(unidad = null) {
+                console.log('Mostrando formulario de unidad de medida');
+                openManagementTab('unidades');
+                const form = document.getElementById('unidadForm');
+                const title = document.getElementById('unidadFormTitle');
 
-    if (form) {
-        if (unidad) {
-            title.textContent = 'Editar Unidad de Medida';
-            currentUnidadId = unidad.id;
-            fillUnidadForm(unidad);
-        } else {
-            title.textContent = 'Nueva Unidad de Medida';
-            currentUnidadId = null;
-            const unidadFormElement = document.getElementById('unidadFormElement');
-            if (unidadFormElement) unidadFormElement.reset();
-        }
-        form.style.display = 'block';
-    }
-}
+                if (form) {
+                    if (unidad) {
+                        title.textContent = 'Editar Unidad de Medida';
+                        currentUnidadId = unidad.id;
+                        fillUnidadForm(unidad);
+                    } else {
+                        title.textContent = 'Nueva Unidad de Medida';
+                        currentUnidadId = null;
+                        const unidadFormElement = document.getElementById('unidadFormElement');
+                        if (unidadFormElement) unidadFormElement.reset();
+                    }
+                    form.style.display = 'block';
+                }
+            }
 
-function hideUnidadForm() {
-    const form = document.getElementById('unidadForm');
-    if (form) form.style.display = 'none';
-    currentUnidadId = null;
-}
+            function hideUnidadForm() {
+                const form = document.getElementById('unidadForm');
+                if (form) form.style.display = 'none';
+                currentUnidadId = null;
+            }
 
-function fillUnidadForm(unidad) {
-    document.getElementById('unidadId').value = unidad.id;
-    document.getElementById('unidadNombre').value = unidad.nombre;
-    document.getElementById('unidadAbreviatura').value = unidad.abreviatura;
-    document.getElementById('unidadEsBase').checked = unidad.esUnidadBase || false;
-    document.getElementById('unidadFactor').value = unidad.factorConversion || 1;
-}
+            function fillUnidadForm(unidad) {
+                document.getElementById('unidadId').value = unidad.id;
+                document.getElementById('unidadNombre').value = unidad.nombre;
+                document.getElementById('unidadAbreviatura').value = unidad.abreviatura;
+                document.getElementById('unidadEsBase').checked = unidad.esUnidadBase || false;
+                document.getElementById('unidadFactor').value = unidad.factorConversion || 1;
+            }
 
-async function handleUnidadSubmit(e) {
-    e.preventDefault();
-    console.log('Enviando formulario de unidad de medida');
+            async function handleUnidadSubmit(e) {
+                e.preventDefault();
+                console.log('Enviando formulario de unidad de medida');
 
-    const unidad = {
-        nombre: document.getElementById('unidadNombre').value,
-        abreviatura: document.getElementById('unidadAbreviatura').value,
-        esUnidadBase: document.getElementById('unidadEsBase').checked,
-        factorConversion: parseFloat(document.getElementById('unidadFactor').value) || 1
-    };
+                const unidad = {
+                    nombre: document.getElementById('unidadNombre').value,
+                    abreviatura: document.getElementById('unidadAbreviatura').value,
+                    esUnidadBase: document.getElementById('unidadEsBase').checked,
+                    factorConversion: parseFloat(document.getElementById('unidadFactor').value) || 1
+                };
 
-    try {
-        let response;
-        if (currentUnidadId) {
-            unidad.id = currentUnidadId;
-            response = await fetch(`/api/unidadesmedida/${currentUnidadId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(unidad)
-            });
-        } else {
-            response = await fetch('/api/unidadesmedida', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(unidad)
-            });
-        }
+                try {
+                    let response;
+                    if (currentUnidadId) {
+                        unidad.id = currentUnidadId;
+                        response = await fetch(`/api/unidadesmedida/${currentUnidadId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(unidad)
+                        });
+                    } else {
+                        response = await fetch('/api/unidadesmedida', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(unidad)
+                        });
+                    }
 
-        if (response.ok) {
-            showMessage('Unidad de medida guardada exitosamente', 'success');
-            hideUnidadForm();
-            loadUnidadesMedida();
-        } else {
-            const error = await response.json();
-            showMessage(error.message || 'Error al guardar la unidad de medida', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
+                    if (response.ok) {
+                        showMessage('Unidad de medida guardada exitosamente', 'success');
+                        hideUnidadForm();
+                        loadUnidadesMedida();
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message || 'Error al guardar la unidad de medida', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
 
-async function loadUnidadesMedida() {
-    try {
-        console.log('Cargando unidades de medida...');
-        const response = await fetch('/api/productos/unidades-medida');
-        if (response.ok) {
-            unidadesMedida = await response.json();
-            renderUnidadesTable();
-            updateUnidadesSelect();
-        } else {
-            showMessage('Error al cargar las unidades de medida', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión al cargar unidades de medida', 'error');
-    }
-}
+            async function loadUnidadesMedida() {
+                try {
+                    console.log('Cargando unidades de medida...');
+                    const response = await fetch('/api/productos/unidades-medida');
+                    if (response.ok) {
+                        unidadesMedida = await response.json();
+                        renderUnidadesTable();
+                        updateUnidadesSelect();
+                    } else {
+                        showMessage('Error al cargar las unidades de medida', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión al cargar unidades de medida', 'error');
+                }
+            }
 
-function renderUnidadesTable() {
-    const tbody = document.getElementById('unidadesTableBody');
-    if (!tbody) {
-        console.error('No se encontró unidadesTableBody');
-        return;
-    }
+            function renderUnidadesTable() {
+                const tbody = document.getElementById('unidadesTableBody');
+                if (!tbody) {
+                    console.error('No se encontró unidadesTableBody');
+                    return;
+                }
 
-    tbody.innerHTML = unidadesMedida.map(unidad => `
+                tbody.innerHTML = unidadesMedida.map(unidad => `
         <tr>
             <td>${unidad.nombre}</td>
             <td>${unidad.abreviatura}</td>
@@ -2109,115 +2210,128 @@ function renderUnidadesTable() {
             </td>
         </tr>
     `).join('');
+            }
+
+            function updateUnidadesSelect() {
+                const selectProducto = document.getElementById('productoUnidadBase');
+                const selectDetalle = document.getElementById('detalleUnidad');
+
+                if (selectProducto) {
+                    selectProducto.innerHTML = '<option value="">Seleccionar unidad</option>' +
+                        unidadesMedida.map(unidad =>
+                            `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+                        ).join('');
+                }
+
+                if (selectDetalle) {
+                    selectDetalle.innerHTML = '<option value="">Seleccionar unidad</option>' +
+                        unidadesMedida.map(unidad =>
+                            `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+                        ).join('');
+                }
+            }
+
+            async function deleteUnidad(id) {
+                if (!confirm('¿Está seguro de eliminar esta unidad de medida?')) return;
+
+                try {
+                    const response = await fetch(`/api/unidadesmedida/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        showMessage('Unidad de medida eliminada exitosamente', 'success');
+                        loadUnidadesMedida();
+                    } else {
+                        const error = await response.json();
+                        showMessage(error.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Error de conexión', 'error');
+                }
+            }
+
+            // Actualizar la función setupManagementEventListeners
+            function setupManagementEventListeners() {
+                console.log('Configurando event listeners de gestión...');
+
+                // Formulario de proveedores
+                const proveedorForm = document.getElementById('proveedorFormElement');
+                if (proveedorForm) {
+                    proveedorForm.addEventListener('submit', handleProveedorSubmit);
+                    console.log('Event listener agregado para proveedorForm');
+                }
+
+                // Formulario de productos
+                const productoForm = document.getElementById('productoFormElement');
+                if (productoForm) {
+                    productoForm.addEventListener('submit', handleProductoSubmit);
+                    console.log('Event listener agregado para productoForm');
+                }
+
+                // Formulario de compras
+                const compraForm = document.getElementById('compraFormElement');
+                if (compraForm) {
+                    compraForm.addEventListener('submit', handleCompraSubmit);
+                    console.log('Event listener agregado para compraForm');
+                }
+
+                // Formulario de categorías
+                const categoriaForm = document.getElementById('categoriaFormElement');
+                if (categoriaForm) {
+                    categoriaForm.addEventListener('submit', handleCategoriaSubmit);
+                    console.log('Event listener agregado para categoriaForm');
+                }
+
+                // Formulario de unidades de medida
+                const unidadForm = document.getElementById('unidadFormElement');
+                if (unidadForm) {
+                    unidadForm.addEventListener('submit', handleUnidadSubmit);
+                    console.log('Event listener agregado para unidadForm');
+                }
+
+                // Formulario de ventas
+                const ventaForm = document.getElementById('ventaFormElement');
+                if (ventaForm) {
+                    ventaForm.addEventListener('submit', handleVentaSubmit);
+                    console.log('Event listener agregado para ventaForm');
+                }
+            }
+                // Formulario de ajuste
+                const ajusteForm = document.getElementById('ajusteFormElement');
+                if (ajusteForm) {
+                    ajusteForm.addEventListener('submit', handleAjusteSubmit);
+                }
+
+                // Eventos para detalles de compra
+                const detalleCantidad = document.getElementById('detalleCantidad');
+                const detallePrecio = document.getElementById('detallePrecio');
+                const compraImpuestos = document.getElementById('compraImpuestos');
+
+                if (detalleCantidad) detalleCantidad.addEventListener('input', calcularTotalLinea);
+                if (detallePrecio) detallePrecio.addEventListener('input', calcularTotalLinea);
+                if (compraImpuestos) compraImpuestos.addEventListener('input', calcularTotalesCompra);
+
+                // Eventos para ventas
+                const ventaDetalleProducto = document.getElementById('ventaDetalleProducto');
+                const ventaDetalleCantidad = document.getElementById('ventaDetalleCantidad');
+                const ventaDetallePrecio = document.getElementById('ventaDetallePrecio');
+                const ventaImpuestos = document.getElementById('ventaImpuestos');
+
+                if (ventaDetalleProducto) {
+                    ventaDetalleProducto.addEventListener('change', cargarPrecioProductoVenta);
+                }
+                if (ventaDetalleCantidad) {
+                    ventaDetalleCantidad.addEventListener('input', calcularTotalLineaVenta);
+                }
+                if (ventaDetallePrecio) {
+                    ventaDetallePrecio.addEventListener('input', calcularTotalLineaVenta);
+                }
+                if (ventaImpuestos) {
+                    ventaImpuestos.addEventListener('input', calcularTotalesVenta);
 }
 
-function updateUnidadesSelect() {
-    const selectProducto = document.getElementById('productoUnidadBase');
-    const selectDetalle = document.getElementById('detalleUnidad');
-
-    if (selectProducto) {
-        selectProducto.innerHTML = '<option value="">Seleccionar unidad</option>' +
-            unidadesMedida.map(unidad =>
-                `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
-            ).join('');
-    }
-
-    if (selectDetalle) {
-        selectDetalle.innerHTML = '<option value="">Seleccionar unidad</option>' +
-            unidadesMedida.map(unidad =>
-                `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
-            ).join('');
-    }
-}
-
-async function deleteUnidad(id) {
-    if (!confirm('¿Está seguro de eliminar esta unidad de medida?')) return;
-
-    try {
-        const response = await fetch(`/api/unidadesmedida/${id}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showMessage('Unidad de medida eliminada exitosamente', 'success');
-            loadUnidadesMedida();
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
-
-// Actualizar la función setupManagementEventListeners
-function setupManagementEventListeners() {
-    console.log('Configurando event listeners de gestión...');
-
-    // Formulario de proveedores
-    const proveedorForm = document.getElementById('proveedorFormElement');
-    if (proveedorForm) {
-        proveedorForm.addEventListener('submit', handleProveedorSubmit);
-        console.log('Event listener agregado para proveedorForm');
-    }
-
-    // Formulario de productos
-    const productoForm = document.getElementById('productoFormElement');
-    if (productoForm) {
-        productoForm.addEventListener('submit', handleProductoSubmit);
-        console.log('Event listener agregado para productoForm');
-    }
-
-    // Formulario de compras
-    const compraForm = document.getElementById('compraFormElement');
-    if (compraForm) {
-        compraForm.addEventListener('submit', handleCompraSubmit);
-        console.log('Event listener agregado para compraForm');
-    }
-
-    // Formulario de categorías
-    const categoriaForm = document.getElementById('categoriaFormElement');
-    if (categoriaForm) {
-        categoriaForm.addEventListener('submit', handleCategoriaSubmit);
-        console.log('Event listener agregado para categoriaForm');
-    }
-
-    // Formulario de unidades de medida
-    const unidadForm = document.getElementById('unidadFormElement');
-    if (unidadForm) {
-        unidadForm.addEventListener('submit', handleUnidadSubmit);
-        console.log('Event listener agregado para unidadForm');
-    }
-
-    // Formulario de ventas
-    const ventaForm = document.getElementById('ventaFormElement');
-    if (ventaForm) {
-        ventaForm.addEventListener('submit', handleVentaSubmit);
-    }
-
-    // Formulario de ajuste
-    const ajusteForm = document.getElementById('ajusteFormElement');
-    if (ajusteForm) {
-        ajusteForm.addEventListener('submit', handleAjusteSubmit);
-    }
-
-    // Eventos para detalles de compra
-    const detalleCantidad = document.getElementById('detalleCantidad');
-    const detallePrecio = document.getElementById('detallePrecio');
-    const compraImpuestos = document.getElementById('compraImpuestos');
-
-    if (detalleCantidad) detalleCantidad.addEventListener('input', calcularTotalLinea);
-    if (detallePrecio) detallePrecio.addEventListener('input', calcularTotalLinea);
-    if (compraImpuestos) compraImpuestos.addEventListener('input', calcularTotalesCompra);
-
-    // Eventos para ventas
-    const ventaImpuestos = document.getElementById('ventaImpuestos');
-    if (ventaImpuestos) {
-        ventaImpuestos.addEventListener('input', calcularTotalesVenta);
-    }
-}
-
-// Actualizar la función openManagementTab
+            // Actualizar la función openManagementTab
 function openManagementTab(tabName) {
     console.log('Abriendo pestaña:', tabName);
 
@@ -2246,19 +2360,22 @@ function openManagementTab(tabName) {
                     break;
                 case 'compras':
                     loadCompras();
+                    updateProductosSelects(); // Solo compras
+                    break;
+                case 'ventas':
+                    cargarVentas();
+                    cargarEstadisticasVentas();
+                    updateProductosSelectsVentas(); // Solo ventas
+                    cargarUnidadesParaVenta();
+                    break;
+                case 'inventario':
+                    loadInventario();
                     break;
                 case 'categorias':
                     loadCategorias();
                     break;
                 case 'unidades':
                     loadUnidadesMedida();
-                    break;
-                case 'inventario':
-                    loadInventario();
-                    break;
-                case 'ventas':
-                    cargarVentas();
-                    cargarEstadisticasVentas();
                     break;
                 case 'reportes':
                     // Configurar fecha por defecto para reportes
@@ -2281,7 +2398,7 @@ function openManagementTab(tabName) {
         }
     }
 }
-
+   
 window.registerUserByAdmin = registerUserByAdmin;
 window.clearRegistrationForm = clearRegistrationForm;
 window.togglePassword = togglePassword;
@@ -2302,12 +2419,17 @@ window.hideProductoForm = hideProductoForm;
 window.showCompraForm = showCompraForm;
 window.hideCompraForm = hideCompraForm;
 window.agregarDetalle = agregarDetalle;
+window.agregarDetalleVenta = agregarDetalleVenta;
 window.eliminarDetalle = eliminarDetalle;
+window.eliminarDetalleVenta = eliminarDetalleVenta;
 window.calcularTotalLinea = calcularTotalLinea;
+window.calcularTotalLineaVenta = calcularTotalLineaVenta;
 window.calcularTotalesCompra = calcularTotalesCompra;
+window.calcularTotalesVenta = calcularTotalesVenta;
 window.deleteProveedor = deleteProveedor;
 window.deleteProducto = deleteProducto;
 window.loadCompras = loadCompras;
+window.cargarPrecioProductoVenta = cargarPrecioProductoVenta;
 window.loadInventario = loadInventario;
 window.showCategoriaForm = showCategoriaForm;
 window.hideCategoriaForm = hideCategoriaForm;
@@ -2315,3 +2437,12 @@ window.showUnidadForm = showUnidadForm;
 window.hideUnidadForm = hideUnidadForm;
 window.deleteCategoria = deleteCategoria;
 window.deleteUnidad = deleteUnidad;
+window.updateProductosSelectsVentas = updateProductosSelectsVentas;
+window.updateProductosSelects = updateProductosSelects;
+window.handleProveedorSubmit = handleProveedorSubmit;
+window.handleProductoSubmit = handleProductoSubmit;
+window.handleCompraSubmit = handleCompraSubmit;
+window.handleVentaSubmit = handleVentaSubmit;
+window.handleCategoriaSubmit = handleCategoriaSubmit;
+window.handleUnidadSubmit = handleUnidadSubmit;
+window.cargarPrecioProductoVenta = cargarPrecioProductoVenta;
