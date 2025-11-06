@@ -96,33 +96,26 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> ActualizarProducto(int id, [FromBody] Producto producto)
+        public async Task<IActionResult> ActualizarProducto(int id, [FromBody] object productData)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { Message = "Datos del producto inválidos" });
-            }
-
-            if (id != producto.Id)
-            {
-                return BadRequest(new { Message = "ID del producto no coincide" });
-            }
+            // Log para ver qué está llegando
+            Console.WriteLine($"Datos recibidos para producto {id}: {System.Text.Json.JsonSerializer.Serialize(productData)}");
 
             try
             {
+                // Convertir a Producto
+                var jsonString = productData.ToString();
+                var producto = System.Text.Json.JsonSerializer.Deserialize<Producto>(jsonString);
+
+                if (producto == null)
+                {
+                    return BadRequest(new { Message = "No se pudo deserializar el producto" });
+                }
+
+                // Resto del código de actualización...
                 var productoExistente = await _productoService.ObtenerProducto(id);
                 if (productoExistente == null)
                     return NotFound(new { Message = "Producto no encontrado" });
-
-                // Verificar si el código ya existe en otro producto
-                if (productoExistente.Codigo != producto.Codigo)
-                {
-                    var productoConMismoCodigo = await _productoService.ObtenerProductoPorCodigo(producto.Codigo);
-                    if (productoConMismoCodigo != null && productoConMismoCodigo.Id != id)
-                    {
-                        return BadRequest(new { Message = "Ya existe un producto con este código" });
-                    }
-                }
 
                 // Actualizar propiedades
                 productoExistente.Codigo = producto.Codigo;
