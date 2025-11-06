@@ -287,6 +287,10 @@ function showDashboard(user) {
     // Mostrar vista de bienvenida
     showWelcomeView();
 
+    // Cargar datos iniciales
+    loadUnidadesMedida(); 
+    loadProveedores();    
+
     // Configurar event listeners para gestión
     setTimeout(setupManagementEventListeners, 100);
 }
@@ -809,58 +813,101 @@ function fillProductoForm(producto) {
     document.getElementById('productoDescripcion').value = producto.descripcion || '';
     document.getElementById('productoStockMinimo').value = producto.stockMinimo;
     document.getElementById('productoMargen').value = producto.margenGanancia;
+
+    // Seleccionar categoría si existe
+    if (producto.categoriaId && document.getElementById('productoCategoria')) {
+        document.getElementById('productoCategoria').value = producto.categoriaId;
+    }
+
+    // Seleccionar unidad de medida
+    if (producto.unidadMedidaBaseId && document.getElementById('productoUnidadBase')) {
+        document.getElementById('productoUnidadBase').value = producto.unidadMedidaBaseId;
+    }
 }
 
 async function handleProductoSubmit(e) {
     e.preventDefault();
     console.log('Guardando producto...');
 
+    // Obtener y validar valores
+    const codigo = document.getElementById('productoCodigo').value?.trim();
+    const nombre = document.getElementById('productoNombre').value?.trim();
+    const descripcion = document.getElementById('productoDescripcion').value?.trim();
+    const categoriaId = document.getElementById('productoCategoria').value ? parseInt(document.getElementById('productoCategoria').value) : null;
+    const unidadMedidaBaseId = parseInt(document.getElementById('productoUnidadBase').value);
+    const stockMinimo = parseFloat(document.getElementById('productoStockMinimo').value) || 0;
+    const margenGanancia = parseFloat(document.getElementById('productoMargen').value) || 30;
+
+    // Validaciones
+    if (!codigo) {
+        showMessage('El código es obligatorio', 'error');
+        return;
+    }
+    if (!nombre) {
+        showMessage('El nombre es obligatorio', 'error');
+        return;
+    }
+    if (!unidadMedidaBaseId || isNaN(unidadMedidaBaseId)) {
+        showMessage('Debe seleccionar una unidad de medida válida', 'error');
+        return;
+    }
+
+    // Construir objeto con MAYÚSCULAS (como el modelo C#)
     const producto = {
-        codigo: document.getElementById('productoCodigo').value,
-        nombre: document.getElementById('productoNombre').value,
-        descripcion: document.getElementById('productoDescripcion').value,
-        categoriaId: document.getElementById('productoCategoria').value ? parseInt(document.getElementById('productoCategoria').value) : null,
-        unidadMedidaBaseId: parseInt(document.getElementById('productoUnidadBase').value),
-        stockMinimo: parseFloat(document.getElementById('productoStockMinimo').value) || 0,
-        margenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30,
-        estado: true
+        Codigo: codigo,
+        Nombre: nombre,
+        Descripcion: descripcion,
+        CategoriaId: categoriaId,
+        UnidadMedidaBaseId: unidadMedidaBaseId,
+        StockMinimo: stockMinimo,
+        StockActual: 0,
+        PrecioCostoPromedio: 0,
+        PrecioVenta: 0,
+        MargenGanancia: margenGanancia,
+        Estado: true,
+        FechaCreacion: new Date().toISOString()
     };
+
+    console.log('Producto a enviar:', producto);
 
     try {
         const authToken = localStorage.getItem('authToken');
-        let response;
-
-        if (currentProductoId) {
-            response = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify(producto)
-            });
-        } else {
-            response = await fetch('https://localhost:7000/api/productos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify(producto)
-            });
+        if (!authToken) {
+            showMessage('No hay sesión activa', 'error');
+            return;
         }
 
+        const response = await fetch('https://localhost:7000/api/productos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(producto)
+        });
+
+        // Manejar respuesta
+        const responseText = await response.text();
+        console.log('Respuesta del servidor:', responseText);
+
         if (response.ok) {
+            const result = JSON.parse(responseText);
             showMessage('Producto guardado exitosamente', 'success');
             hideProductoForm();
             await loadProductos();
         } else {
-            const errorData = await response.json();
-            showMessage(errorData.message || 'Error al guardar producto', 'error');
+            // Mostrar error específico del servidor
+            try {
+                const errorResult = JSON.parse(responseText);
+                showMessage(errorResult.message || `Error: ${response.status}`, 'error');
+            } catch {
+                showMessage(`Error del servidor: ${responseText}`, 'error');
+            }
         }
+
     } catch (error) {
-        console.error('Error:', error);
-        showMessage('Error de conexión', 'error');
+        console.error('Error de conexión:', error);
+        showMessage('Error de conexión con el servidor', 'error');
     }
 }
 
@@ -2142,18 +2189,27 @@ async function handleVentaSubmit(e) {
                 };
 
                 try {
+                    const authToken = localStorage.getItem('authToken');
                     let response;
+
                     if (currentUnidadId) {
-                        unidad.id = currentUnidadId;
-                        response = await fetch(`/api/unidadesmedida/${currentUnidadId}`, {
+                        // Actualizar
+                        response = await fetch(`https://localhost:7000/api/unidadesmedida/${currentUnidadId}`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authToken}`
+                            },
                             body: JSON.stringify(unidad)
                         });
                     } else {
-                        response = await fetch('/api/unidadesmedida', {
+                        // Crear
+                        response = await fetch('https://localhost:7000/api/unidadesmedida', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authToken}`
+                            },
                             body: JSON.stringify(unidad)
                         });
                     }
@@ -2161,32 +2217,43 @@ async function handleVentaSubmit(e) {
                     if (response.ok) {
                         showMessage('Unidad de medida guardada exitosamente', 'success');
                         hideUnidadForm();
-                        loadUnidadesMedida();
+                        await loadUnidadesMedida(); // Recargar las unidades
                     } else {
                         const error = await response.json();
                         showMessage(error.message || 'Error al guardar la unidad de medida', 'error');
                     }
                 } catch (error) {
+                    console.error('Error:', error);
                     showMessage('Error de conexión', 'error');
                 }
             }
 
-            async function loadUnidadesMedida() {
-                try {
-                    console.log('Cargando unidades de medida...');
-                    const response = await fetch('/api/productos/unidades-medida');
-                    if (response.ok) {
-                        unidadesMedida = await response.json();
-                        renderUnidadesTable();
-                        updateUnidadesSelect();
-                    } else {
-                        showMessage('Error al cargar las unidades de medida', 'error');
+        async function loadUnidadesMedida() {
+            try {
+                console.log('Cargando unidades de medida...');
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch('https://localhost:7000/api/unidadesmedida', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
                     }
-                } catch (error) {
-                    showMessage('Error de conexión al cargar unidades de medida', 'error');
-                }
-            }
+                });
 
+                if (response.ok) {
+                    unidadesMedida = await response.json();
+                    console.log('Unidades de medida cargadas:', unidadesMedida);
+                    renderUnidadesTable();
+                    updateUnidadesSelect();
+                } else {
+                    const error = await response.text();
+                    console.error('Error al cargar unidades de medida:', error);
+                    showMessage('Error al cargar las unidades de medida', 'error');
+                }
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                showMessage('Error de conexión al cargar unidades de medida', 'error');
+            }
+        }
             function renderUnidadesTable() {
                 const tbody = document.getElementById('unidadesTableBody');
                 if (!tbody) {
@@ -2212,44 +2279,68 @@ async function handleVentaSubmit(e) {
     `).join('');
             }
 
-            function updateUnidadesSelect() {
+        function updateUnidadesSelect() {
+            console.log('Actualizando selects de unidades de medida...');
+
+            try {
+                // Select en formulario de producto
                 const selectProducto = document.getElementById('productoUnidadBase');
+                // Select en formulario de compra
                 const selectDetalle = document.getElementById('detalleUnidad');
+                // Select en formulario de venta
+                const selectVenta = document.getElementById('ventaDetalleUnidad');
 
-                if (selectProducto) {
+                if (selectProducto && unidadesMedida) {
                     selectProducto.innerHTML = '<option value="">Seleccionar unidad</option>' +
-                        unidadesMedida.map(unidad =>
-                            `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+                        unidadesMedida.filter(u => u.estado).map(u =>
+                            `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
                         ).join('');
                 }
 
-                if (selectDetalle) {
+                if (selectDetalle && unidadesMedida) {
                     selectDetalle.innerHTML = '<option value="">Seleccionar unidad</option>' +
-                        unidadesMedida.map(unidad =>
-                            `<option value="${unidad.id}">${unidad.nombre} (${unidad.abreviatura})</option>`
+                        unidadesMedida.filter(u => u.estado).map(u =>
+                            `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
                         ).join('');
                 }
+
+                if (selectVenta && unidadesMedida) {
+                    selectVenta.innerHTML = '<option value="">Seleccionar unidad</option>' +
+                        unidadesMedida.filter(u => u.estado).map(u =>
+                            `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
+                        ).join('');
+                }
+
+                console.log('Selects de unidades actualizados');
+            } catch (error) {
+                console.error('Error en updateUnidadesSelect:', error);
             }
+}
 
             async function deleteUnidad(id) {
                 if (!confirm('¿Está seguro de eliminar esta unidad de medida?')) return;
 
                 try {
-                    const response = await fetch(`/api/unidadesmedida/${id}`, {
-                        method: 'DELETE'
+                    const authToken = localStorage.getItem('authToken');
+                    const response = await fetch(`https://localhost:7000/api/unidadesmedida/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
                     });
 
                     if (response.ok) {
                         showMessage('Unidad de medida eliminada exitosamente', 'success');
-                        loadUnidadesMedida();
+                        await loadUnidadesMedida(); // Recargar las unidades
                     } else {
                         const error = await response.json();
                         showMessage(error.message, 'error');
                     }
                 } catch (error) {
+                    console.error('Error:', error);
                     showMessage('Error de conexión', 'error');
                 }
-            }
+        }
 
             // Actualizar la función setupManagementEventListeners
             function setupManagementEventListeners() {

@@ -17,96 +17,8 @@ namespace Login_Análisis.Controllers
             _productoService = productoService;
         }
 
-        // Proveedores
-        [HttpGet("proveedores")]
-        public async Task<IActionResult> ObtenerProveedores()
-        {
-            var proveedores = await _productoService.ObtenerProveedores();
-            return Ok(proveedores);
-        }
+        //Productos
 
-        [HttpPost("proveedores")]
-        public async Task<IActionResult> CrearProveedor([FromBody] Proveedor proveedor)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { Message = "Datos del proveedor inválidos" });
-            }
-
-            var result = await _productoService.CrearProveedor(proveedor);
-            if (!result.success)
-                return BadRequest(new { Message = result.message });
-
-            return Ok(new { Message = result.message });
-        }
-        [HttpPut("proveedores/{id}")]
-        public async Task<IActionResult> ActualizarProveedor(int id, [FromBody] Proveedor proveedor)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { Message = "Datos del proveedor inválidos" });
-            }
-
-            if (id != proveedor.Id)
-            {
-                return BadRequest(new { Message = "ID del proveedor no coincide" });
-            }
-
-            try
-            {
-                var proveedorExistente = await _productoService.ObtenerProveedor(id);
-                if (proveedorExistente == null)
-                    return NotFound(new { Message = "Proveedor no encontrado" });
-
-                // Actualizar propiedades
-                proveedorExistente.Nombre = proveedor.Nombre;
-                proveedorExistente.RUC = proveedor.RUC;
-                proveedorExistente.Telefono = proveedor.Telefono;
-                proveedorExistente.Email = proveedor.Email;
-                proveedorExistente.Direccion = proveedor.Direccion;
-                proveedorExistente.Contacto = proveedor.Contacto;
-                proveedorExistente.FechaActualizacion = DateTime.UtcNow;
-
-                await _productoService.Context.SaveChangesAsync();
-                return Ok(new { Message = "Proveedor actualizado exitosamente" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
-            }
-        }
-
-        [HttpDelete("proveedores/{id}")]
-        public async Task<IActionResult> EliminarProveedor(int id)
-        {
-            try
-            {
-                var proveedor = await _productoService.ObtenerProveedor(id);
-                if (proveedor == null)
-                    return NotFound(new { Message = "Proveedor no encontrado" });
-
-                // Cambiar estado a inactivo en lugar de eliminar
-                proveedor.Estado = false;
-                proveedor.FechaActualizacion = DateTime.UtcNow;
-
-                await _productoService.Context.SaveChangesAsync();
-                return Ok(new { Message = "Proveedor eliminado exitosamente" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
-            }
-        }
-
-        // Unidades de Medida
-        [HttpGet("unidades-medida")]
-        public async Task<IActionResult> ObtenerUnidadesMedida()
-        {
-            var unidades = await _productoService.ObtenerUnidadesMedida();
-            return Ok(unidades);
-        }
-
-        // Productos
         [HttpGet]
         public async Task<IActionResult> ObtenerProductos()
         {
@@ -141,6 +53,13 @@ namespace Login_Análisis.Controllers
                     return BadRequest(new { Message = "Ya existe un producto con este código" });
                 }
 
+                // Asignar valores por defecto si es necesario
+                producto.FechaCreacion = DateTime.UtcNow;
+                producto.Estado = true;
+                producto.StockActual = 0;
+                producto.PrecioCostoPromedio = 0;
+                producto.PrecioVenta = 0;
+
                 _productoService.Context.Productos.Add(producto);
                 await _productoService.Context.SaveChangesAsync();
 
@@ -171,7 +90,7 @@ namespace Login_Análisis.Controllers
                 if (productoExistente == null)
                     return NotFound(new { Message = "Producto no encontrado" });
 
-                // Actualizar propiedades
+                // Actualizar solo las propiedades permitidas
                 productoExistente.Nombre = producto.Nombre;
                 productoExistente.Descripcion = producto.Descripcion;
                 productoExistente.CategoriaId = producto.CategoriaId;

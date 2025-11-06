@@ -30,6 +30,11 @@ namespace Login_Análisis.Services
         {
             return await _context.Proveedores.FindAsync(id);
         }
+        public async Task<Proveedor> ObtenerProveedorPorRUC(string ruc)
+        {
+            return await _context.Proveedores
+                .FirstOrDefaultAsync(p => p.RUC == ruc && p.Estado);
+        }
 
         public async Task<(bool success, string message)> CrearProveedor(Proveedor proveedor)
         {
