@@ -374,6 +374,7 @@ function displayUsers(users) {
                         <th>Email</th>
                         <th>Rol</th>
                         <th>Estado</th>
+                        <th>Último Login</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -386,7 +387,8 @@ function displayUsers(users) {
         const usuario = u.usuario || u.Usuario;
         const email = u.email || u.Email;
         const rol = u.rol || u.Rol;
-        const activo = u.activo ?? u.Activo ?? true;
+        const estado = u.estado !== undefined ? u.estado : u.Estado;
+        const fechaUltimoLogin = u.fechaUltimoLogin ? new Date(u.fechaUltimoLogin).toLocaleDateString() : 'Nunca';
 
         tableHTML += `
             <tr>
@@ -395,10 +397,13 @@ function displayUsers(users) {
                 <td>${usuario}</td>
                 <td>${email}</td>
                 <td>${rol}</td>
-                <td><span class="badge ${activo ? 'badge-success' : 'badge-danger'}">${activo ? 'Activo' : 'Inactivo'}</span></td>
+                <td><span class="badge ${estado ? 'badge-success' : 'badge-danger'}">${estado ? 'Activo' : 'Inactivo'}</span></td>
+                <td>${fechaUltimoLogin}</td>
                 <td>
                     <button class="db-btn db-view" onclick="editUser(${id})">Editar</button>
-                    <button class="db-btn db-clear" onclick="deleteUser(${id})">Eliminar</button>
+                    <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" onclick="${estado ? 'deleteUser' : 'activateUser'}(${id})">
+                        ${estado ? 'Desactivar' : 'Activar'}
+                    </button>
                 </td>
             </tr>
         `;
@@ -409,8 +414,156 @@ function displayUsers(users) {
 }
 
 // Botones de acciones de usuario
-function editUser(id) { showMessage('Función de edición de usuario en desarrollo', 'info'); }
-function deleteUser(id) { if (confirm('¿Estás seguro de que quieres eliminar este usuario?')) showMessage('Función de eliminación de usuario en desarrollo', 'info'); }
+async function editUser(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/auth/users/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const user = await response.json();
+            showUserEditForm(user);
+        } else {
+            showMessage('Error al cargar el usuario', 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+function showUserEditForm(user) {
+    // Crear formulario de edición modal
+    const modalHTML = `
+        <div id="editUserModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
+            <div style="background:white; padding:30px; border-radius:10px; width:90%; max-width:500px;">
+                <h3>Editar Usuario</h3>
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId" value="${user.id}">
+                    <div class="form-group">
+                        <label>Nombre:</label>
+                        <input type="text" id="editUserNombre" value="${user.nombre}" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Usuario:</label>
+                        <input type="text" id="editUserUsuario" value="${user.usuario}" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="editUserEmail" value="${user.email}" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Rol:</label>
+                        <select id="editUserRol" class="form-control" required>
+                            <option value="Administrador" ${user.rol === 'Administrador' ? 'selected' : ''}>Administrador</option>
+                            <option value="Cajero" ${user.rol === 'Cajero' ? 'selected' : ''}>Cajero</option>
+                            <option value="Vendedor" ${user.rol === 'Vendedor' ? 'selected' : ''}>Vendedor</option>
+                        </select>
+                    </div>
+                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                        <button type="button" onclick="closeEditUserModal()" class="btn btn-secondary">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await updateUser(user.id);
+    });
+}
+
+async function updateUser(id) {
+    const userData = {
+        nombre: document.getElementById('editUserNombre').value,
+        usuario: document.getElementById('editUserUsuario').value,
+        email: document.getElementById('editUserEmail').value,
+        rol: document.getElementById('editUserRol').value
+    };
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/auth/users/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(userData)
+        });
+
+        if (response.ok) {
+            showMessage('Usuario actualizado exitosamente', 'success');
+            closeEditUserModal();
+            await viewUsers(); // Recargar la lista
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+function closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.remove();
+}
+
+async function deleteUser(id) {
+    if (!confirm('¿Está seguro de que desea desactivar este usuario? El usuario no podrá iniciar sesión pero se mantendrán sus datos.')) {
+        return;
+    }
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/auth/users/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Usuario desactivado exitosamente', 'success');
+            await viewUsers(); // Recargar la lista
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function activateUser(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/auth/users/${id}/activate`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Usuario activado exitosamente', 'success');
+            await viewUsers(); // Recargar la lista
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
 
 // Registrar usuario por parte del administrador
 async function registerUserByAdmin() {
@@ -977,20 +1130,46 @@ function getStockStatusClass(stockActual, stockMinimo) {
     return 'stock-normal';
 }
 
+// Función para mostrar formulario de compra
 function showCompraForm() {
     console.log('Mostrando formulario de compra');
     openManagementTab('compras');
     const form = document.getElementById('compraForm');
     if (form) {
         form.style.display = 'block';
+
+        // Establecer fecha actual
         document.getElementById('compraFecha').value = new Date().toISOString().split('T')[0];
+
+        // Generar número de factura automático (se generará en el backend)
+        document.getElementById('compraFactura').value = '';
+        document.getElementById('compraFactura').placeholder = 'Se generará automáticamente';
+
+        // Reiniciar detalles
         detallesCompra = [];
         renderDetallesTable();
         calcularTotalesCompra();
+
+        // Cargar datos necesarios
+        updateProveedoresSelect();
+        updateProductosSelects();
+        cargarUnidadesParaCompra();
     } else {
         console.error('No se encontró el formulario de compra');
     }
 }
+
+// Función para cargar unidades de medida en compras
+function cargarUnidadesParaCompra() {
+    const select = document.getElementById('detalleUnidad');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Seleccionar unidad</option>' +
+        unidadesMedida.map(u =>
+            `<option value="${u.id}" data-factor="${u.factorConversion}">${u.nombre} (${u.abreviatura})</option>`
+        ).join('');
+}
+
     function updateProductosSelects() {
         console.log('Actualizando selects de productos para COMPRAS...');
 
@@ -1017,34 +1196,60 @@ function showCompraForm() {
             detallesCompra = [];
         }
 
-        function agregarDetalle() {
-            const productoId = document.getElementById('detalleProducto')?.value;
-            const unidadId = document.getElementById('detalleUnidad')?.value;
-            const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
-            const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
+// Función mejorada para agregar detalle a compra
+function agregarDetalle() {
+    const productoId = parseInt(document.getElementById('detalleProducto')?.value);
+    const unidadId = parseInt(document.getElementById('detalleUnidad')?.value);
+    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
 
-            if (!productoId || !unidadId || cantidad <= 0 || precio <= 0) {
-                showMessage('Complete todos los campos del detalle', 'error');
-                return;
-            }
+    // Validaciones
+    if (!productoId || isNaN(productoId)) {
+        showMessage('Seleccione un producto válido', 'error');
+        return;
+    }
+    if (!unidadId || isNaN(unidadId)) {
+        showMessage('Seleccione una unidad de medida válida', 'error');
+        return;
+    }
+    if (cantidad <= 0) {
+        showMessage('La cantidad debe ser mayor a 0', 'error');
+        return;
+    }
+    if (precio <= 0) {
+        showMessage('El precio unitario debe ser mayor a 0', 'error');
+        return;
+    }
 
-            const detalle = {
-                productoId: parseInt(productoId),
-                unidadMedidaId: parseInt(unidadId),
-                cantidad: cantidad,
-                precioUnitario: precio,
-                totalLinea: cantidad * precio
-            };
+    // Obtener información del producto y unidad
+    const producto = productos.find(p => p.id === productoId);
+    const unidad = unidadesMedida.find(u => u.id === unidadId);
 
-            detallesCompra.push(detalle);
-            renderDetallesTable();
-            calcularTotalesCompra();
+    if (!producto || !unidad) {
+        showMessage('Error al obtener información del producto o unidad', 'error');
+        return;
+    }
 
-            document.getElementById('detalleCantidad').value = '0';
-            document.getElementById('detallePrecio').value = '0';
-            document.getElementById('detalleTotal').value = '0';
-        }
+    const detalle = {
+        productoId: productoId,
+        unidadMedidaId: unidadId,
+        cantidad: cantidad,
+        precioUnitario: precio,
+        totalLinea: cantidad * precio,
+        producto: producto,
+        unidad: unidad
+    };
 
+    detallesCompra.push(detalle);
+    renderDetallesTable();
+    calcularTotalesCompra();
+
+    // Limpiar campos del detalle
+    document.getElementById('detalleCantidad').value = '1';
+    document.getElementById('detallePrecio').value = '0';
+    document.getElementById('detalleTotal').value = '0';
+    document.getElementById('detalleProducto').selectedIndex = 0;
+}
         function eliminarDetalle(index) {
             detallesCompra.splice(index, 1);
             renderDetallesTable();
@@ -1091,6 +1296,7 @@ function showCompraForm() {
             document.getElementById('compraTotal').textContent = total.toFixed(2);
         }
 
+// Función mejorada para enviar compra
 async function handleCompraSubmit(e) {
     e.preventDefault();
 
@@ -1099,19 +1305,24 @@ async function handleCompraSubmit(e) {
         return;
     }
 
-    const compra = {
-        numeroFactura: document.getElementById('compraFactura').value,
-        proveedorId: parseInt(document.getElementById('compraProveedor').value),
+    const proveedorId = parseInt(document.getElementById('compraProveedor')?.value);
+    if (!proveedorId || isNaN(proveedorId)) {
+        showMessage('Seleccione un proveedor válido', 'error');
+        return;
+    }
+
+    const compraData = {
+        numeroFactura: document.getElementById('compraFactura')?.value || '', // Vacío para generación automática
+        proveedorId: proveedorId,
         fechaCompra: document.getElementById('compraFecha').value,
-        impuestos: parseFloat(document.getElementById('compraImpuestos').value) || 0,
-        observaciones: document.getElementById('compraObservaciones').value,
+        impuestos: parseFloat(document.getElementById('compraImpuestos')?.value) || 0,
+        observaciones: document.getElementById('compraObservaciones')?.value,
         usuarioCreacion: JSON.parse(localStorage.getItem('user')).id,
         detalles: detallesCompra.map(d => ({
             productoId: d.productoId,
             unidadMedidaId: d.unidadMedidaId,
             cantidad: d.cantidad,
-            precioUnitario: d.precioUnitario,
-            totalLinea: d.totalLinea
+            precioUnitario: d.precioUnitario
         }))
     };
 
@@ -1123,14 +1334,16 @@ async function handleCompraSubmit(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify(compra)
+            body: JSON.stringify(compraData)
         });
 
         if (response.ok) {
+            const result = await response.json();
             showMessage('Compra registrada exitosamente', 'success');
             hideCompraForm();
-            loadCompras();
-            loadProductos();
+            await loadCompras();
+            await loadProductos(); // Recargar productos para ver stock actualizado
+            await loadInventario(); // Actualizar vista de inventario
         } else {
             const error = await response.json();
             showMessage(error.message || 'Error al registrar compra', 'error');
@@ -1140,19 +1353,267 @@ async function handleCompraSubmit(e) {
         showMessage('Error de conexión', 'error');
     }
 }
-        function loadInventario() {
-            console.log('Cargando inventario...');
-            // Simular datos de inventario
+
+// Función para cargar compras
+async function loadCompras() {
+    try {
+        console.log('Cargando compras...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/compras', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            compras = await response.json();
+            console.log('Compras cargadas:', compras);
+            renderComprasTable();
+        } else {
+            showMessage('Error al cargar las compras', 'error');
+        }
+    } catch (error) {
+        console.error('Error al cargar compras:', error);
+        showMessage('Error de conexión al cargar compras', 'error');
+    }
+}
+
+// Función para renderizar tabla de compras
+function renderComprasTable() {
+    const tbody = document.getElementById('comprasTableBody');
+    if (!tbody) return;
+
+    if (!compras || compras.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay compras registradas</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = compras.map(compra => `
+        <tr>
+            <td>${compra.numeroFactura}</td>
+            <td>${compra.proveedor ? compra.proveedor.nombre : 'N/A'}</td>
+            <td>${new Date(compra.fechaCompra).toLocaleDateString()}</td>
+            <td>${compra.detalles ? compra.detalles.length : 0}</td>
+            <td>$${compra.subtotal ? compra.subtotal.toFixed(2) : '0.00'}</td>
+            <td>$${compra.impuestos ? compra.impuestos.toFixed(2) : '0.00'}</td>
+            <td>$${compra.total ? compra.total.toFixed(2) : '0.00'}</td>
+            <td>
+                <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : compra.estado === 'ANULADA' ? 'badge-danger' : 'badge-warning'}">
+                    ${compra.estado}
+                </span>
+            </td>
+            <td>
+                <button class="action-btn view-btn" onclick="verDetalleCompra(${compra.id})" title="Ver Detalle">
+                    <i class="fas fa-eye"></i>
+                </button>
+                ${compra.estado !== 'ANULADA' ? `
+                    <button class="action-btn delete-btn" onclick="anularCompra(${compra.id})" title="Anular Compra">
+                        <i class="fas fa-ban"></i>
+                    </button>
+                ` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Función para anular compra
+async function anularCompra(id) {
+    if (!confirm('¿Está seguro de que desea anular esta compra? Se revertirá el stock de los productos.')) {
+        return;
+    }
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/compras/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Compra anulada exitosamente', 'success');
+            await loadCompras();
+            await loadProductos();
+            await loadInventario();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error al anular compra:', error);
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Función para ver detalle de compra
+async function verDetalleCompra(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/compras/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const compra = await response.json();
+            mostrarModalDetalleCompra(compra);
+        } else {
+            showMessage('Error al cargar el detalle de la compra', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Función para mostrar modal con detalle de compra
+function mostrarModalDetalleCompra(compra) {
+    const modalHTML = `
+        <div id="detalleCompraModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
+            <div style="background:white; padding:30px; border-radius:10px; width:90%; max-width:800px; max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3>Detalle de Compra - ${compra.numeroFactura}</h3>
+                    <button onclick="cerrarModalDetalleCompra()" style="background:none; border:none; font-size:20px; cursor:pointer;">×</button>
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <p><strong>Proveedor:</strong> ${compra.proveedor ? compra.proveedor.nombre : 'N/A'}</p>
+                    <p><strong>Fecha:</strong> ${new Date(compra.fechaCompra).toLocaleDateString()}</p>
+                    <p><strong>Estado:</strong> <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : 'badge-danger'}">${compra.estado}</span></p>
+                    <p><strong>Observaciones:</strong> ${compra.observaciones || 'Ninguna'}</p>
+                </div>
+
+                <h4>Productos Comprados</h4>
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Unidad</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${compra.detalles ? compra.detalles.map(detalle => `
+                            <tr>
+                                <td>${detalle.producto ? detalle.producto.nombre : 'N/A'}</td>
+                                <td>${detalle.unidadMedida ? detalle.unidadMedida.nombre : 'N/A'}</td>
+                                <td>${detalle.cantidad}</td>
+                                <td>$${detalle.precioUnitario.toFixed(2)}</td>
+                                <td>$${detalle.totalLinea.toFixed(2)}</td>
+                            </tr>
+                        `).join('') : ''}
+                    </tbody>
+                </table>
+
+                <div style="margin-top:20px; text-align:right;">
+                    <p><strong>Subtotal:</strong> $${compra.subtotal.toFixed(2)}</p>
+                    <p><strong>Impuestos:</strong> $${compra.impuestos.toFixed(2)}</p>
+                    <p><strong>Total:</strong> $${compra.total.toFixed(2)}</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function cerrarModalDetalleCompra() {
+    const modal = document.getElementById('detalleCompraModal');
+    if (modal) modal.remove();
+}
+
+// Funciones para Inventario
+async function loadInventario() {
+    try {
+        console.log('Cargando inventario desde la base de datos...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/productos', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            productos = await response.json();
+            console.log('Inventario cargado:', productos);
+
+            // Calcular estadísticas
             const totalProductos = productos.length;
             const totalStock = productos.reduce((sum, p) => sum + (p.stockActual || 0), 0);
-            const stockBajo = productos.filter(p => p.stockActual <= (p.stockMinimo || 0)).length;
+            const stockBajo = productos.filter(p => p.stockActual <= (p.stockMinimo || 0) && p.stockActual > 0).length;
+            const sinStock = productos.filter(p => p.stockActual <= 0).length;
             const valorInventario = productos.reduce((sum, p) => sum + ((p.stockActual || 0) * (p.precioCostoPromedio || 0)), 0);
 
+            // Actualizar UI
             document.getElementById('totalProductos').textContent = totalProductos;
-            document.getElementById('totalStock').textContent = totalStock;
+            document.getElementById('totalStock').textContent = totalStock.toFixed(2);
             document.getElementById('stockBajo').textContent = stockBajo;
             document.getElementById('valorInventario').textContent = `$${valorInventario.toFixed(2)}`;
+
+            // Renderizar tabla de inventario
+            renderInventarioTable();
+        } else {
+            showMessage('Error al cargar el inventario', 'error');
         }
+    } catch (error) {
+        console.error('Error al cargar inventario:', error);
+        showMessage('Error de conexión al cargar inventario', 'error');
+    }
+}
+
+function renderInventarioTable() {
+    const tbody = document.getElementById('inventarioTableBody');
+    if (!tbody) {
+        console.error('No se encontró la tabla de inventario');
+        return;
+    }
+
+    if (!productos || productos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="no-data">No hay productos en el inventario</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = productos.map(producto => `
+        <tr>
+            <td>${producto.codigo || 'N/A'}</td>
+            <td>${producto.nombre || 'N/A'}</td>
+            <td>${producto.categoria ? producto.categoria.nombre : 'Sin categoría'}</td>
+            <td>${producto.unidadMedidaBase ? producto.unidadMedidaBase.nombre : 'N/A'}</td>
+            <td>
+                <span class="stock-badge ${getStockStatusClass(producto.stockActual, producto.stockMinimo)}">
+                    ${producto.stockActual.toFixed(2)}
+                </span>
+            </td>
+            <td>${producto.stockMinimo.toFixed(2)}</td>
+            <td>$${producto.precioCostoPromedio.toFixed(2)}</td>
+            <td>$${producto.precioVenta.toFixed(2)}</td>
+            <td>
+                <span class="stock-badge ${getStockStatusClass(producto.stockActual, producto.stockMinimo)}">
+                    ${getStockStatusText(producto.stockActual, producto.stockMinimo)}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStockStatusClass(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'stock-critical';
+    if (stockActual <= stockMinimo) return 'stock-low';
+    return 'stock-normal';
+}
+
+function getStockStatusText(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'Sin Stock';
+    if (stockActual <= stockMinimo) return 'Stock Bajo';
+    return 'Normal';
+}
 
         function loadCompras() {
             console.log('Cargando compras...');

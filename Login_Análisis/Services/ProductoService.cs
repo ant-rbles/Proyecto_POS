@@ -77,6 +77,21 @@ namespace Login_Análisis.Services
         }
 
         // Métodos para Productos
+
+        public async Task<(bool success, string message)> CrearProducto(Producto producto)
+        {
+            try
+            {
+                _context.Productos.Add(producto);
+                await _context.SaveChangesAsync();
+                return (true, "Producto creado exitosamente");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error al crear producto: {ex.Message}");
+            }
+        }
+
         public async Task<List<Producto>> ObtenerProductos()
         {
             return await _context.Productos
@@ -102,6 +117,35 @@ namespace Login_Análisis.Services
                 .FirstOrDefaultAsync(p => p.Codigo == codigo && p.Estado);
         }
 
+        //Metodo para convertir unidades de medida
+        public async Task<decimal> ConvertirUnidad(int desdeUnidadId, int aUnidadId, decimal cantidad)
+        {
+            try
+            {
+                var unidadDesde = await _context.UnidadesMedida.FindAsync(desdeUnidadId);
+                var unidadHacia = await _context.UnidadesMedida.FindAsync(aUnidadId);
+
+                if (unidadDesde == null || unidadHacia == null)
+                {
+                    throw new Exception("Unidades de medida no encontradas");
+                }
+
+                if (!unidadDesde.Estado || !unidadHacia.Estado)
+                {
+                    throw new Exception("Una o ambas unidades de medida están inactivas");
+                }
+
+                // Convertir a unidad base primero, luego a la unidad destino
+                var cantidadBase = cantidad * unidadDesde.FactorConversion;
+                var cantidadConvertida = cantidadBase / unidadHacia.FactorConversion;
+
+                return cantidadConvertida;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al convertir unidades: {ex.Message}");
+            }
+        }
         // Métodos para Compras
         public async Task<(bool success, string message, Compra compra)> CrearCompra(Compra compra, List<DetalleCompra> detalles)
         {
@@ -193,7 +237,31 @@ namespace Login_Análisis.Services
             _context.MovimientosInventario.Add(movimiento);
         }
 
-        public async Task<List<Compra>> ObtenerCompras(DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        public async Task<Compra> ObtenerCompra(int id)
+        {
+            return await _context.Compras
+                .Include(c => c.Proveedor)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<Compra> ObtenerCompraPorNumeroFactura(string numeroFactura)
+        {
+            return await _context.Compras
+                .FirstOrDefaultAsync(c => c.NumeroFactura == numeroFactura);
+        }
+
+        public async Task<Compra> ObtenerUltimaCompra()
+        {
+            return await _context.Compras
+                .OrderByDescending(c => c.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Compra>> ObtenerCompras(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null)
         {
             var query = _context.Compras
                 .Include(c => c.Proveedor)
@@ -213,23 +281,89 @@ namespace Login_Análisis.Services
                 query = query.Where(c => c.FechaCompra <= fechaFin.Value);
             }
 
+            if (!string.IsNullOrEmpty(estado))
+            {
+                query = query.Where(c => c.Estado == estado);
+            }
+
             return await query.OrderByDescending(c => c.FechaCompra).ToListAsync();
         }
 
-        // Método para conversión de unidades en ventas
-        public async Task<decimal> ConvertirUnidad(int desdeUnidadId, int aUnidadId, decimal cantidad)
+        public async Task<(bool success, string message)> CambiarEstadoCompra(int compraId, string estado)
         {
-            var unidadDesde = await _context.UnidadesMedida.FindAsync(desdeUnidadId);
-            var unidadHacia = await _context.UnidadesMedida.FindAsync(aUnidadId);
-
-            if (unidadDesde == null || unidadHacia == null)
+            try
             {
-                throw new Exception("Unidades de medida no encontradas");
-            }
+                var compra = await _context.Compras.FindAsync(compraId);
+                if (compra == null)
+                    return (false, "Compra no encontrada");
 
-            // Convertir a unidad base primero, luego a la unidad destino
-            var cantidadBase = cantidad * unidadDesde.FactorConversion;
-            return cantidadBase / unidadHacia.FactorConversion;
+                compra.Estado = estado;
+                await _context.SaveChangesAsync();
+
+                return (true, $"Estado de compra actualizado a {estado}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        public async Task<(bool success, string message)> AnularCompra(int compraId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var compra = await _context.Compras
+                    .Include(c => c.Detalles)
+                    .FirstOrDefaultAsync(c => c.Id == compraId);
+
+                if (compra == null)
+                    return (false, "Compra no encontrada");
+
+                if (compra.Estado == "ANULADA")
+                    return (false, "La compra ya está anulada");
+
+                // Revertir el inventario para cada detalle
+                foreach (var detalle in compra.Detalles)
+                {
+                    var producto = await _context.Productos.FindAsync(detalle.ProductoId);
+                    if (producto != null)
+                    {
+                        // Revertir el stock
+                        producto.StockActual -= detalle.CantidadBase;
+
+                        // Registrar movimiento de reversión
+                        var movimiento = new MovimientoInventario
+                        {
+                            ProductoId = producto.Id,
+                            TipoMovimiento = "REVERSION_COMPRA",
+                            Cantidad = detalle.CantidadBase,
+                            CantidadAnterior = producto.StockActual + detalle.CantidadBase,
+                            CantidadNueva = producto.StockActual,
+                            PrecioCosto = producto.PrecioCostoPromedio,
+                            PrecioVenta = producto.PrecioVenta,
+                            ReferenciaId = compraId,
+                            ReferenciaTipo = "ANULACION_COMPRA",
+                            Observaciones = $"Compra anulada - {compra.NumeroFactura}",
+                            UsuarioId = compra.UsuarioCreacion,
+                            FechaMovimiento = DateTime.UtcNow
+                        };
+
+                        _context.MovimientosInventario.Add(movimiento);
+                    }
+                }
+
+                compra.Estado = "ANULADA";
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, "Compra anulada exitosamente y stock revertido");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error al anular compra: {ex.Message}");
+            }
         }
 
         // Métodos para Ventas

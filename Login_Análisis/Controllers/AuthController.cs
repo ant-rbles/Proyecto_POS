@@ -83,6 +83,56 @@ public class AuthController : ControllerBase
         return Ok(users);
     }
 
+    [HttpPut("users/{id}")]
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new ErrorResponse
+            {
+                Message = "Datos inválidos",
+                Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
+            });
+        }
+
+        // Validar que el rol sea válido
+        if (!Roles.IsValidRole(request.Rol))
+        {
+            return BadRequest(new ErrorResponse
+            {
+                Message = "Rol no válido",
+                Errors = new List<string> { "Los roles válidos son: Administrador, Cajero, Vendedor" }
+            });
+        }
+
+        var result = await _authService.UpdateUser(id, request);
+        if (!result.success)
+            return BadRequest(new ErrorResponse { Message = result.message });
+
+        return Ok(new { message = result.message });
+    }
+
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var result = await _authService.UpdateUserStatus(id, false);
+        if (!result.success)
+            return BadRequest(new ErrorResponse { Message = result.message });
+
+        return Ok(new { message = result.message });
+    }
+
+    [HttpPut("users/{id}/activate")]
+    public async Task<IActionResult> ActivateUser(int id)
+    {
+        var result = await _authService.UpdateUserStatus(id, true);
+        if (!result.success)
+            return BadRequest(new ErrorResponse { Message = result.message });
+
+        return Ok(new { message = result.message });
+    }
+
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {

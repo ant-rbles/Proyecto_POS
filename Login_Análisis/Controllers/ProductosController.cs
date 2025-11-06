@@ -1,7 +1,8 @@
-﻿using Login_Análisis.Models;
+﻿using Login_Análisis.DTOs;
+using Login_Análisis.DTOs.Requests;
+using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
-using Login_Análisis.DTOs;
 using System.ComponentModel.DataAnnotations;
 
 namespace Login_Análisis.Controllers
@@ -37,37 +38,60 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CrearProducto([FromBody] Producto producto)
+        public async Task<IActionResult> CrearProducto([FromBody] ProductRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { Message = "Datos del producto inválidos" });
+                return BadRequest(new { Message = "Datos del producto inválidos", Errors = ModelState.Values.SelectMany(v => v.Errors) });
             }
 
             try
             {
                 // Verificar si ya existe un producto con el mismo código
-                var productoExistente = await _productoService.ObtenerProductoPorCodigo(producto.Codigo);
+                var productoExistente = await _productoService.ObtenerProductoPorCodigo(request.Codigo);
                 if (productoExistente != null)
                 {
                     return BadRequest(new { Message = "Ya existe un producto con este código" });
                 }
 
-                // Asignar valores por defecto si es necesario
-                producto.FechaCreacion = DateTime.UtcNow;
-                producto.Estado = true;
-                producto.StockActual = 0;
-                producto.PrecioCostoPromedio = 0;
-                producto.PrecioVenta = 0;
+                // Verificar que la categoría existe
+                if (request.CategoriaId.HasValue)
+                {
+                    var categoria = await _productoService.ObtenerCategoria(request.CategoriaId.Value);
+                    if (categoria == null)
+                        return BadRequest(new { Message = "La categoría especificada no existe" });
+                }
 
-                _productoService.Context.Productos.Add(producto);
-                await _productoService.Context.SaveChangesAsync();
+                // Verificar que la unidad de medida existe
+                var unidadMedida = await _productoService.ObtenerUnidadMedida(request.UnidadMedidaBaseId);
+                if (unidadMedida == null)
+                    return BadRequest(new { Message = "La unidad de medida especificada no existe" });
+
+                var producto = new Producto
+                {
+                    Codigo = request.Codigo,
+                    Nombre = request.Nombre,
+                    Descripcion = request.Descripcion,
+                    CategoriaId = request.CategoriaId,
+                    UnidadMedidaBaseId = request.UnidadMedidaBaseId,
+                    StockMinimo = request.StockMinimo,
+                    MargenGanancia = request.MargenGanancia,
+                    StockActual = 0,
+                    PrecioCostoPromedio = 0,
+                    PrecioVenta = 0,
+                    Estado = true,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                var result = await _productoService.CrearProducto(producto);
+                if (!result.success)
+                    return BadRequest(new { Message = result.message });
 
                 return Ok(new { Message = "Producto creado exitosamente", Producto = producto });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
+                return StatusCode(500, new { Message = $"Error interno del servidor: {ex.Message}" });
             }
         }
 
@@ -127,40 +151,6 @@ namespace Login_Análisis.Controllers
             {
                 return BadRequest(new { Message = $"Error: {ex.Message}" });
             }
-        }
-
-        // Compras
-        [HttpPost("compras")]
-        public async Task<IActionResult> CrearCompra([FromBody] CompraRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { Message = "Datos de la compra inválidos" });
-            }
-
-            var compra = new Compra
-            {
-                NumeroFactura = request.NumeroFactura,
-                ProveedorId = request.ProveedorId,
-                FechaCompra = request.FechaCompra,
-                Impuestos = request.Impuestos,
-                Observaciones = request.Observaciones,
-                UsuarioCreacion = request.UsuarioCreacion,
-                FechaCreacion = DateTime.UtcNow
-            };
-
-            var result = await _productoService.CrearCompra(compra, request.Detalles);
-            if (!result.success)
-                return BadRequest(new { Message = result.message });
-
-            return Ok(new { Message = result.message, Compra = result.compra });
-        }
-
-        [HttpGet("compras")]
-        public async Task<IActionResult> ObtenerCompras([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
-        {
-            var compras = await _productoService.ObtenerCompras(fechaInicio, fechaFin);
-            return Ok(compras);
         }
 
         // Conversión de unidades

@@ -120,6 +120,36 @@ public class AuthService
             return (false, $"Error: {ex.Message}", null, null);
         }
     }
+    public async Task<(bool success, string message)> UpdateUser(int userId, UpdateUserRequest request)
+    {
+        try
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return (false, "Usuario no encontrado");
+
+            // Verificar si el nuevo usuario o email ya existen en otros usuarios
+            if (await _context.Users.AnyAsync(u => u.Usuario == request.Usuario && u.Id != userId))
+                return (false, "El nombre de usuario ya está en uso");
+
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
+                return (false, "El email ya está registrado");
+
+            // Actualizar propiedades
+            user.Nombre = request.Nombre;
+            user.Usuario = request.Usuario;
+            user.Email = request.Email;
+            user.Rol = request.Rol;
+            user.FechaActualizacion = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return (true, "Usuario actualizado exitosamente");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error: {ex.Message}");
+        }
+    }
 
     public async Task<(bool success, string message)> ChangePassword(int userId, string currentPassword, string newPassword)
     {
