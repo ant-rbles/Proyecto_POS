@@ -23,8 +23,21 @@ namespace Login_Análisis.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerProductos()
         {
-            var productos = await _productoService.ObtenerProductos();
-            return Ok(productos);
+            try
+            {
+                var productos = await _productoService.ObtenerProductos();
+
+                Console.WriteLine($"Controlador - Productos recibidos: {productos?.Count ?? 0}");
+
+                // Siempre devolver un array, aunque esté vacío
+                return Ok(productos ?? new List<Producto>());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR en controlador: {ex.Message}");
+                // Devolver array vacío en lugar de error
+                return Ok(new List<object>());
+            }
         }
 
         [HttpGet("{id}")]
@@ -42,7 +55,11 @@ namespace Login_Análisis.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { Message = "Datos del producto inválidos", Errors = ModelState.Values.SelectMany(v => v.Errors) });
+                return BadRequest(new
+                {
+                    Message = "Datos del producto inválidos",
+                    Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                });
             }
 
             try
@@ -54,7 +71,83 @@ namespace Login_Análisis.Controllers
                     return BadRequest(new { Message = "Ya existe un producto con este código" });
                 }
 
-                // Verificar que la categoría existe
+                // Crear el producto con valores por defecto seguros
+                var producto = new Producto
+                {
+                    Codigo = request.Codigo?.Trim() ?? throw new ArgumentException("El código es requerido"),
+                    Nombre = request.Nombre?.Trim() ?? throw new ArgumentException("El nombre es requerido"),
+                    Descripcion = request.Descripcion?.Trim() ?? "",
+                    CategoriaId = request.CategoriaId,
+                    UnidadMedidaBaseId = request.UnidadMedidaBaseId,
+                    StockMinimo = request.StockMinimo >= 0 ? request.StockMinimo : 0,
+                    MargenGanancia = request.MargenGanancia >= 0 ? request.MargenGanancia : 30,
+                    StockActual = 0, // Siempre empezar en 0
+                    PrecioCostoPromedio = 0, // Siempre empezar en 0
+                    PrecioVenta = 0, // Se calculará después
+                    Estado = true,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                var result = await _productoService.CrearProducto(producto);
+                if (!result.success)
+                    return BadRequest(new { Message = result.message });
+
+                return Ok(new
+                {
+                    Message = "Producto creado exitosamente",
+                    Producto = new
+                    {
+                        producto.Id,
+                        producto.Codigo,
+                        producto.Nombre,
+                        producto.Descripcion,
+                        producto.CategoriaId,
+                        producto.UnidadMedidaBaseId,
+                        producto.StockMinimo,
+                        producto.StockActual,
+                        producto.PrecioCostoPromedio,
+                        producto.PrecioVenta,
+                        producto.MargenGanancia,
+                        producto.Estado,
+                        producto.FechaCreacion
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = $"Error interno del servidor al crear producto: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> ActualizarProducto(int id, [FromBody] ProductRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    Message = "Datos del producto inválidos",
+                    Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                });
+            }
+
+            try
+            {
+                var productoExistente = await _productoService.ObtenerProducto(id);
+                if (productoExistente == null)
+                    return NotFound(new { Message = "Producto no encontrado" });
+
+                // Verificar si otro producto tiene el mismo código (excluyendo el actual)
+                var productoConMismoCodigo = await _productoService.ObtenerProductoPorCodigo(request.Codigo);
+                if (productoConMismoCodigo != null && productoConMismoCodigo.Id != id)
+                {
+                    return BadRequest(new { Message = "Ya existe un producto con este código" });
+                }
+
+                // Verificar que la categoría existe si se proporciona
                 if (request.CategoriaId.HasValue)
                 {
                     var categoria = await _productoService.ObtenerCategoria(request.CategoriaId.Value);
@@ -67,72 +160,46 @@ namespace Login_Análisis.Controllers
                 if (unidadMedida == null)
                     return BadRequest(new { Message = "La unidad de medida especificada no existe" });
 
-                var producto = new Producto
-                {
-                    Codigo = request.Codigo,
-                    Nombre = request.Nombre,
-                    Descripcion = request.Descripcion,
-                    CategoriaId = request.CategoriaId,
-                    UnidadMedidaBaseId = request.UnidadMedidaBaseId,
-                    StockMinimo = request.StockMinimo,
-                    MargenGanancia = request.MargenGanancia,
-                    StockActual = 0,
-                    PrecioCostoPromedio = 0,
-                    PrecioVenta = 0,
-                    Estado = true,
-                    FechaCreacion = DateTime.UtcNow
-                };
-
-                var result = await _productoService.CrearProducto(producto);
-                if (!result.success)
-                    return BadRequest(new { Message = result.message });
-
-                return Ok(new { Message = "Producto creado exitosamente", Producto = producto });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = $"Error interno del servidor: {ex.Message}" });
-            }
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> ActualizarProducto(int id, [FromBody] object productData)
-        {
-            // Log para ver qué está llegando
-            Console.WriteLine($"Datos recibidos para producto {id}: {System.Text.Json.JsonSerializer.Serialize(productData)}");
-
-            try
-            {
-                // Convertir a Producto
-                var jsonString = productData.ToString();
-                var producto = System.Text.Json.JsonSerializer.Deserialize<Producto>(jsonString);
-
-                if (producto == null)
-                {
-                    return BadRequest(new { Message = "No se pudo deserializar el producto" });
-                }
-
-                // Resto del código de actualización...
-                var productoExistente = await _productoService.ObtenerProducto(id);
-                if (productoExistente == null)
-                    return NotFound(new { Message = "Producto no encontrado" });
-
-                // Actualizar propiedades
-                productoExistente.Codigo = producto.Codigo;
-                productoExistente.Nombre = producto.Nombre;
-                productoExistente.Descripcion = producto.Descripcion;
-                productoExistente.CategoriaId = producto.CategoriaId;
-                productoExistente.UnidadMedidaBaseId = producto.UnidadMedidaBaseId;
-                productoExistente.StockMinimo = producto.StockMinimo;
-                productoExistente.MargenGanancia = producto.MargenGanancia;
+                // Actualizar SOLO los campos permitidos - NO tocar stock, precios, etc.
+                productoExistente.Codigo = request.Codigo?.Trim();
+                productoExistente.Nombre = request.Nombre?.Trim();
+                productoExistente.Descripcion = request.Descripcion?.Trim() ?? "";
+                productoExistente.CategoriaId = request.CategoriaId;
+                productoExistente.UnidadMedidaBaseId = request.UnidadMedidaBaseId;
+                productoExistente.StockMinimo = request.StockMinimo >= 0 ? request.StockMinimo : 0;
+                productoExistente.MargenGanancia = request.MargenGanancia >= 0 ? request.MargenGanancia : 30;
                 productoExistente.FechaActualizacion = DateTime.UtcNow;
 
                 await _productoService.Context.SaveChangesAsync();
-                return Ok(new { Message = "Producto actualizado exitosamente" });
+
+                return Ok(new
+                {
+                    Message = "Producto actualizado exitosamente",
+                    Producto = new
+                    {
+                        productoExistente.Id,
+                        productoExistente.Codigo,
+                        productoExistente.Nombre,
+                        productoExistente.Descripcion,
+                        productoExistente.CategoriaId,
+                        productoExistente.UnidadMedidaBaseId,
+                        productoExistente.StockMinimo,
+                        productoExistente.StockActual,
+                        productoExistente.PrecioCostoPromedio,
+                        productoExistente.PrecioVenta,
+                        productoExistente.MargenGanancia,
+                        productoExistente.Estado,
+                        productoExistente.FechaCreacion,
+                        productoExistente.FechaActualizacion
+                    }
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = $"Error interno del servidor: {ex.Message}" });
+                return StatusCode(500, new
+                {
+                    Message = $"Error interno del servidor al actualizar producto: {ex.Message}"
+                });
             }
         }
 

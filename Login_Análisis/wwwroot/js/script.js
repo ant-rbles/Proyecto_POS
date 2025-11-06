@@ -994,32 +994,32 @@ async function deleteProveedor(id) {
 }
 
 //Funciones Productos   
-
 function showProductoForm(producto = null) {
+    console.log('Mostrando formulario de producto:', producto);
     openManagementTab('productos');
 
     const form = document.getElementById('productoForm');
     const title = document.getElementById('productoFormTitle');
 
-    if (producto) {
-        title.textContent = 'Editar Producto';
-        currentProductoId = producto.id;
-        // LLENAR FORMULARIO - igual que en categorías
-        document.getElementById('productoCodigo').value = producto.codigo;
-        document.getElementById('productoNombre').value = producto.nombre;
-        document.getElementById('productoDescripcion').value = producto.descripcion || '';
-        document.getElementById('productoCategoria').value = producto.categoriaId || '';
-        document.getElementById('productoUnidadBase').value = producto.unidadMedidaBaseId;
-        document.getElementById('productoStockMinimo').value = producto.stockMinimo;
-        document.getElementById('productoMargen').value = producto.margenGanancia;
+    if (form) {
+        if (producto) {
+            title.textContent = 'Editar Producto';
+            currentProductoId = producto.id;
+            fillProductoForm(producto);
+        } else {
+            title.textContent = 'Nuevo Producto';
+            currentProductoId = null;
+            const proveedorFormElement = document.getElementById('productoFormElement');
+            if (proveedorFormElement) proveedorFormElement.reset();
+
+            // Establecer valores por defecto
+            document.getElementById('productoStockMinimo').value = '0';
+            document.getElementById('productoMargen').value = '30';
+        }
+        form.style.display = 'block';
     } else {
-        title.textContent = 'Nuevo Producto';
-        currentProductoId = null;
-        // LIMPIAR FORMULARIO - igual que en categorías
-        document.getElementById('productoFormElement').reset();
+        console.error('No se encontró el formulario de producto');
     }
-    updateUnidadesMedidaSelect();
-    form.style.display = 'block';
 }
 
 async function editProducto(id) {
@@ -1049,12 +1049,13 @@ function hideProductoForm() {
 }
 
 function fillProductoForm(producto) {
-    document.getElementById('productoId').value = producto.id;
-    document.getElementById('productoCodigo').value = producto.codigo;
-    document.getElementById('productoNombre').value = producto.nombre;
+    console.log('Llenando formulario con producto:', producto);
+
+    document.getElementById('productoCodigo').value = producto.codigo || '';
+    document.getElementById('productoNombre').value = producto.nombre || '';
     document.getElementById('productoDescripcion').value = producto.descripcion || '';
-    document.getElementById('productoStockMinimo').value = producto.stockMinimo;
-    document.getElementById('productoMargen').value = producto.margenGanancia;
+    document.getElementById('productoStockMinimo').value = producto.stockMinimo || 0;
+    document.getElementById('productoMargen').value = producto.margenGanancia || 30;
 
     // Seleccionar categoría si existe
     if (producto.categoriaId && document.getElementById('productoCategoria')) {
@@ -1062,12 +1063,9 @@ function fillProductoForm(producto) {
     }
 
     // Seleccionar unidad de medida
-    setTimeout(() => {
-        if (producto.unidadMedidaBaseId && document.getElementById('productoUnidadBase')) {
-            document.getElementById('productoUnidadBase').value = producto.unidadMedidaBaseId;
-            console.log('Unidad seleccionada en formulario:', producto.unidadMedidaBaseId);
-        }
-    }, 100);
+    if (producto.unidadMedidaBaseId && document.getElementById('productoUnidadBase')) {
+        document.getElementById('productoUnidadBase').value = producto.unidadMedidaBaseId;
+    }
 }
 
 async function handleProductoSubmit(e) {
@@ -1076,133 +1074,158 @@ async function handleProductoSubmit(e) {
     try {
         const authToken = localStorage.getItem('authToken');
 
-        // Obtener el producto actual primero
-        const responseGet = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (!responseGet.ok) {
-            throw new Error('No se pudo obtener el producto');
-        }
-
-        const productoExistente = await responseGet.json();
-        console.log('Producto existente:', productoExistente);
-
-        // Construir el objeto EXACTAMENTE como lo espera el backend
-        const productoData = {
-            Id: currentProductoId,
+        const productData = {
             Codigo: document.getElementById('productoCodigo').value.trim(),
             Nombre: document.getElementById('productoNombre').value.trim(),
-            Descripcion: document.getElementById('productoDescripcion').value.trim() || null,
+            Descripcion: document.getElementById('productoDescripcion').value.trim() || "",
             CategoriaId: document.getElementById('productoCategoria').value ?
                 parseInt(document.getElementById('productoCategoria').value) : null,
             UnidadMedidaBaseId: parseInt(document.getElementById('productoUnidadBase').value),
             StockMinimo: parseFloat(document.getElementById('productoStockMinimo').value) || 0,
-            StockActual: productoExistente.stockActual || 0,
-            PrecioCostoPromedio: productoExistente.precioCostoPromedio || 0,
-            PrecioVenta: productoExistente.precioVenta || 0,
-            MargenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30,
-            Estado: productoExistente.estado !== undefined ? productoExistente.estado : true,
-            FechaCreacion: productoExistente.fechaCreacion, // Mantener la original
-            FechaActualizacion: new Date().toISOString()
+            MargenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30
         };
 
-        console.log('Datos FINALES para enviar:', productoData);
+        console.log('Datos para crear producto:', productData);
 
-        const response = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(productoData)
-        });
+        let response;
+        if (currentProductoId) {
+            // ACTUALIZAR
+            response = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(productData)
+            });
+        } else {
+            // CREAR
+            response = await fetch('https://localhost:7000/api/productos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(productData)
+            });
+        }
 
         if (response.ok) {
             const result = await response.json();
-            showMessage('Producto actualizado exitosamente', 'success');
+            showMessage(result.message, 'success');
             hideProductoForm();
-            await loadProductos();
+            await loadProductos(); // Recargar la lista
         } else {
             const errorText = await response.text();
-            console.error('Error completo:', errorText);
-            showMessage('Error: ' + errorText, 'error');
+            let errorMessage = 'Error al guardar el producto';
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorMessage;
+                if (errorData.errors) {
+                    errorMessage += ': ' + errorData.errors.join(', ');
+                }
+            } catch (e) {
+                errorMessage = errorText || errorMessage;
+            }
+            showMessage(errorMessage, 'error');
         }
 
     } catch (error) {
-        console.error('Error:', error);
-        showMessage('Error: ' + error.message, 'error');
+        console.error('Error en handleProductoSubmit:', error);
+        showMessage('Error de conexión: ' + error.message, 'error');
     }
 }
 
 // Función para eliminar producto (desactivar) 
 async function deleteProducto(id) {
-    if (!confirm('¿Está seguro de desactivar este producto?')) return;
+    if (!confirm('¿Está seguro de que desea desactivar este producto? El producto se marcará como inactivo pero se mantendrán sus datos.')) {
+        return;
+    }
 
     try {
         const authToken = localStorage.getItem('authToken');
         const response = await fetch(`https://localhost:7000/api/productos/${id}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
             }
         });
+
+        console.log('Delete response status:', response.status);
 
         if (response.ok) {
             const result = await response.json();
             showMessage(result.message || 'Producto desactivado exitosamente', 'success');
+
+            // Actualizar la lista de productos después de eliminar
             await loadProductos();
         } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
+            let errorMessage = 'Error al desactivar el producto';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = `Error ${response.status}: ${response.statusText}`;
+            }
+            showMessage(errorMessage, 'error');
         }
     } catch (error) {
-        console.error('Error:', error);
-        showMessage('Error de conexión', 'error');
+        console.error('Error en deleteProducto:', error);
+        showMessage('Error de conexión al intentar desactivar el producto', 'error');
     }
 }
 
 async function loadProductos() {
     try {
-        console.log('Cargando productos...');
+        console.log('Iniciando carga de productos...');
         const authToken = localStorage.getItem('authToken');
+        
+        if (!authToken) {
+            console.error('No hay token de autenticación');
+            showMessage('Error: No hay sesión activa', 'error');
+            return;
+        }
+
         const response = await fetch('https://localhost:7000/api/productos', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
             }
         });
 
-        console.log('Response status:', response.status);
+        console.log('Status de respuesta:', response.status);
+        console.log('URL solicitada:', response.url);
 
         if (response.ok) {
-            productos = await response.json();
-            console.log('Productos cargados:', productos);
+            const data = await response.json();
+            console.log('Datos recibidos del servidor:', data);
+            
+            productos = Array.isArray(data) ? data : [];
+            console.log(`Productos procesados: ${productos.length}`);
+            
             renderProductosTable();
-        } else {
-            // Manejo detallado de errores
-            if (response.status === 500) {
-                const errorText = await response.text();
-                console.error('Error 500 del servidor:', errorText);
-                showMessage('Error interno del servidor al cargar productos', 'error');
-
-                // Intentar cargar datos de respaldo o mostrar interfaz vacía
-                productos = [];
-                renderProductosTable();
+            
+            if (productos.length === 0) {
+                showMessage('No se encontraron productos activos en el sistema', 'warning');
             } else {
-                const error = await response.text();
-                console.error('Error al cargar productos:', error);
-                showMessage('Error al cargar productos: ' + error, 'error');
+                showMessage(`Se cargaron ${productos.length} productos correctamente`, 'success');
             }
+        } else {
+            console.error('Error en respuesta:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('Detalles del error:', errorText);
+            
+            productos = [];
+            renderProductosTable();
+            showMessage('Error al cargar productos desde el servidor', 'error');
         }
     } catch (error) {
-        console.error('Error de conexión:', error);
-        showMessage('Error de conexión al cargar productos', 'error');
-        // Mostrar interfaz vacía en caso de error
+        console.error('Error de conexion:', error);
         productos = [];
         renderProductosTable();
+        showMessage('Error de conexion con el servidor', 'error');
     }
 }
 
@@ -1216,31 +1239,51 @@ function renderProductosTable() {
     if (!productos || productos.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="no-data" style="text-align: center; padding: 20px;">
-                    No hay productos disponibles o ocurrió un error al cargarlos
+                <td colspan="7" class="no-data" style="text-align: center; padding: 20px;">
+                    No hay productos disponibles o hay un problema temporal con los datos.
+                    <br><small>Intenta recargar la página o contactar al administrador.</small>
                 </td>
             </tr>
         `;
         return;
     }
 
-    tbody.innerHTML = productos.map(producto => `
+    tbody.innerHTML = productos.map(producto => {
+        // Valores por defecto para evitar errores de undefined
+        const codigo = producto.codigo || 'SIN CÓDIGO';
+        const nombre = producto.nombre || 'SIN NOMBRE';
+        const categoriaNombre = (producto.categoria && producto.categoria.nombre) ? producto.categoria.nombre : 'Sin categoría';
+        const unidadNombre = (producto.unidadMedidaBase && producto.unidadMedidaBase.nombre) ? producto.unidadMedidaBase.nombre : 'N/A';
+        const stockActual = producto.stockActual || 0;
+        const stockMinimo = producto.stockMinimo || 0;
+        const precioVenta = producto.precioVenta || 0;
+
+        const stockStatus = getStockStatusClass(stockActual, stockMinimo);
+        const stockStatusText = stockActual <= 0 ? 'Sin Stock' :
+            stockActual <= stockMinimo ? 'Stock Bajo' : 'Normal';
+
+        return `
         <tr>
-            <td>${producto.codigo}</td>
-            <td>${producto.nombre}</td>
-            <td>${producto.categoria ? producto.categoria.nombre : '-'}</td>
-            <td>${producto.stockActual}</td>
-            <td>$${producto.precioVenta?.toFixed(2) || '0.00'}</td>
+            <td>${codigo}</td>
+            <td>${nombre}</td>
+            <td>${categoriaNombre}</td>
+            <td>${unidadNombre}</td>
             <td>
-                <button class="action-btn edit-btn" onclick="showProductoForm(${JSON.stringify(producto).replace(/"/g, '&quot;')})">
+                <span class="stock-badge ${stockStatus}">${stockActual.toFixed(2)}</span>
+                <small style="display: block; font-size: 12px; color: #6c757d;">${stockStatusText}</small>
+            </td>
+            <td>$${precioVenta.toFixed(2)}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editProducto(${producto.id})" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="action-btn delete-btn" onclick="deleteProducto(${producto.id})">
+                <button class="action-btn delete-btn" onclick="deleteProducto(${producto.id})" title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function getStockStatusClass(stockActual, stockMinimo) {

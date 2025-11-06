@@ -82,6 +82,23 @@ namespace Login_Análisis.Services
         {
             try
             {
+                // Validaciones básicas
+                if (string.IsNullOrWhiteSpace(producto.Codigo))
+                    return (false, "El código del producto es requerido");
+
+                if (string.IsNullOrWhiteSpace(producto.Nombre))
+                    return (false, "El nombre del producto es requerido");
+
+                // Verificar duplicados
+                if (await _context.Productos.AnyAsync(p => p.Codigo == producto.Codigo && p.Estado))
+                    return (false, "Ya existe un producto con este código");
+
+                // Asegurar valores por defecto
+                producto.StockActual = producto.StockActual >= 0 ? producto.StockActual : 0;
+                producto.PrecioCostoPromedio = producto.PrecioCostoPromedio >= 0 ? producto.PrecioCostoPromedio : 0;
+                producto.PrecioVenta = producto.PrecioVenta >= 0 ? producto.PrecioVenta : 0;
+                producto.Estado = true;
+
                 _context.Productos.Add(producto);
                 await _context.SaveChangesAsync();
                 return (true, "Producto creado exitosamente");
@@ -94,12 +111,39 @@ namespace Login_Análisis.Services
 
         public async Task<List<Producto>> ObtenerProductos()
         {
-            return await _context.Productos
-                .Include(p => p.Categoria)
-                .Include(p => p.UnidadMedidaBase)
-                .Where(p => p.Estado)
-                .OrderBy(p => p.Nombre)
-                .ToListAsync();
+            try
+            {
+                Console.WriteLine("=== MODO EXTREMO: DIAGNÓSTICO COMPLETO ===");
+
+                // 1. Verificar conexión
+                var canConnect = await _context.Database.CanConnectAsync();
+                Console.WriteLine($"Conexión a BD: {canConnect}");
+
+                // 2. Contar productos de forma directa
+                var count = await _context.Productos.CountAsync();
+                Console.WriteLine($"Productos en BD: {count}");
+
+                // 3. Si hay productos, forzar la carga
+                if (count > 0)
+                {
+                    // Cargar productos SIN Entity Framework - método directo
+                    var productos = await _context.Productos
+                        .FromSqlRaw("SELECT * FROM Productos") // SQL directo
+                        .Include(p => p.Categoria)
+                        .Include(p => p.UnidadMedidaBase)
+                        .ToListAsync();
+
+                    Console.WriteLine($"Productos cargados con SQL directo: {productos.Count}");
+                    return productos;
+                }
+
+                return new List<Producto>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR EXTREMO: {ex.Message}");
+                return new List<Producto>();
+            }
         }
 
         public async Task<Producto> ObtenerProducto(int id)
