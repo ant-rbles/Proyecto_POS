@@ -100,7 +100,7 @@ namespace Login_Análisis.Controllers
 
             try
             {
-                var unidadExistente = await _productoService.ObtenerUnidadMedida(id);
+                var unidadExistente = await _context.UnidadesMedida.FindAsync(id);
                 if (unidadExistente == null)
                     return NotFound(new { Message = "Unidad de medida no encontrada" });
 

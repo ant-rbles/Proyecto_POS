@@ -83,6 +83,35 @@ public class AuthController : ControllerBase
         return Ok(users);
     }
 
+    [HttpGet("users/{id}")]
+    public async Task<IActionResult> GetUser(int id)
+    {
+        try
+        {
+            var user = await _authService.GetUserById(id);
+            if (user == null)
+                return NotFound(new ErrorResponse { Message = "Usuario no encontrado" });
+
+            var userResponse = new UserResponse
+            {
+                Id = user.Id,
+                Nombre = user.Nombre,
+                Usuario = user.Usuario,
+                Email = user.Email,
+                Rol = user.Rol,
+                Estado = user.Estado,
+                FechaCreacion = user.FechaCreacion,
+                FechaUltimoLogin = user.FechaUltimoLogin
+            };
+
+            return Ok(userResponse);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ErrorResponse { Message = $"Error interno: {ex.Message}" });
+        }
+    }
+
     [HttpPut("users/{id}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
     {

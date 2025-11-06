@@ -114,7 +114,18 @@ namespace Login_Análisis.Controllers
                 if (productoExistente == null)
                     return NotFound(new { Message = "Producto no encontrado" });
 
-                // Actualizar solo las propiedades permitidas
+                // Verificar si el código ya existe en otro producto
+                if (productoExistente.Codigo != producto.Codigo)
+                {
+                    var productoConMismoCodigo = await _productoService.ObtenerProductoPorCodigo(producto.Codigo);
+                    if (productoConMismoCodigo != null && productoConMismoCodigo.Id != id)
+                    {
+                        return BadRequest(new { Message = "Ya existe un producto con este código" });
+                    }
+                }
+
+                // Actualizar propiedades
+                productoExistente.Codigo = producto.Codigo;
                 productoExistente.Nombre = producto.Nombre;
                 productoExistente.Descripcion = producto.Descripcion;
                 productoExistente.CategoriaId = producto.CategoriaId;
@@ -128,7 +139,7 @@ namespace Login_Análisis.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
+                return StatusCode(500, new { Message = $"Error interno del servidor: {ex.Message}" });
             }
         }
 

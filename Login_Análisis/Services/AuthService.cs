@@ -120,6 +120,7 @@ public class AuthService
             return (false, $"Error: {ex.Message}", null, null);
         }
     }
+
     public async Task<(bool success, string message)> UpdateUser(int userId, UpdateUserRequest request)
     {
         try

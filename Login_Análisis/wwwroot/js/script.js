@@ -435,28 +435,70 @@ async function editUser(id) {
     }
 }
 
+// Mostrar formulario de edición de usuario
+async function editUser(id) {
+    console.log('Editando usuario ID:', id);
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            showMessage('No hay sesión activa', 'error');
+            return;
+        }
+
+        const response = await fetch(`https://localhost:7000/api/auth/users/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        console.log('Response status:', response.status);
+
+        if (response.ok) {
+            const user = await response.json();
+            console.log('Usuario cargado:', user);
+            showUserEditForm(user);
+        } else {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            showMessage('Error al cargar el usuario: ' + (errorText || response.statusText), 'error');
+        }
+    } catch (err) {
+        console.error('Error en editUser:', err);
+        showMessage('Error de conexión: ' + err.message, 'error');
+    }
+}
+
+// Función para mostrar formulario de edición de usuario
 function showUserEditForm(user) {
-    // Crear formulario de edición modal
+    console.log('Mostrando formulario para usuario:', user);
+
+    // Crear el modal
     const modalHTML = `
         <div id="editUserModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
-            <div style="background:white; padding:30px; border-radius:10px; width:90%; max-width:500px;">
-                <h3>Editar Usuario</h3>
+            <div style="background:white; padding:30px; border-radius:10px; width:90%; max-width:500px; max-height:90vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0; color:#4e73df;">Editar Usuario</h3>
+                    <button onclick="closeEditModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#6c757d;">×</button>
+                </div>
                 <form id="editUserForm">
                     <input type="hidden" id="editUserId" value="${user.id}">
                     <div class="form-group">
-                        <label>Nombre:</label>
-                        <input type="text" id="editUserNombre" value="${user.nombre}" class="form-control" required>
+                        <label for="editUserNombre">Nombre:</label>
+                        <input type="text" id="editUserNombre" class="form-control" value="${user.nombre}" required>
                     </div>
                     <div class="form-group">
-                        <label>Usuario:</label>
-                        <input type="text" id="editUserUsuario" value="${user.usuario}" class="form-control" required>
+                        <label for="editUserUsuario">Usuario:</label>
+                        <input type="text" id="editUserUsuario" class="form-control" value="${user.usuario}" required>
                     </div>
                     <div class="form-group">
-                        <label>Email:</label>
-                        <input type="email" id="editUserEmail" value="${user.email}" class="form-control" required>
+                        <label for="editUserEmail">Email:</label>
+                        <input type="email" id="editUserEmail" class="form-control" value="${user.email}" required>
                     </div>
                     <div class="form-group">
-                        <label>Rol:</label>
+                        <label for="editUserRol">Rol:</label>
                         <select id="editUserRol" class="form-control" required>
                             <option value="Administrador" ${user.rol === 'Administrador' ? 'selected' : ''}>Administrador</option>
                             <option value="Cajero" ${user.rol === 'Cajero' ? 'selected' : ''}>Cajero</option>
@@ -464,7 +506,7 @@ function showUserEditForm(user) {
                         </select>
                     </div>
                     <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                        <button type="button" onclick="closeEditUserModal()" class="btn btn-secondary">Cancelar</button>
+                        <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                     </div>
                 </form>
@@ -472,15 +514,25 @@ function showUserEditForm(user) {
         </div>
     `;
 
+    // Remover modal existente si hay uno
+    const existingModal = document.getElementById('editUserModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
+    // Agregar event listener al formulario
     document.getElementById('editUserForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         await updateUser(user.id);
     });
 }
 
-async function updateUser(id) {
+// Función para actualizar usuario
+async function updateUser(userId) {
+    console.log('Actualizando usuario ID:', userId);
+
     const userData = {
         nombre: document.getElementById('editUserNombre').value,
         usuario: document.getElementById('editUserUsuario').value,
@@ -488,9 +540,11 @@ async function updateUser(id) {
         rol: document.getElementById('editUserRol').value
     };
 
+    console.log('Datos a enviar:', userData);
+
     try {
         const authToken = localStorage.getItem('authToken');
-        const response = await fetch(`https://localhost:7000/api/auth/users/${id}`, {
+        const response = await fetch(`https://localhost:7000/api/auth/users/${userId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -499,22 +553,29 @@ async function updateUser(id) {
             body: JSON.stringify(userData)
         });
 
+        console.log('Update response status:', response.status);
+
         if (response.ok) {
+            const result = await response.json();
             showMessage('Usuario actualizado exitosamente', 'success');
-            closeEditUserModal();
+            closeEditModal();
             await viewUsers(); // Recargar la lista
         } else {
             const error = await response.json();
-            showMessage(error.message, 'error');
+            showMessage(error.message || 'Error al actualizar usuario', 'error');
         }
     } catch (err) {
-        showMessage('Error de conexión', 'error');
+        console.error('Error en updateUser:', err);
+        showMessage('Error de conexión: ' + err.message, 'error');
     }
 }
 
-function closeEditUserModal() {
+// Cerrar modal
+function closeEditModal() {
     const modal = document.getElementById('editUserModal');
-    if (modal) modal.remove();
+    if (modal) {
+        modal.remove();
+    }
 }
 
 async function deleteUser(id) {
@@ -953,6 +1014,26 @@ function showProductoForm(producto = null) {
     }
 }
 
+async function editProducto(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/productos/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const producto = await response.json();
+            showProductoForm(producto);
+        } else {
+            showMessage('Error al cargar el producto', 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
 function hideProductoForm() {
     const form = document.getElementById('productoForm');
     if (form) form.style.display = 'none';
@@ -980,7 +1061,6 @@ function fillProductoForm(producto) {
 
 async function handleProductoSubmit(e) {
     e.preventDefault();
-    console.log('Guardando producto...');
 
     // Obtener y validar valores
     const codigo = document.getElementById('productoCodigo').value?.trim();
@@ -1005,33 +1085,29 @@ async function handleProductoSubmit(e) {
         return;
     }
 
-    // Construir objeto con MAYÚSCULAS (como el modelo C#)
+    // Construir objeto producto (igual que en C#)
     const producto = {
+        Id: currentProductoId ? parseInt(currentProductoId) : 0,
         Codigo: codigo,
         Nombre: nombre,
         Descripcion: descripcion,
         CategoriaId: categoriaId,
         UnidadMedidaBaseId: unidadMedidaBaseId,
         StockMinimo: stockMinimo,
-        StockActual: 0,
-        PrecioCostoPromedio: 0,
-        PrecioVenta: 0,
         MargenGanancia: margenGanancia,
-        Estado: true,
-        FechaCreacion: new Date().toISOString()
+        Estado: true
     };
-
-    console.log('Producto a enviar:', producto);
 
     try {
         const authToken = localStorage.getItem('authToken');
-        if (!authToken) {
-            showMessage('No hay sesión activa', 'error');
-            return;
-        }
+        const url = currentProductoId
+            ? `https://localhost:7000/api/productos/${currentProductoId}`
+            : 'https://localhost:7000/api/productos';
 
-        const response = await fetch('https://localhost:7000/api/productos', {
-            method: 'POST',
+        const method = currentProductoId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
@@ -1039,28 +1115,47 @@ async function handleProductoSubmit(e) {
             body: JSON.stringify(producto)
         });
 
-        // Manejar respuesta
-        const responseText = await response.text();
-        console.log('Respuesta del servidor:', responseText);
-
         if (response.ok) {
-            const result = JSON.parse(responseText);
-            showMessage('Producto guardado exitosamente', 'success');
+            const result = await response.json();
+            showMessage(result.message || `Producto ${currentProductoId ? 'actualizado' : 'creado'} exitosamente`, 'success');
             hideProductoForm();
             await loadProductos();
         } else {
-            // Mostrar error específico del servidor
-            try {
-                const errorResult = JSON.parse(responseText);
-                showMessage(errorResult.message || `Error: ${response.status}`, 'error');
-            } catch {
-                showMessage(`Error del servidor: ${responseText}`, 'error');
-            }
+            const error = await response.json();
+            showMessage(error.message || `Error al ${currentProductoId ? 'actualizar' : 'crear'} producto`, 'error');
         }
-
     } catch (error) {
         console.error('Error de conexión:', error);
         showMessage('Error de conexión con el servidor', 'error');
+    }
+}
+
+// Función para eliminar producto (desactivar) 
+async function deleteProducto(id) {
+    if (!confirm('¿Está seguro de que desea desactivar este producto? El producto ya no estará disponible para ventas pero se mantendrán los registros históricos.')) {
+        return;
+    }
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/productos/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showMessage(result.message || 'Producto desactivado exitosamente', 'success');
+            await loadProductos();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error al eliminar producto:', error);
+        showMessage('Error de conexión', 'error');
     }
 }
 
@@ -1081,7 +1176,6 @@ async function loadProductos() {
             console.log('Productos cargados:', productos);
             renderProductosTable();
             updateProductosSelects();
-            updateProductosSelectsVentas();
         } else {
             const error = await response.text();
             console.error('Error al cargar productos:', error);
@@ -1901,7 +1995,228 @@ async function handleVentaSubmit(e) {
                 } catch (error) {
                     console.error('Error al cargar estadísticas:', error);
                 }
+}
+
+// Funciones para Unidades de Medida
+function showUnidadMedidaForm(unidad = null) {
+    openManagementTab('unidadesmedida');
+
+    const form = document.getElementById('unidadMedidaForm');
+    const title = document.getElementById('unidadMedidaFormTitle');
+
+    if (form) {
+        if (unidad) {
+            title.textContent = 'Editar Unidad de Medida';
+            currentUnidadId = unidad.id;
+            fillUnidadMedidaForm(unidad);
+        } else {
+            title.textContent = 'Nueva Unidad de Medida';
+            currentUnidadId = null;
+            document.getElementById('unidadMedidaFormElement').reset();
+        }
+        form.style.display = 'block';
+    }
+}
+
+function hideUnidadMedidaForm() {
+    const form = document.getElementById('unidadMedidaForm');
+    if (form) form.style.display = 'none';
+    currentUnidadId = null;
+}
+
+async function editUnidadMedida(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/unidadesmedida/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
             }
+        });
+
+        if (response.ok) {
+            const unidad = await response.json();
+            showUnidadMedidaForm(unidad);
+        } else {
+            showMessage('Error al cargar la unidad de medida', 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+// Función para llenar formulario de unidad de medida
+function fillUnidadMedidaForm(unidad) {
+    document.getElementById('unidadId').value = unidad.id;
+    document.getElementById('unidadNombre').value = unidad.nombre;
+    document.getElementById('unidadAbreviatura').value = unidad.abreviatura;
+    document.getElementById('unidadFactor').value = unidad.factorConversion;
+    document.getElementById('unidadEsBase').checked = unidad.esUnidadBase;
+}
+
+// Función para guardar unidad de medida
+async function handleUnidadMedidaSubmit(e) {
+    e.preventDefault();
+    console.log('Enviando formulario de unidad de medida');
+
+    // Obtener y validar valores
+    const nombre = document.getElementById('unidadNombre').value.trim();
+    const abreviatura = document.getElementById('unidadAbreviatura').value.trim();
+    const factorInput = document.getElementById('unidadFactor').value;
+    const factorConversion = parseFloat(factorInput);
+    const esUnidadBase = document.getElementById('unidadEsBase').checked;
+
+    // Validaciones
+    if (!nombre) {
+        showMessage('El nombre es obligatorio', 'error');
+        return;
+    }
+    if (!abreviatura) {
+        showMessage('La abreviatura es obligatoria', 'error');
+        return;
+    }
+    if (isNaN(factorConversion) || factorConversion <= 0) {
+        showMessage('El factor de conversión debe ser un número mayor a 0', 'error');
+        return;
+    }
+
+    const unidadData = {
+        id: currentUnidadId ? parseInt(currentUnidadId) : 0,
+        nombre: nombre,
+        abreviatura: abreviatura,
+        factorConversion: factorConversion, // Ya validado como número
+        esUnidadBase: esUnidadBase,
+        estado: true
+    };
+
+    console.log('Datos a enviar:', unidadData);
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const url = currentUnidadId
+            ? `https://localhost:7000/api/unidadesmedida/${currentUnidadId}`
+            : 'https://localhost:7000/api/unidadesmedida';
+
+        const method = currentUnidadId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(unidadData)
+        });
+
+        console.log('Status de respuesta:', response.status);
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Respuesta exitosa:', result);
+            showMessage(result.message || 'Unidad de medida guardada exitosamente', 'success');
+            hideUnidadMedidaForm();
+            await loadUnidadesMedida();
+        } else {
+            // Obtener el mensaje de error detallado
+            let errorMessage = 'Error al guardar unidad de medida';
+            try {
+                const errorText = await response.text();
+                console.error('Texto de error:', errorText);
+
+                if (errorText) {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.message || errorMessage;
+
+                    // Mostrar errores de validación si existen
+                    if (errorJson.errors) {
+                        errorMessage += ': ' + errorJson.errors.join(', ');
+                    }
+                }
+            } catch (parseError) {
+                console.error('Error al parsear respuesta de error:', parseError);
+            }
+            showMessage(errorMessage, 'error');
+        }
+    } catch (error) {
+        console.error('Error de conexión:', error);
+        showMessage('Error de conexión: ' + error.message, 'error');
+    }
+}
+
+// Función para eliminar unidad de medida
+async function deleteUnidadMedida(id) {
+    if (!confirm('¿Está seguro de eliminar esta unidad de medida?')) return;
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/unidadesmedida/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Unidad de medida eliminada exitosamente', 'success');
+            await loadUnidadesMedida();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function loadUnidadesMedida() {
+    try {
+        console.log('Cargando unidades de medida...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/unidadesmedida', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            unidadesMedida = await response.json();
+            console.log('Unidades de medida cargadas:', unidadesMedida);
+            renderUnidadesMedidaTable();
+        } else {
+            showMessage('Error al cargar unidades de medida', 'error');
+        }
+    } catch (error) {
+        console.error('Error de conexión:', error);
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Función para renderizar tabla de unidades de medida
+function renderUnidadesMedidaTable() {
+    const tbody = document.getElementById('unidadesMedidaTableBody');
+    if (!tbody) {
+        console.error('No se encontró unidadesMedidaTableBody');
+        return;
+    }
+
+    tbody.innerHTML = unidadesMedida.map(unidad => `
+        <tr>
+            <td>${unidad.nombre}</td>
+            <td>${unidad.abreviatura}</td>
+            <td>${unidad.factorConversion}</td>
+            <td>${unidad.esUnidadBase ? 'Sí' : 'No'}</td>
+            <td>${unidad.estado ? 'Activa' : 'Inactiva'}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editUnidadMedida(${unidad.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteUnidadMedida(${unidad.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
 
             // Funciones para Reportes
             function cambiarTipoReporte() {
