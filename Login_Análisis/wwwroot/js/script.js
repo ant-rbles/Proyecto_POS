@@ -857,12 +857,20 @@ async function handleProveedorSubmit(e) {
         contacto: document.getElementById('proveedorContacto').value
     };
 
+    // Validar RUC duplicado
+    const proveedorExistente = await verificarRUCProveedorExistente(proveedor.ruc, currentProveedorId);
+    if (proveedorExistente) {
+        const estado = proveedorExistente.estado ? 'activo' : 'inactivo';
+        showMessage(`Ya existe un proveedor ${estado} con este RUC. ${!proveedorExistente.estado ? 'Puede activarlo desde la lista.' : ''}`, 'error');
+        document.getElementById('proveedorRUC').focus();
+        return;
+    }
+
     try {
         const authToken = localStorage.getItem('authToken');
         let response;
 
         if (currentProveedorId) {
-            // Actualizar
             response = await fetch(`https://localhost:7000/api/proveedores/${currentProveedorId}`, {
                 method: 'PUT',
                 headers: {
@@ -872,7 +880,6 @@ async function handleProveedorSubmit(e) {
                 body: JSON.stringify(proveedor)
             });
         } else {
-            // Crear
             response = await fetch('https://localhost:7000/api/proveedores', {
                 method: 'POST',
                 headers: {
@@ -897,6 +904,30 @@ async function handleProveedorSubmit(e) {
     }
 }
 
+// Función para verificar RUC duplicado
+async function verificarRUCProveedorExistente(ruc, excludeId = null) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/proveedores', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const proveedores = await response.json();
+            return proveedores.find(p =>
+                p.ruc === ruc &&
+                p.id !== excludeId
+            );
+        }
+        return null;
+    } catch (error) {
+        console.error('Error verificando RUC:', error);
+        return null;
+    }
+}
 
 function updateProveedoresSelect() {
     console.log('Actualizando select de proveedores...');
@@ -917,7 +948,7 @@ function updateProveedoresSelect() {
 
 async function loadProveedores() {
     try {
-        console.log('Cargando proveedores desde la base de datos...');
+        console.log('Cargando proveedores...');
 
         const authToken = localStorage.getItem('authToken');
         const response = await fetch('https://localhost:7000/api/proveedores', {
@@ -943,6 +974,7 @@ async function loadProveedores() {
     }
 }
 
+// Renderizar tabla de proveedores mostrando estado
 function renderProveedoresTable() {
     const tbody = document.getElementById('proveedoresTableBody');
     if (!tbody) {
@@ -958,15 +990,46 @@ function renderProveedoresTable() {
             <td>${proveedor.email || '-'}</td>
             <td>${proveedor.contacto || '-'}</td>
             <td>
+                <span class="badge ${proveedor.estado ? 'badge-success' : 'badge-danger'}">
+                    ${proveedor.estado ? 'Activo' : 'Inactivo'}
+                </span>
+            </td>
+            <td>
                 <button class="action-btn edit-btn" onclick="showProveedorForm(${JSON.stringify(proveedor).replace(/"/g, '&quot;')})">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="action-btn delete-btn" onclick="deleteProveedor(${proveedor.id})">
-                    <i class="fas fa-trash"></i>
+                <button class="action-btn ${proveedor.estado ? 'delete-btn' : 'activate-btn'}" 
+                        onclick="${proveedor.estado ? 'deleteProveedor' : 'activateProveedor'}(${proveedor.id})">
+                    <i class="fas ${proveedor.estado ? 'fa-trash' : 'fa-check'}"></i>
                 </button>
             </td>
         </tr>
     `).join('');
+}
+
+// Función para activar proveedor
+async function activateProveedor(id) {
+    if (!confirm('¿Está seguro de que desea activar este proveedor?')) return;
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/proveedores/${id}/activate`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Proveedor activado exitosamente', 'success');
+            loadProveedores();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
 }
 
 async function deleteProveedor(id) {
@@ -995,7 +1058,6 @@ async function deleteProveedor(id) {
 
 //Funciones Productos   
 function showProductoForm(producto = null) {
-    console.log('Mostrando formulario de producto:', producto);
     openManagementTab('productos');
 
     const form = document.getElementById('productoForm');
@@ -1009,24 +1071,19 @@ function showProductoForm(producto = null) {
         } else {
             title.textContent = 'Nuevo Producto';
             currentProductoId = null;
-            const proveedorFormElement = document.getElementById('productoFormElement');
-            if (proveedorFormElement) proveedorFormElement.reset();
-
-            // Establecer valores por defecto
+            document.getElementById('productoFormElement').reset();
             document.getElementById('productoStockMinimo').value = '0';
             document.getElementById('productoMargen').value = '30';
         }
         form.style.display = 'block';
-    } else {
-        console.error('No se encontró el formulario de producto');
     }
 }
+
 
 async function editProducto(id) {
     try {
         const authToken = localStorage.getItem('authToken');
         const response = await fetch(`https://localhost:7000/api/productos/${id}`, {
-            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
@@ -1036,12 +1093,14 @@ async function editProducto(id) {
             const producto = await response.json();
             showProductoForm(producto);
         } else {
-            showMessage('Error al cargar el producto', 'error');
+            showMessage('❌ Error al cargar el producto', 'error');
         }
     } catch (err) {
-        showMessage('Error de conexión', 'error');
+        showMessage('❌ Error de conexión', 'error');
     }
 }
+
+
 function hideProductoForm() {
     const form = document.getElementById('productoForm');
     if (form) form.style.display = 'none';
@@ -1073,6 +1132,15 @@ async function handleProductoSubmit(e) {
 
     try {
         const authToken = localStorage.getItem('authToken');
+        const codigo = document.getElementById('productoCodigo').value.trim();
+
+        // Validar código duplicado antes de enviar
+        const productoExistente = await verificarCodigoProductoExistente(codigo, currentProductoId);
+        if (productoExistente) {
+            showMessage('Ya existe un producto con este código. Por favor use un código único.', 'error');
+            document.getElementById('productoCodigo').focus();
+            return;
+        }
 
         const productData = {
             Codigo: document.getElementById('productoCodigo').value.trim(),
@@ -1136,14 +1204,48 @@ async function handleProductoSubmit(e) {
     }
 }
 
+// Función para verificar código duplicado
+async function verificarCodigoProductoExistente(codigo, excludeId = null) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/productos', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const productos = await response.json();
+            return productos.find(p =>
+                p.codigo.toLowerCase() === codigo.toLowerCase() &&
+                p.id !== excludeId
+            );
+        }
+        return null;
+    } catch (error) {
+        console.error('Error verificando código:', error);
+        return null;
+    }
+}
+
 // Función para eliminar producto (desactivar) 
 async function deleteProducto(id) {
+    console.log('Intentando desactivar producto ID:', id);
+
     if (!confirm('¿Está seguro de que desea desactivar este producto? El producto se marcará como inactivo y ya no estará disponible para ventas, pero se mantendrán los registros históricos.')) {
         return;
     }
 
     try {
         const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            showMessage('No hay sesión activa. Por favor, inicie sesión nuevamente.', 'error');
+            return;
+        }
+
+        console.log('Enviando solicitud DELETE para producto ID:', id);
+
         const response = await fetch(`https://localhost:7000/api/productos/${id}`, {
             method: 'DELETE',
             headers: {
@@ -1152,32 +1254,39 @@ async function deleteProducto(id) {
             }
         });
 
-        console.log('Delete response status:', response.status);
+        console.log('Respuesta recibida - Status:', response.status);
 
         if (response.ok) {
             const result = await response.json();
+            console.log('Respuesta del servidor:', result);
             showMessage(result.message || 'Producto desactivado exitosamente', 'success');
 
-            // Actualizar la lista de productos después de desactivar
-            await loadProductos();
+            // Recargar la lista de productos después de un breve delay
+            setTimeout(async () => {
+                await loadProductos();
+            }, 500);
+
         } else {
             let errorMessage = 'Error al desactivar el producto';
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.message || errorMessage;
+                console.error('Error del servidor:', errorData);
             } catch (e) {
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
+                console.error('Error parsing response:', e);
             }
             showMessage(errorMessage, 'error');
         }
     } catch (error) {
         console.error('Error en deleteProducto:', error);
-        showMessage('Error de conexión al intentar desactivar el producto', 'error');
+        showMessage('Error de conexión: ' + error.message, 'error');
     }
 }
 
 async function loadProductos() {
     try {
+        console.log('Cargando productos...');
         const authToken = localStorage.getItem('authToken');
         const response = await fetch('https://localhost:7000/api/productos', {
             method: 'GET',
@@ -1187,15 +1296,21 @@ async function loadProductos() {
             }
         });
 
+        console.log('Response status:', response.status);
+
         if (response.ok) {
             productos = await response.json();
-            console.log('Datos CRUDOS de productos recibidos:', productos); // DEBUG
+            console.log('Productos cargados:', productos);
             renderProductosTable();
         } else {
-            console.error('Error al cargar productos');
+            console.error('Error al cargar productos. Status:', response.status);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            showMessage('Error al cargar los productos', 'error');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en loadProductos:', error);
+        showMessage('Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -1206,17 +1321,22 @@ function renderProductosTable() {
         return;
     }
 
+    console.log('Renderizando tabla con', productos ? productos.length : 0, 'productos');
+
     if (!productos || productos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay productos disponibles</td></tr>';
         return;
     }
 
     tbody.innerHTML = productos.map(producto => {
-        // Extraer datos de forma segura
+        // Debug: mostrar toda la información del producto
+        console.log('Producto para renderizar:', producto);
+
         const id = producto.id || producto.Id;
         const codigo = producto.codigo || producto.Codigo || 'N/A';
         const nombre = producto.nombre || producto.Nombre || 'N/A';
-        const estado = producto.estado !== undefined ? producto.estado : (producto.Estado !== undefined ? producto.Estado : true);
+        const estado = producto.estado !== undefined ? producto.estado :
+            (producto.Estado !== undefined ? producto.Estado : true);
 
         // Categoría
         let categoriaNombre = 'Sin categoría';
@@ -1241,7 +1361,7 @@ function renderProductosTable() {
         const precioVenta = parseFloat(producto.precioVenta || producto.PrecioVenta || 0);
 
         return `
-        <tr>
+        <tr data-producto-id="${id}" data-estado="${estado}">
             <td>${codigo}</td>
             <td>${nombre}</td>
             <td>${categoriaNombre}</td>
@@ -1251,16 +1371,18 @@ function renderProductosTable() {
                     ${stockActual.toFixed(2)}
                 </span>
             </td>
-            <td class="text-right">$${precioCosto.toFixed(2)}</td>
-            <td class="text-right">$${precioVenta.toFixed(2)}</td>
+            <td class="text-right">Q ${precioCosto.toFixed(2)}</td>
+            <td class="text-right">Q ${precioVenta.toFixed(2)}</td>
             <td class="text-center">
-                <span class="badge ${estado ? 'badge-success' : 'badge-danger'}">
+                <span class="badge ${estado ? 'badge-success' : 'badge-danger'}" id="estado-${id}">
                     ${estado ? 'Activo' : 'Inactivo'}
                 </span>
             </td>
             <td class="text-center">
                 <button class="db-btn db-view" onclick="editProducto(${id})">Editar</button>
-                <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" onclick="${estado ? 'deleteProducto' : 'activateProducto'}(${id})">
+                <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" 
+                        onclick="${estado ? 'deleteProducto' : 'activateProducto'}(${id})"
+                        id="btn-estado-${id}">
                     ${estado ? 'Desactivar' : 'Activar'}
                 </button>
             </td>
@@ -1268,6 +1390,7 @@ function renderProductosTable() {
         `;
     }).join('');
 }
+
 function getStockStatusClass(stockActual, stockMinimo) {
     if (stockActual <= 0) return 'stock-critical';
     if (stockActual <= stockMinimo) return 'stock-low';
@@ -1275,12 +1398,19 @@ function getStockStatusClass(stockActual, stockMinimo) {
 }
 
 async function activateProducto(id) {
-    if (!confirm('¿Está seguro de que desea activar este producto? El producto volverá a estar disponible para ventas y compras.')) {
+    console.log('Intentando activar producto ID:', id);
+
+    if (!confirm('¿Está seguro de que desea activar este producto?')) {
         return;
     }
 
     try {
         const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            showMessage('No hay sesión activa. Por favor, inicie sesión nuevamente.', 'error');
+            return;
+        }
+
         const response = await fetch(`https://localhost:7000/api/productos/${id}/activate`, {
             method: 'PUT',
             headers: {
@@ -1289,9 +1419,16 @@ async function activateProducto(id) {
             }
         });
 
+        console.log('Respuesta activar producto - Status:', response.status);
+
         if (response.ok) {
-            showMessage('Producto activado exitosamente', 'success');
-            await loadProductos();
+            const result = await response.json();
+            showMessage(result.message || 'Producto activado exitosamente', 'success');
+
+            setTimeout(async () => {
+                await loadProductos();
+            }, 500);
+
         } else {
             let errorMessage = 'Error al activar el producto';
             try {
@@ -1304,7 +1441,7 @@ async function activateProducto(id) {
         }
     } catch (error) {
         console.error('Error en activateProducto:', error);
-        showMessage('Error de conexión al intentar activar el producto', 'error');
+        showMessage('Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -1749,36 +1886,69 @@ async function loadInventario() {
 function renderInventarioTable() {
     const tbody = document.getElementById('inventarioTableBody');
     if (!tbody) {
-        console.error('No se encontró la tabla de inventario');
+        console.error('No se encontró el tbody de inventario');
         return;
     }
 
     if (!productos || productos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="no-data">No hay productos en el inventario</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay productos en inventario</td></tr>';
         return;
     }
 
-    tbody.innerHTML = productos.map(producto => `
+    tbody.innerHTML = productos.map(producto => {
+        const id = producto.id || producto.Id;
+        const codigo = producto.codigo || producto.Codigo || 'N/A';
+        const nombre = producto.nombre || producto.Nombre || 'N/A';
+        const estado = producto.estado !== undefined ? producto.estado : (producto.Estado !== undefined ? producto.Estado : true);
+
+        // Categoría
+        let categoriaNombre = 'Sin categoría';
+        if (producto.categoria) {
+            categoriaNombre = producto.categoria.nombre || producto.categoria.Nombre || 'Sin categoría';
+        } else if (producto.Categoria) {
+            categoriaNombre = producto.Categoria.nombre || producto.Categoria.Nombre || 'Sin categoría';
+        }
+
+        // Unidad de medida
+        let unidadNombre = 'N/A';
+        if (producto.unidadMedidaBase) {
+            unidadNombre = producto.unidadMedidaBase.nombre || producto.unidadMedidaBase.Nombre || 'N/A';
+        } else if (producto.UnidadMedidaBase) {
+            unidadNombre = producto.UnidadMedidaBase.nombre || producto.UnidadMedidaBase.Nombre || 'N/A';
+        }
+
+        // Valores numéricos
+        const stockActual = parseFloat(producto.stockActual || producto.StockActual || 0);
+        const stockMinimo = parseFloat(producto.stockMinimo || producto.StockMinimo || 0);
+        const precioCosto = parseFloat(producto.precioCostoPromedio || producto.PrecioCostoPromedio || 0);
+        const precioVenta = parseFloat(producto.precioVenta || producto.PrecioVenta || 0);
+
+        // Calcular valor total en inventario
+        const valorTotal = stockActual * precioCosto;
+
+        return `
         <tr>
-            <td>${producto.codigo || 'N/A'}</td>
-            <td>${producto.nombre || 'N/A'}</td>
-            <td>${producto.categoria ? producto.categoria.nombre : 'Sin categoría'}</td>
-            <td>${producto.unidadMedidaBase ? producto.unidadMedidaBase.nombre : 'N/A'}</td>
-            <td>
-                <span class="stock-badge ${getStockStatusClass(producto.stockActual, producto.stockMinimo)}">
-                    ${producto.stockActual.toFixed(2)}
+            <td>${codigo}</td>
+            <td>${nombre}</td>
+            <td>${categoriaNombre}</td>
+            <td>${unidadNombre}</td>
+            <td class="text-center">
+                <span class="stock-badge ${getStockStatusClass(stockActual, stockMinimo)}">
+                    ${stockActual.toFixed(2)}
                 </span>
             </td>
-            <td>${producto.stockMinimo.toFixed(2)}</td>
-            <td>$${producto.precioCostoPromedio.toFixed(2)}</td>
-            <td>$${producto.precioVenta.toFixed(2)}</td>
-            <td>
-                <span class="stock-badge ${getStockStatusClass(producto.stockActual, producto.stockMinimo)}">
-                    ${getStockStatusText(producto.stockActual, producto.stockMinimo)}
+            <td class="text-center">${stockMinimo.toFixed(2)}</td>
+            <td class="text-right">Q ${precioCosto.toFixed(2)}</td>
+            <td class="text-right">Q ${precioVenta.toFixed(2)}</td>
+            <td class="text-right">Q ${valorTotal.toFixed(2)}</td>
+            <td class="text-center">
+                <span class="badge ${estado ? 'badge-success' : 'badge-danger'}">
+                    ${estado ? 'Activo' : 'Inactivo'}
                 </span>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function getStockStatusClass(stockActual, stockMinimo) {
