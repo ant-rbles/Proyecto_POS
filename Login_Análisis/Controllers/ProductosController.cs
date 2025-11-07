@@ -208,11 +208,33 @@ namespace Login_Análisis.Controllers
                 if (producto == null)
                     return NotFound(new { Message = "Producto no encontrado" });
 
+                // Cambiar estado a inactivo en lugar de eliminar
                 producto.Estado = false;
                 producto.FechaActualizacion = DateTime.UtcNow;
 
                 await _productoService.Context.SaveChangesAsync();
-                return Ok(new { Message = "Producto eliminado exitosamente" });
+                return Ok(new { Message = "Producto desactivado exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}/activate")]
+        public async Task<IActionResult> ActivarProducto(int id)
+        {
+            try
+            {
+                var producto = await _productoService.ObtenerProducto(id);
+                if (producto == null)
+                    return NotFound(new { Message = "Producto no encontrado" });
+
+                producto.Estado = true;
+                producto.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Producto activado exitosamente" });
             }
             catch (Exception ex)
             {

@@ -1138,7 +1138,7 @@ async function handleProductoSubmit(e) {
 
 // Función para eliminar producto (desactivar) 
 async function deleteProducto(id) {
-    if (!confirm('¿Está seguro de que desea desactivar este producto? El producto se marcará como inactivo pero se mantendrán sus datos.')) {
+    if (!confirm('¿Está seguro de que desea desactivar este producto? El producto se marcará como inactivo y ya no estará disponible para ventas, pero se mantendrán los registros históricos.')) {
         return;
     }
 
@@ -1158,7 +1158,7 @@ async function deleteProducto(id) {
             const result = await response.json();
             showMessage(result.message || 'Producto desactivado exitosamente', 'success');
 
-            // Actualizar la lista de productos después de eliminar
+            // Actualizar la lista de productos después de desactivar
             await loadProductos();
         } else {
             let errorMessage = 'Error al desactivar el producto';
@@ -1189,6 +1189,7 @@ async function loadProductos() {
 
         if (response.ok) {
             productos = await response.json();
+            console.log('Datos CRUDOS de productos recibidos:', productos); // DEBUG
             renderProductosTable();
         } else {
             console.error('Error al cargar productos');
@@ -1200,39 +1201,111 @@ async function loadProductos() {
 
 function renderProductosTable() {
     const tbody = document.getElementById('productosTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('No se encontró el tbody de productos');
+        return;
+    }
 
     if (!productos || productos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay productos disponibles</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay productos disponibles</td></tr>';
         return;
     }
 
     tbody.innerHTML = productos.map(producto => {
+        // Extraer datos de forma segura
+        const id = producto.id || producto.Id;
+        const codigo = producto.codigo || producto.Codigo || 'N/A';
+        const nombre = producto.nombre || producto.Nombre || 'N/A';
+        const estado = producto.estado !== undefined ? producto.estado : (producto.Estado !== undefined ? producto.Estado : true);
+
+        // Categoría
+        let categoriaNombre = 'Sin categoría';
+        if (producto.categoria) {
+            categoriaNombre = producto.categoria.nombre || producto.categoria.Nombre || 'Sin categoría';
+        } else if (producto.Categoria) {
+            categoriaNombre = producto.Categoria.nombre || producto.Categoria.Nombre || 'Sin categoría';
+        }
+
+        // Unidad de medida
+        let unidadNombre = 'N/A';
+        if (producto.unidadMedidaBase) {
+            unidadNombre = producto.unidadMedidaBase.nombre || producto.unidadMedidaBase.Nombre || 'N/A';
+        } else if (producto.UnidadMedidaBase) {
+            unidadNombre = producto.UnidadMedidaBase.nombre || producto.UnidadMedidaBase.Nombre || 'N/A';
+        }
+
+        // Valores numéricos
+        const stockActual = parseFloat(producto.stockActual || producto.StockActual || 0);
+        const stockMinimo = parseFloat(producto.stockMinimo || producto.StockMinimo || 0);
+        const precioCosto = parseFloat(producto.precioCostoPromedio || producto.PrecioCostoPromedio || 0);
+        const precioVenta = parseFloat(producto.precioVenta || producto.PrecioVenta || 0);
+
         return `
         <tr>
-            <td>${producto.codigo}</td>
-            <td>${producto.nombre}</td>
-            <td>${producto.categoria ? producto.categoria.nombre : '-'}</td>
-            <td>${producto.unidadMedidaBase ? producto.unidadMedidaBase.nombre : '-'}</td>
-            <td>${producto.stockActual}</td>
-            <td>$${producto.precioVenta?.toFixed(2) || '0.00'}</td>
-            <td>
-                <button class="action-btn edit-btn" onclick="editProducto(${producto.id})">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="action-btn delete-btn" onclick="deleteProducto(${producto.id})">
-                    <i class="fas fa-trash"></i>
+            <td>${codigo}</td>
+            <td>${nombre}</td>
+            <td>${categoriaNombre}</td>
+            <td>${unidadNombre}</td>
+            <td class="text-center">
+                <span class="stock-badge ${getStockStatusClass(stockActual, stockMinimo)}">
+                    ${stockActual.toFixed(2)}
+                </span>
+            </td>
+            <td class="text-right">$${precioCosto.toFixed(2)}</td>
+            <td class="text-right">$${precioVenta.toFixed(2)}</td>
+            <td class="text-center">
+                <span class="badge ${estado ? 'badge-success' : 'badge-danger'}">
+                    ${estado ? 'Activo' : 'Inactivo'}
+                </span>
+            </td>
+            <td class="text-center">
+                <button class="db-btn db-view" onclick="editProducto(${id})">Editar</button>
+                <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" onclick="${estado ? 'deleteProducto' : 'activateProducto'}(${id})">
+                    ${estado ? 'Desactivar' : 'Activar'}
                 </button>
             </td>
         </tr>
         `;
     }).join('');
 }
-
 function getStockStatusClass(stockActual, stockMinimo) {
     if (stockActual <= 0) return 'stock-critical';
     if (stockActual <= stockMinimo) return 'stock-low';
     return 'stock-normal';
+}
+
+async function activateProducto(id) {
+    if (!confirm('¿Está seguro de que desea activar este producto? El producto volverá a estar disponible para ventas y compras.')) {
+        return;
+    }
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/productos/${id}/activate`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Producto activado exitosamente', 'success');
+            await loadProductos();
+        } else {
+            let errorMessage = 'Error al activar el producto';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+                errorMessage = `Error ${response.status}: ${response.statusText}`;
+            }
+            showMessage(errorMessage, 'error');
+        }
+    } catch (error) {
+        console.error('Error en activateProducto:', error);
+        showMessage('Error de conexión al intentar activar el producto', 'error');
+    }
 }
 
 // Función para mostrar formulario de compra

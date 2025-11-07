@@ -113,22 +113,12 @@ namespace Login_Análisis.Services
         {
             try
             {
-                Console.WriteLine("=== USANDO LÓGICA IDÉNTICA A PROVEEDORES ===");
-
-                // MISMA lógica exacta que ObtenerProveedores
                 var productos = await _context.Productos
-                    .Where(p => p.Estado) // Igual que proveedores
-                    .OrderBy(p => p.Nombre) // Igual que proveedores
-                    .ToListAsync(); // Igual que proveedores
-
-                Console.WriteLine($"Productos obtenidos: {productos.Count}");
-
-                // Mostrar primeros 3 para diagnóstico
-                for (int i = 0; i < Math.Min(3, productos.Count); i++)
-                {
-                    var p = productos[i];
-                    Console.WriteLine($"Producto {i + 1}: ID={p.Id}, Código={p.Codigo}, Nombre={p.Nombre}, Estado={p.Estado}");
-                }
+                    .Include(p => p.Categoria) 
+                    .Include(p => p.UnidadMedidaBase) 
+                    .Where(p => p.Estado)
+                    .OrderBy(p => p.Nombre)
+                    .ToListAsync();
 
                 return productos;
             }
@@ -138,6 +128,7 @@ namespace Login_Análisis.Services
                 return new List<Producto>();
             }
         }
+
         public async Task<Producto> ObtenerProducto(int id)
         {
             return await _context.Productos
