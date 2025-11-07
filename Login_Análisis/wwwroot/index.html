@@ -211,8 +211,10 @@
                                     </div>
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="proveedorRUC">RUC *</label>
-                                            <input type="text" id="proveedorRUC" required>
+                                            <label for="proveedorRUC">RUC / Identificación</label>
+                                            <input type="text" id="proveedorRUC" class="form-control"
+                                                   placeholder="Opcional - Para proveedores formales">
+                                            <small class="text-muted">Dejar vacío para proveedores informales</small>
                                         </div>
                                     </div>
                                 </div>
@@ -266,7 +268,7 @@
                         </div>
                     </div>
 
-                    <!-- Pestaña de Clientes - MEJORADA -->
+                    <!-- Pestaña de Clientes -->
                     <div id="tab-clientes" class="management-tab">
                         <div class="tab-header">
                             <h3><i class="fas fa-users"></i> Gestión de Clientes</h3>
@@ -294,7 +296,7 @@
                             </table>
                         </div>
 
-                        <!-- Formulario de Cliente - ESTILO MEJORADO -->
+                        <!-- Formulario de Cliente  -->
                         <div id="clienteForm" class="content-section" style="display: none; margin-top: 20px;">
                             <div class="section-title" id="clienteFormTitle">Nuevo Cliente</div>
                             <form id="clienteFormElement" onsubmit="handleClienteSubmit(event)">
@@ -341,7 +343,7 @@
                         </div>
                     </div>
 
-                    <!-- Pestaña de Descuentos - MEJORADA -->
+                    <!-- Pestaña de Descuentos -->
                     <div id="tab-descuentos" class="management-tab">
                         <div class="tab-header">
                             <h3><i class="fas fa-tag"></i> Configurar Descuentos</h3>
@@ -368,7 +370,7 @@
                             </table>
                         </div>
 
-                        <!-- Formulario de Descuentos - ESTILO MEJORADO -->
+                        <!-- Formulario de Descuentos -->
                         <div id="descuentoForm" class="content-section" style="display: none; margin-top: 20px;">
                             <div class="section-title">Configurar Descuento por Cantidad</div>
                             <form id="descuentoFormElement" onsubmit="handleDescuentoSubmit(event)">
@@ -660,7 +662,7 @@
                         </div>
                     </div>
 
-                    <!-- Pestaña de Ventas - COMPLETA -->
+                    <!-- Pestaña de Ventas  -->
                     <div id="tab-ventas" class="management-tab">
                         <div class="tab-header">
                             <h3><i class="fas fa-cash-register"></i> Registrar Venta</h3>
@@ -669,7 +671,7 @@
                             </button>
                         </div>
 
-                        <!-- Formulario de Venta - VISIBLE POR DEFECTO -->
+                        <!-- Formulario de Venta -->
                         <div id="ventaForm" class="content-section">
                             <div class="section-title">Información de la Venta</div>
                             <form id="ventaFormElement" onsubmit="handleVentaSubmit(event)">

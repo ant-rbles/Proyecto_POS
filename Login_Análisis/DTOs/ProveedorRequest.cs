@@ -8,7 +8,6 @@ namespace Login_Análisis.DTOs
         [MaxLength(200, ErrorMessage = "El nombre no puede exceder 200 caracteres")]
         public string Nombre { get; set; }
 
-        [Required(ErrorMessage = "El RUC es obligatorio")]
         [MaxLength(20, ErrorMessage = "El RUC no puede exceder 20 caracteres")]
         public string RUC { get; set; }
 

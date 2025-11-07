@@ -20,7 +20,7 @@ namespace Login_Análisis.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedores()
         {
-            var proveedores = await _proveedorService.ObtenerProveedoresActivosAsync();
+            var proveedores = await _productoService.ObtenerProveedoresActivosAsync();
             return Ok(proveedores);
         }
 
@@ -29,7 +29,7 @@ namespace Login_Análisis.Controllers
         {
             try
             {
-                var proveedores = await _proveedorService.ObtenerTodosProveedoresAsync();
+                var proveedores = await _productoService.ObtenerTodosProveedoresAsync();
                 return Ok(proveedores);
             }
             catch (Exception ex)
@@ -79,11 +79,13 @@ namespace Login_Análisis.Controllers
 
             try
             {
-                // Verificar si ya existe un proveedor con el mismo RUC
-                var proveedorExistente = await _productoService.ObtenerProveedorPorRUC(request.RUC);
-                if (proveedorExistente != null)
+                if (!string.IsNullOrEmpty(request.RUC))
                 {
-                    return BadRequest(new { Message = "Ya existe un proveedor con este RUC" });
+                    var proveedorExistente = await _productoService.ObtenerProveedorPorRUC(request.RUC);
+                    if (proveedorExistente != null)
+                    {
+                        return BadRequest(new { Message = "Ya existe un proveedor con este RUC" });
+                    }
                 }
 
                 var proveedor = new Proveedor
@@ -139,12 +141,15 @@ namespace Login_Análisis.Controllers
                 if (proveedorExistente == null)
                     return NotFound(new { Message = "Proveedor no encontrado" });
 
-                // Verificar si otro proveedor tiene el mismo RUC
-                var proveedorConMismoRUC = await _productoService.ObtenerProveedorPorRUC(request.RUC);
-                if (proveedorConMismoRUC != null && proveedorConMismoRUC.Id != id)
+                if (!string.IsNullOrEmpty(request.RUC))
                 {
-                    return BadRequest(new { Message = "Ya existe un proveedor con este RUC" });
+                    var proveedorConMismoRUC = await _productoService.ObtenerProveedorPorRUC(request.RUC);
+                    if (proveedorConMismoRUC != null && proveedorConMismoRUC.Id != id)
+                    {
+                        return BadRequest(new { Message = "Ya existe un proveedor con este RUC" });
+                    }
                 }
+
 
                 // Actualizar propiedades
                 proveedorExistente.Nombre = request.Nombre;
@@ -173,6 +178,28 @@ namespace Login_Análisis.Controllers
                 };
 
                 return Ok(new { Message = "Proveedor actualizado exitosamente", Proveedor = proveedorResponse });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}/activate")]
+        public async Task<IActionResult> ActivarProveedor(int id)
+        {
+            try
+            {
+                var proveedor = await _productoService.ObtenerProveedor(id);
+                if (proveedor == null)
+                    return NotFound(new { Message = "Proveedor no encontrado" });
+
+                // Activar el proveedor
+                proveedor.Estado = true;
+                proveedor.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Proveedor activado exitosamente" });
             }
             catch (Exception ex)
             {
