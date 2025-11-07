@@ -87,6 +87,9 @@ function openManagementTab(tabName) {
 
             // Cargar datos específicos de la pestaña
             switch (tabName) {
+                case 'clientes':
+                    loadClientes();
+                    break;
                 case 'proveedores':
                     console.log('Cargando TODOS los proveedores...');
                     loadProveedores();

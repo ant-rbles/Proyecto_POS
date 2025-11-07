@@ -117,6 +117,12 @@ function setupManagementEventListeners() {
         unidadForm.addEventListener('submit', handleUnidadSubmit);
     }
 
+    // Formulario de clientes
+    const clienteForm = document.getElementById('clienteFormElement');
+    if (clienteForm) {
+        clienteForm.addEventListener('submit', handleClienteSubmit);
+    }
+
     // Formulario de ventas
     const ventaForm = document.getElementById('ventaFormElement');
     if (ventaForm) {
