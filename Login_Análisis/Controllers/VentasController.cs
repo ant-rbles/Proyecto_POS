@@ -1,7 +1,8 @@
-﻿using Login_Análisis.Models;
+﻿using Login_Análisis.DTOs;
+using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
-using Login_Análisis.DTOs;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Login_Análisis.Controllers
@@ -44,28 +45,7 @@ namespace Login_Análisis.Controllers
                     }
                 }
 
-                var venta = new Venta
-                {
-                    NumeroFactura = GenerarNumeroFactura(),
-                    FechaVenta = request.FechaVenta,
-                    Impuestos = request.Impuestos,
-                    Observaciones = request.Observaciones,
-                    ClienteId = request.ClienteId,
-                    NombreCliente = request.NombreCliente,
-                    UsuarioCreacion = request.UsuarioCreacion,
-                    FechaCreacion = DateTime.UtcNow
-                };
-
-                var detalles = request.Detalles.Select(d => new DetalleVenta
-                {
-                    ProductoId = d.ProductoId,
-                    UnidadMedidaId = d.UnidadMedidaId,
-                    Cantidad = d.Cantidad,
-                    PrecioUnitario = d.PrecioUnitario,
-                    TotalLinea = d.Cantidad * d.PrecioUnitario
-                }).ToList();
-
-                var result = await _productoService.CrearVenta(venta, detalles);
+                var result = await _productoService.CrearVenta(request);
 
                 if (!result.success)
                     return BadRequest(new { Message = result.message });
@@ -81,11 +61,6 @@ namespace Login_Análisis.Controllers
             {
                 return StatusCode(500, new { Message = "Error interno del servidor", Error = ex.Message });
             }
-        }
-
-        private string GenerarNumeroFactura()
-        {
-            return $"F{DateTime.Now:yyyyMMddHHmmss}";
         }
 
         [HttpGet]

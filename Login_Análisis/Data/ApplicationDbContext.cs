@@ -21,6 +21,8 @@ namespace Login_Análisis.Data
         public DbSet<MovimientoInventario> MovimientosInventario { get; set; }
         public DbSet<Venta> Ventas { get; set; }
         public DbSet<DetalleVenta> DetalleVentas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+        public DbSet<DescuentoProducto> DescuentosProducto { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -151,6 +153,14 @@ namespace Login_Análisis.Data
                 entity.Property(e => e.Observaciones).HasMaxLength(1000);
                 entity.Property(e => e.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("COMPLETADA");
                 entity.Property(e => e.NombreCliente).HasMaxLength(200);
+                entity.Property(e => e.NITCliente).HasMaxLength(20);
+                entity.Property(e => e.DescuentoGlobal).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.AplicarIVA).IsRequired().HasDefaultValue(true);
+
+                entity.HasOne(v => v.Cliente)
+                      .WithMany()
+                      .HasForeignKey(v => v.ClienteId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configuración de DetalleVenta
@@ -161,6 +171,7 @@ namespace Login_Análisis.Data
                 entity.Property(e => e.CantidadBase).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.PrecioUnitario).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.TotalLinea).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.DescuentoAplicado).HasColumnType("decimal(5,2)").HasDefaultValue(0);
 
                 entity.HasOne(d => d.Venta)
                       .WithMany(v => v.Detalles)
@@ -195,6 +206,33 @@ namespace Login_Análisis.Data
                       .WithMany()
                       .HasForeignKey(m => m.ProductoId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración de Cliente
+            modelBuilder.Entity<Cliente>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nombre).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.NIT).HasMaxLength(20);
+                entity.HasIndex(e => e.NIT); // Índice para búsqueda rápida por NIT
+                entity.Property(e => e.Direccion).HasMaxLength(500);
+                entity.Property(e => e.Telefono).HasMaxLength(20);
+                entity.Property(e => e.Email).HasMaxLength(100);
+                entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
+            });
+
+            // Configuración de DescuentoProducto
+            modelBuilder.Entity<DescuentoProducto>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CantidadMinima).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PorcentajeDescuento).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.Estado).IsRequired().HasDefaultValue(true);
+
+                entity.HasOne(d => d.Producto)
+                      .WithMany()
+                      .HasForeignKey(d => d.ProductoId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

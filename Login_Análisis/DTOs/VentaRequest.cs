@@ -6,18 +6,16 @@ namespace Login_Análisis.DTOs
     public class VentaRequest
     {
         [Required]
-        public string NumeroFactura { get; set; }
-
-        [Required]
-        public DateTime FechaVenta { get; set; }
-
-        public decimal Impuestos { get; set; } = 0;
-
-        public string Observaciones { get; set; }
+        public DateTime FechaVenta { get; set; } = DateTime.UtcNow;
 
         public int? ClienteId { get; set; }
         public string NombreCliente { get; set; }
+        public string NITCliente { get; set; }
 
+        public decimal DescuentoGlobal { get; set; } = 0;
+        public bool AplicarIVA { get; set; } = true;
+
+        public string Observaciones { get; set; }
         public int? UsuarioCreacion { get; set; }
 
         [Required]
@@ -35,7 +33,8 @@ namespace Login_Análisis.DTOs
         [Required]
         public decimal Cantidad { get; set; }
 
-        [Required]
         public decimal PrecioUnitario { get; set; }
+
+        public decimal DescuentoAplicado { get; set; } = 0;
     }
 }

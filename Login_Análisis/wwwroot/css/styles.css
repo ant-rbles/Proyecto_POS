@@ -1077,3 +1077,117 @@ body {
         background: #224abe;
         transform: scale(1.1);
     }
+/* Mejoras para formularios */
+.content-section {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.section-title {
+    color: #4e73df;
+    margin-bottom: 20px;
+    font-size: 22px;
+    font-weight: 600;
+    border-bottom: 2px solid #4e73df;
+    padding-bottom: 10px;
+}
+
+/* Form panels dentro de content-section */
+.content-section .form-panel {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #eaecf4;
+    box-shadow: none;
+}
+
+    .content-section .form-panel h5 {
+        color: #4e73df;
+        margin-bottom: 15px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+/* Mejoras para los totales */
+.totales-section {
+    background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #4e73df;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 16px;
+}
+
+.total-final {
+    border-top: 2px solid #4e73df;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 10px;
+    padding-top: 15px;
+    color: #4e73df;
+}
+
+/* Mejoras para botones */
+.btn {
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    border: none;
+}
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
+    }
+
+/* Form controls mejorados */
+.form-control {
+    border-radius: 6px;
+    border: 1px solid #d1d3e2;
+    padding: 12px 15px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+    .form-control:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+/* Texto de ayuda */
+.text-muted {
+    color: #6c757d !important;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .content-section {
+        padding: 15px;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-column {
+        width: 100%;
+    }
+}

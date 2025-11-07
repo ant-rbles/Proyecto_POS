@@ -1,4 +1,5 @@
 ﻿using Login_Análisis.Data;
+using Login_Análisis.DTOs;
 using Login_Análisis.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -394,46 +395,82 @@ namespace Login_Análisis.Services
         }
 
         // Métodos para Ventas
-        public async Task<(bool success, string message, Venta venta)> CrearVenta(Venta venta, List<DetalleVenta> detalles)
+        public async Task<(bool success, string message, Venta venta)> CrearVenta(VentaRequest request)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Verificar si ya existe una venta con el mismo número de factura
-                if (await _context.Ventas.AnyAsync(c => c.NumeroFactura == venta.NumeroFactura))
+                // Generar número de factura automático
+                var numeroFactura = GenerarNumeroFactura();
+
+                var venta = new Venta
                 {
-                    return (false, "Ya existe una venta con este número de factura", null);
-                }
+                    NumeroFactura = numeroFactura,
+                    FechaVenta = request.FechaVenta,
+                    ClienteId = request.ClienteId,
+                    NombreCliente = request.NombreCliente,
+                    NITCliente = request.NITCliente,
+                    DescuentoGlobal = request.DescuentoGlobal,
+                    AplicarIVA = request.AplicarIVA,
+                    Observaciones = request.Observaciones,
+                    UsuarioCreacion = request.UsuarioCreacion,
+                    FechaCreacion = DateTime.UtcNow,
+                    Estado = "COMPLETADA"
+                };
 
                 // Calcular totales
-                venta.Subtotal = detalles.Sum(d => d.TotalLinea);
+                decimal subtotal = 0;
+                var detalles = new List<DetalleVenta>();
+
+                foreach (var detalleRequest in request.Detalles)
+                {
+                    var producto = await _context.Productos.FindAsync(detalleRequest.ProductoId);
+                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalleRequest.UnidadMedidaId);
+
+                    if (producto == null || unidadMedida == null)
+                        throw new Exception("Producto o unidad de medida no encontrado");
+
+                    // Convertir cantidad a unidad base
+                    var cantidadBase = detalleRequest.Cantidad * unidadMedida.FactorConversion;
+
+                    // Usar precio de venta del producto (no editable)
+                    var precioUnitario = producto.PrecioVenta;
+
+                    // Aplicar descuento si existe
+                    var precioConDescuento = precioUnitario * (1 - detalleRequest.DescuentoAplicado / 100);
+                    var totalLinea = detalleRequest.Cantidad * precioConDescuento;
+                    subtotal += totalLinea;
+
+                    var detalle = new DetalleVenta
+                    {
+                        ProductoId = detalleRequest.ProductoId,
+                        UnidadMedidaId = detalleRequest.UnidadMedidaId,
+                        Cantidad = detalleRequest.Cantidad,
+                        CantidadBase = cantidadBase,
+                        PrecioUnitario = precioConDescuento,
+                        DescuentoAplicado = detalleRequest.DescuentoAplicado,
+                        TotalLinea = totalLinea
+                    };
+
+                    detalles.Add(detalle);
+                }
+
+                // Aplicar descuento global y calcular impuestos
+                venta.Subtotal = subtotal - request.DescuentoGlobal;
+                venta.Impuestos = request.AplicarIVA ? venta.Subtotal * 0.12m : 0; // 12% IVA Guatemala
                 venta.Total = venta.Subtotal + venta.Impuestos;
 
                 // Guardar venta
                 _context.Ventas.Add(venta);
                 await _context.SaveChangesAsync();
 
-                // Procesar cada detalle
+                // Guardar detalles y actualizar inventario
                 foreach (var detalle in detalles)
                 {
                     detalle.VentaId = venta.Id;
-
-                    // Obtener producto y unidad de medida
-                    var producto = await _context.Productos.FindAsync(detalle.ProductoId);
-                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalle.UnidadMedidaId);
-
-                    if (producto == null || unidadMedida == null)
-                    {
-                        throw new Exception("Producto o unidad de medida no encontrado");
-                    }
-
-                    // Convertir cantidad a unidad base
-                    detalle.CantidadBase = detalle.Cantidad * unidadMedida.FactorConversion;
-
-                    // Guardar detalle
                     _context.DetalleVentas.Add(detalle);
 
-                    // Actualizar inventario del producto (reducir stock)
+                    var producto = await _context.Productos.FindAsync(detalle.ProductoId);
                     await ActualizarInventarioVenta(producto, detalle);
                 }
 
@@ -447,6 +484,16 @@ namespace Login_Análisis.Services
                 await transaction.RollbackAsync();
                 return (false, $"Error: {ex.Message}", null);
             }
+        }
+
+        private async Task<decimal> CalcularDescuentoPorCantidad(int productoId, decimal cantidad)
+        {
+            var descuentos = await _context.DescuentosProducto
+                .Where(d => d.ProductoId == productoId && d.Estado && d.CantidadMinima <= cantidad)
+                .OrderByDescending(d => d.CantidadMinima)
+                .ToListAsync();
+
+            return descuentos.FirstOrDefault()?.PorcentajeDescuento ?? 0;
         }
 
         private async Task ActualizarInventarioVenta(Producto producto, DetalleVenta detalle)
@@ -490,6 +537,7 @@ namespace Login_Análisis.Services
                     .ThenInclude(d => d.Producto)
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.UnidadMedida)
+                .Include(v => v.Cliente) 
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
@@ -510,16 +558,6 @@ namespace Login_Análisis.Services
             return await query.OrderByDescending(v => v.FechaVenta).ToListAsync();
         }
 
-        public async Task<Venta> ObtenerVenta(int id)
-        {
-            return await _context.Ventas
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.Producto)
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.UnidadMedida)
-                .FirstOrDefaultAsync(v => v.Id == id);
-        }
-
         public async Task<(bool success, string message)> CambiarEstadoVenta(int ventaId, string estado)
         {
             try
@@ -537,6 +575,17 @@ namespace Login_Análisis.Services
             {
                 return (false, $"Error: {ex.Message}");
             }
+        }
+
+        public async Task<Venta> ObtenerVenta(int id)
+        {
+            return await _context.Ventas
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .Include(v => v.Cliente) 
+                .FirstOrDefaultAsync(v => v.Id == id);
         }
 
         // Métodos para Categorías
@@ -572,6 +621,68 @@ namespace Login_Análisis.Services
                 return (false, $"Error: {ex.Message}");
             }
         }
+
+        // Métodos para Clientes
+        public async Task<List<Cliente>> ObtenerClientes()
+        {
+            return await _context.Clientes
+                .Where(c => c.Estado)
+                .OrderBy(c => c.Nombre)
+                .ToListAsync();
+        }
+
+        public async Task<Cliente> ObtenerCliente(int id)
+        {
+            return await _context.Clientes.FindAsync(id);
+        }
+
+        public async Task<Cliente> ObtenerClientePorNIT(string nit)
+        {
+            return await _context.Clientes
+                .FirstOrDefaultAsync(c => c.NIT == nit && c.Estado);
+        }
+
+        public async Task<(bool success, string message)> CrearCliente(Cliente cliente)
+        {
+            try
+            {
+                // Verificar si ya existe un cliente con el mismo NIT
+                if (await _context.Clientes.AnyAsync(c => c.NIT == cliente.NIT))
+                {
+                    return (false, "Ya existe un cliente con este NIT");
+                }
+
+                _context.Clientes.Add(cliente);
+                await _context.SaveChangesAsync();
+                return (true, "Cliente creado exitosamente");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // MÉTODO PARA GENERAR NÚMERO DE FACTURA
+        private string GenerarNumeroFactura()
+        {
+            var ultimaVenta = _context.Ventas
+                .Where(v => v.NumeroFactura.StartsWith("FAC-"))
+                .OrderByDescending(v => v.Id)
+                .FirstOrDefault();
+
+            var numero = 1;
+            if (ultimaVenta != null)
+            {
+                var partes = ultimaVenta.NumeroFactura.Split('-');
+                if (partes.Length > 1 && int.TryParse(partes[1], out int ultimoNumero))
+                {
+                    numero = ultimoNumero + 1;
+                }
+            }
+
+            return $"FAC-{numero:000000}";
+        }
+
 
         // Métodos para Movimientos de Inventario
         public async Task<List<MovimientoInventario>> ObtenerMovimientosInventario(
