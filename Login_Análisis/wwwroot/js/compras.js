@@ -1,163 +1,128 @@
-﻿// compras.js - Gestión completa de compras
-
-// Variables globales para compras
-let compraDetalles = [];
-let currentCompraId = null;
-
-// Inicializar módulo de compras
-document.addEventListener('DOMContentLoaded', () => {
-    setupComprasEventListeners();
-});
-
-function setupComprasEventListeners() {
-    const compraForm = document.getElementById('compraFormElement');
-    if (compraForm) {
-        compraForm.addEventListener('submit', handleCompraSubmit);
-    }
-}
-
-// Mostrar formulario de compras
-function showCompraForm(compra = null) {
+﻿// Función para mostrar formulario de compra
+function showCompraForm() {
+    console.log('Mostrando formulario de compra');
     openManagementTab('compras');
-
     const form = document.getElementById('compraForm');
-    const title = document.getElementById('compraFormTitle');
-
     if (form) {
-        if (compra) {
-            title.textContent = 'Editar Compra';
-            currentCompraId = compra.id;
-            fillCompraForm(compra);
-        } else {
-            title.textContent = 'Nueva Compra';
-            currentCompraId = null;
-            resetCompraForm();
-        }
         form.style.display = 'block';
-    }
-}
 
-function resetCompraForm() {
-    const form = document.getElementById('compraFormElement');
-    if (form) form.reset();
-    compraDetalles = [];
-    renderCompraDetalles();
-    calcularTotalesCompra();
+        // Establecer fecha actual
+        document.getElementById('compraFecha').value = new Date().toISOString().split('T')[0];
 
-    // Establecer fecha actual
-    const fechaInput = document.getElementById('compraFecha');
-    if (fechaInput) {
-        fechaInput.value = new Date().toISOString().split('T')[0];
-    }
-}
+        // Generar número de factura automático (se generará en el backend)
+        document.getElementById('compraFactura').value = '';
+        document.getElementById('compraFactura').placeholder = 'Se generará automáticamente';
 
-// Llenar formulario de compra
-function fillCompraForm(compra) {
-    document.getElementById('compraId').value = compra.id;
-    document.getElementById('compraNumeroFactura').value = compra.numeroFactura || '';
-    document.getElementById('compraProveedor').value = compra.proveedorId || '';
-    document.getElementById('compraFecha').value = new Date(compra.fechaCompra).toISOString().split('T')[0];
-    document.getElementById('compraImpuestos').value = compra.impuestos || 0;
-    document.getElementById('compraObservaciones').value = compra.observaciones || '';
-
-    // Cargar detalles de la compra
-    if (compra.detalles && compra.detalles.length > 0) {
-        compraDetalles = compra.detalles.map(detalle => ({
-            productoId: detalle.productoId,
-            productoNombre: detalle.producto?.nombre || 'Producto',
-            unidadMedidaId: detalle.unidadMedidaId,
-            unidadMedidaAbreviatura: detalle.unidadMedida?.abreviatura || 'UND',
-            cantidad: detalle.cantidad,
-            precioUnitario: detalle.precioUnitario,
-            totalLinea: detalle.totalLinea
-        }));
-        renderCompraDetalles();
+        // Reiniciar detalles
+        detallesCompra = [];
+        renderDetallesTable();
         calcularTotalesCompra();
+
+        // Cargar datos necesarios
+        updateProveedoresSelect();
+        updateProductosSelects();
+        cargarUnidadesParaCompra();
+    } else {
+        console.error('No se encontró el formulario de compra');
     }
 }
 
-// Ocultar formulario de compra
+// Función para cargar unidades de medida en compras
+function cargarUnidadesParaCompra() {
+    const select = document.getElementById('detalleUnidad');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Seleccionar unidad</option>' +
+        unidadesMedida.map(u =>
+            `<option value="${u.id}" data-factor="${u.factorConversion}">${u.nombre} (${u.abreviatura})</option>`
+        ).join('');
+}
+
 function hideCompraForm() {
     const form = document.getElementById('compraForm');
     if (form) form.style.display = 'none';
-    currentCompraId = null;
-    compraDetalles = [];
+    const compraFormElement = document.getElementById('compraFormElement');
+    if (compraFormElement) compraFormElement.reset();
+    detallesCompra = [];
 }
 
-// Agregar producto a la compra
-function agregarProductoCompra() {
-    const productoSelect = document.getElementById('compraProducto');
-    const cantidadInput = document.getElementById('compraCantidad');
-    const unidadSelect = document.getElementById('compraUnidadMedida');
-    const precioInput = document.getElementById('compraPrecio');
-
-    const productoId = parseInt(productoSelect.value);
-    const productoNombre = productoSelect.options[productoSelect.selectedIndex].text;
-    const cantidad = parseFloat(cantidadInput.value);
-    const unidadMedidaId = parseInt(unidadSelect.value);
-    const unidadMedidaAbreviatura = unidadSelect.options[unidadSelect.selectedIndex].text;
-    const precioUnitario = parseFloat(precioInput.value);
+// Función mejorada para agregar detalle a compra
+function agregarDetalle() {
+    const productoId = parseInt(document.getElementById('detalleProducto')?.value);
+    const unidadId = parseInt(document.getElementById('detalleUnidad')?.value);
+    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
 
     // Validaciones
-    if (!productoId || !cantidad || cantidad <= 0 || !unidadMedidaId || !precioUnitario || precioUnitario <= 0) {
-        showMessage('Complete todos los campos del producto', 'error');
+    if (!productoId || isNaN(productoId)) {
+        showMessage('Seleccione un producto válido', 'error');
+        return;
+    }
+    if (!unidadId || isNaN(unidadId)) {
+        showMessage('Seleccione una unidad de medida válida', 'error');
+        return;
+    }
+    if (cantidad <= 0) {
+        showMessage('La cantidad debe ser mayor a 0', 'error');
+        return;
+    }
+    if (precio <= 0) {
+        showMessage('El precio unitario debe ser mayor a 0', 'error');
         return;
     }
 
-    // Verificar si el producto ya está en la compra
-    const productoExistente = compraDetalles.find(d => d.productoId === productoId);
-    if (productoExistente) {
-        showMessage('Este producto ya está en la compra. Puede editar la cantidad.', 'error');
+    // Obtener información del producto y unidad
+    const producto = productos.find(p => p.id === productoId);
+    const unidad = unidadesMedida.find(u => u.id === unidadId);
+
+    if (!producto || !unidad) {
+        showMessage('Error al obtener información del producto o unidad', 'error');
         return;
     }
-
-    const totalLinea = cantidad * precioUnitario;
 
     const detalle = {
         productoId: productoId,
-        productoNombre: productoNombre,
-        unidadMedidaId: unidadMedidaId,
-        unidadMedidaAbreviatura: unidadMedidaAbreviatura,
+        unidadMedidaId: unidadId,
         cantidad: cantidad,
-        precioUnitario: precioUnitario,
-        totalLinea: totalLinea
+        precioUnitario: precio,
+        totalLinea: cantidad * precio,
+        producto: producto,
+        unidad: unidad
     };
 
-    compraDetalles.push(detalle);
-    renderCompraDetalles();
+    detallesCompra.push(detalle);
+    renderDetallesTable();
     calcularTotalesCompra();
-    limpiarFormularioProductoCompra();
 
-    showMessage('Producto agregado a la compra', 'success');
+    // Limpiar campos del detalle
+    document.getElementById('detalleCantidad').value = '1';
+    document.getElementById('detallePrecio').value = '0';
+    document.getElementById('detalleTotal').value = '0';
+    document.getElementById('detalleProducto').selectedIndex = 0;
 }
 
-// Renderizar detalles de compra
-function renderCompraDetalles() {
-    const tbody = document.getElementById('compraDetallesBody');
-    if (!tbody) return;
+function eliminarDetalle(index) {
+    detallesCompra.splice(index, 1);
+    renderDetallesTable();
+    calcularTotalesCompra();
+}
 
-    if (compraDetalles.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center" style="padding: 20px; color: #6c757d;">
-                    <i class="fas fa-shopping-basket" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                    No hay productos agregados
-                </td>
-            </tr>
-        `;
+function renderDetallesTable() {
+    const tbody = document.getElementById('detallesTableBody');
+    if (!tbody) {
+        console.error('No se encontró detallesTableBody');
         return;
     }
 
-    tbody.innerHTML = compraDetalles.map((detalle, index) => `
+    tbody.innerHTML = detallesCompra.map((detalle, index) => `
         <tr>
-            <td>${detalle.productoNombre}</td>
+            <td>${detalle.producto.nombre}</td>
+            <td>${detalle.unidad.nombre}</td>
             <td>${detalle.cantidad}</td>
-            <td>${detalle.unidadMedidaAbreviatura}</td>
-            <td>${formatCurrency(detalle.precioUnitario)}</td>
-            <td>${formatCurrency(detalle.totalLinea)}</td>
+            <td>$${detalle.precioUnitario.toFixed(2)}</td>
+            <td>$${detalle.totalLinea.toFixed(2)}</td>
             <td>
-                <button type="button" class="action-btn delete-btn" onclick="eliminarProductoCompra(${index})" 
-                        title="Eliminar producto">
+                <button class="action-btn delete-btn" onclick="eliminarDetalle(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -165,280 +130,251 @@ function renderCompraDetalles() {
     `).join('');
 }
 
-// Eliminar producto de la compra
-function eliminarProductoCompra(index) {
-    if (confirm('¿Está seguro de eliminar este producto de la compra?')) {
-        compraDetalles.splice(index, 1);
-        renderCompraDetalles();
-        calcularTotalesCompra();
-        showMessage('Producto eliminado de la compra', 'success');
-    }
-}
-
-// Calcular total línea para compras
 function calcularTotalLinea() {
-    const cantidad = parseFloat(document.getElementById('compraCantidad').value) || 0;
-    const precio = parseFloat(document.getElementById('compraPrecio').value) || 0;
+    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
     const total = cantidad * precio;
-
-    document.getElementById('compraTotalLinea').value = total.toFixed(2);
+    document.getElementById('detalleTotal').value = total.toFixed(2);
 }
 
-// Calcular totales de la compra
 function calcularTotalesCompra() {
-    const subtotal = compraDetalles.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
-    const impuestos = parseFloat(document.getElementById('compraImpuestos').value) || 0;
+    const subtotal = detallesCompra.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+    const impuestos = parseFloat(document.getElementById('compraImpuestos')?.value) || 0;
     const total = subtotal + impuestos;
 
-    // Actualizar UI
-    document.getElementById('compraSubtotal').textContent = formatCurrency(subtotal);
-    document.getElementById('compraImpuestosMonto').textContent = formatCurrency(impuestos);
-    document.getElementById('compraTotal').textContent = formatCurrency(total);
+    document.getElementById('compraSubtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('compraImpuestosTotal').textContent = impuestos.toFixed(2);
+    document.getElementById('compraTotal').textContent = total.toFixed(2);
 }
 
-// Limpiar formulario de producto en compras
-function limpiarFormularioProductoCompra() {
-    document.getElementById('compraProducto').value = '';
-    document.getElementById('compraCantidad').value = '1';
-    document.getElementById('compraUnidadMedida').value = '';
-    document.getElementById('compraPrecio').value = '';
-    document.getElementById('compraTotalLinea').value = '';
-}
-
-// Manejar envío del formulario de compra
+// Función mejorada para enviar compra
 async function handleCompraSubmit(e) {
     e.preventDefault();
 
-    if (compraDetalles.length === 0) {
-        showMessage('Agregue al menos un producto a la compra', 'error');
+    if (detallesCompra.length === 0) {
+        showMessage('Debe agregar al menos un detalle a la compra', 'error');
         return;
     }
 
-    const numeroFactura = document.getElementById('compraNumeroFactura').value.trim();
-    const proveedorId = document.getElementById('compraProveedor').value;
-    const fechaCompra = document.getElementById('compraFecha').value;
-    const impuestos = parseFloat(document.getElementById('compraImpuestos').value) || 0;
-    const observaciones = document.getElementById('compraObservaciones').value;
-
-    // Validaciones
-    if (!numeroFactura) {
-        showMessage('El número de factura es obligatorio', 'error');
-        return;
-    }
-
-    if (!proveedorId) {
-        showMessage('Debe seleccionar un proveedor', 'error');
+    const proveedorId = parseInt(document.getElementById('compraProveedor')?.value);
+    if (!proveedorId || isNaN(proveedorId)) {
+        showMessage('Seleccione un proveedor válido', 'error');
         return;
     }
 
     const compraData = {
-        NumeroFactura: numeroFactura,
-        ProveedorId: parseInt(proveedorId),
-        FechaCompra: fechaCompra,
-        Impuestos: impuestos,
-        Observaciones: observaciones,
-        Detalles: compraDetalles.map(detalle => ({
-            ProductoId: detalle.productoId,
-            UnidadMedidaId: detalle.unidadMedidaId,
-            Cantidad: detalle.cantidad,
-            PrecioUnitario: detalle.precioUnitario
+        numeroFactura: document.getElementById('compraFactura')?.value || '', // Vacío para generación automática
+        proveedorId: proveedorId,
+        fechaCompra: document.getElementById('compraFecha').value,
+        impuestos: parseFloat(document.getElementById('compraImpuestos')?.value) || 0,
+        observaciones: document.getElementById('compraObservaciones')?.value,
+        usuarioCreacion: JSON.parse(localStorage.getItem('user')).id,
+        detalles: detallesCompra.map(d => ({
+            productoId: d.productoId,
+            unidadMedidaId: d.unidadMedidaId,
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario
         }))
     };
 
     try {
-        const submitBtn = document.querySelector('#compraFormElement button[type="submit"]');
-        const originalText = submitBtn.textContent;
-
-        // Mostrar loading
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Procesando...';
-
-        let response;
-        const url = currentCompraId
-            ? `https://localhost:7000/api/compras/${currentCompraId}`
-            : 'https://localhost:7000/api/compras';
-
-        const method = currentCompraId ? 'PUT' : 'POST';
-
-        response = await apiCall(url, {
-            method: method,
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/compras', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify(compraData)
         });
 
-        showMessage('Compra guardada exitosamente', 'success');
-        hideCompraForm();
-        loadCompras();
-
+        if (response.ok) {
+            const result = await response.json();
+            showMessage('Compra registrada exitosamente', 'success');
+            hideCompraForm();
+            await loadCompras();
+            await loadProductos(); // Recargar productos para ver stock actualizado
+            await loadInventario(); // Actualizar vista de inventario
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al registrar compra', 'error');
+        }
     } catch (error) {
         console.error('Error:', error);
-        showMessage(error.message || 'Error al guardar compra', 'error');
-    } finally {
-        const submitBtn = document.querySelector('#compraFormElement button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = currentCompraId ? 'Actualizar Compra' : 'Guardar Compra';
-        }
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Cargar compras
+// Función para cargar compras
 async function loadCompras() {
     try {
-        compras = await apiCall('https://localhost:7000/api/compras');
-        renderComprasTable();
+        console.log('Cargando compras...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/compras', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            compras = await response.json();
+            console.log('Compras cargadas:', compras);
+            renderComprasTable();
+        } else {
+            showMessage('Error al cargar las compras', 'error');
+        }
     } catch (error) {
         console.error('Error al cargar compras:', error);
-        showMessage('Error al cargar compras', 'error');
+        showMessage('Error de conexión al cargar compras', 'error');
     }
 }
 
-// Renderizar tabla de compras
+// Función para renderizar tabla de compras
 function renderComprasTable() {
     const tbody = document.getElementById('comprasTableBody');
     if (!tbody) return;
 
     if (!compras || compras.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center" style="padding: 20px; color: #6c757d;">
-                    <i class="fas fa-shopping-basket" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                    No hay compras registradas
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay compras registradas</td></tr>';
         return;
     }
 
     tbody.innerHTML = compras.map(compra => `
         <tr>
             <td>${compra.numeroFactura}</td>
-            <td>${compra.proveedor?.nombre || 'N/A'}</td>
+            <td>${compra.proveedor ? compra.proveedor.nombre : 'N/A'}</td>
             <td>${new Date(compra.fechaCompra).toLocaleDateString()}</td>
-            <td>${formatCurrency(compra.subtotal)}</td>
-            <td>${formatCurrency(compra.impuestos)}</td>
-            <td>${formatCurrency(compra.total)}</td>
+            <td>${compra.detalles ? compra.detalles.length : 0}</td>
+            <td>$${compra.subtotal ? compra.subtotal.toFixed(2) : '0.00'}</td>
+            <td>$${compra.impuestos ? compra.impuestos.toFixed(2) : '0.00'}</td>
+            <td>$${compra.total ? compra.total.toFixed(2) : '0.00'}</td>
             <td>
-                <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : compra.estado === 'PENDIENTE' ? 'badge-warning' : 'badge-danger'}">
+                <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : compra.estado === 'ANULADA' ? 'badge-danger' : 'badge-warning'}">
                     ${compra.estado}
                 </span>
             </td>
             <td>
-                <button class="action-btn view-btn" onclick="verDetalleCompra(${compra.id})" title="Ver detalle">
+                <button class="action-btn view-btn" onclick="verDetalleCompra(${compra.id})" title="Ver Detalle">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button class="action-btn edit-btn" onclick="editarCompra(${compra.id})" title="Editar compra">
-                    <i class="fas fa-edit"></i>
-                </button>
                 ${compra.estado !== 'ANULADA' ? `
-                <button class="action-btn delete-btn" onclick="anularCompra(${compra.id})" title="Anular compra">
-                    <i class="fas fa-ban"></i>
-                </button>
+                    <button class="action-btn delete-btn" onclick="anularCompra(${compra.id})" title="Anular Compra">
+                        <i class="fas fa-ban"></i>
+                    </button>
                 ` : ''}
             </td>
         </tr>
     `).join('');
 }
 
-// Ver detalle de compra
-async function verDetalleCompra(id) {
+// Función para anular compra
+async function anularCompra(id) {
+    if (!confirm('¿Está seguro de que desea anular esta compra? Se revertirá el stock de los productos.')) {
+        return;
+    }
+
     try {
-        const compra = await apiCall(`https://localhost:7000/api/compras/${id}`);
-        mostrarModalDetalleCompra(compra);
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/compras/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Compra anulada exitosamente', 'success');
+            await loadCompras();
+            await loadProductos();
+            await loadInventario();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
     } catch (error) {
-        showMessage('Error al cargar detalle de compra', 'error');
+        console.error('Error al anular compra:', error);
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Mostrar modal con detalle de compra
+// Función para ver detalle de compra
+async function verDetalleCompra(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/compras/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const compra = await response.json();
+            mostrarModalDetalleCompra(compra);
+        } else {
+            showMessage('Error al cargar el detalle de la compra', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+// Función para mostrar modal con detalle de compra
 function mostrarModalDetalleCompra(compra) {
     const modalHTML = `
-        <div id="detalleCompraModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div id="detalleCompraModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
+            <div style="background:white; padding:30px; border-radius:10px; width:90%; max-width:800px; max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h3>Detalle de Compra - ${compra.numeroFactura}</h3>
-                    <button class="modal-close" onclick="cerrarModal()">×</button>
+                    <button onclick="cerrarModalDetalleCompra()" style="background:none; border:none; font-size:20px; cursor:pointer;">×</button>
                 </div>
-                <div class="modal-body">
-                    <div class="info-grid">
-                        <div><strong>Proveedor:</strong> ${compra.proveedor?.nombre || 'N/A'}</div>
-                        <div><strong>Fecha:</strong> ${new Date(compra.fechaCompra).toLocaleDateString()}</div>
-                        <div><strong>Estado:</strong> ${compra.estado}</div>
-                    </div>
+                
+                <div style="margin-bottom:20px;">
+                    <p><strong>Proveedor:</strong> ${compra.proveedor ? compra.proveedor.nombre : 'N/A'}</p>
+                    <p><strong>Fecha:</strong> ${new Date(compra.fechaCompra).toLocaleDateString()}</p>
+                    <p><strong>Estado:</strong> <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : 'badge-danger'}">${compra.estado}</span></p>
+                    <p><strong>Observaciones:</strong> ${compra.observaciones || 'Ninguna'}</p>
+                </div>
 
-                    <table class="data-table">
-                        <thead>
+                <h4>Productos Comprados</h4>
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Unidad</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${compra.detalles ? compra.detalles.map(detalle => `
                             <tr>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Precio Unitario</th>
-                                <th>Total</th>
+                                <td>${detalle.producto ? detalle.producto.nombre : 'N/A'}</td>
+                                <td>${detalle.unidadMedida ? detalle.unidadMedida.nombre : 'N/A'}</td>
+                                <td>${detalle.cantidad}</td>
+                                <td>$${detalle.precioUnitario.toFixed(2)}</td>
+                                <td>$${detalle.totalLinea.toFixed(2)}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${compra.detalles?.map(detalle => `
-                                <tr>
-                                    <td>${detalle.producto?.nombre || 'Producto'}</td>
-                                    <td>${detalle.cantidad} ${detalle.unidadMedida?.abreviatura || 'UND'}</td>
-                                    <td>${formatCurrency(detalle.precioUnitario)}</td>
-                                    <td>${formatCurrency(detalle.totalLinea)}</td>
-                                </tr>
-                            `).join('') || ''}
-                        </tbody>
-                    </table>
+                        `).join('') : ''}
+                    </tbody>
+                </table>
 
-                    <div class="totales-section">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <span>${formatCurrency(compra.subtotal)}</span>
-                        </div>
-                        <div class="total-row">
-                            <span>Impuestos:</span>
-                            <span>${formatCurrency(compra.impuestos)}</span>
-                        </div>
-                        <div class="total-row total-final">
-                            <span>Total:</span>
-                            <span>${formatCurrency(compra.total)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+                <div style="margin-top:20px; text-align:right;">
+                    <p><strong>Subtotal:</strong> $${compra.subtotal.toFixed(2)}</p>
+                    <p><strong>Impuestos:</strong> $${compra.impuestos.toFixed(2)}</p>
+                    <p><strong>Total:</strong> $${compra.total.toFixed(2)}</p>
                 </div>
             </div>
         </div>
     `;
 
-    // Remover modal existente si hay uno
-    const existingModal = document.getElementById('detalleCompraModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-// Editar compra
-async function editarCompra(id) {
-    try {
-        const compra = await apiCall(`https://localhost:7000/api/compras/${id}`);
-        showCompraForm(compra);
-    } catch (error) {
-        showMessage('Error al cargar compra para editar', 'error');
-    }
-}
-
-// Anular compra
-async function anularCompra(id) {
-    if (!confirm('¿Está seguro de anular esta compra? Esta acción no se puede deshacer.')) return;
-
-    try {
-        await apiCall(`https://localhost:7000/api/compras/${id}`, {
-            method: 'DELETE'
-        });
-
-        showMessage('Compra anulada exitosamente', 'success');
-        loadCompras();
-    } catch (error) {
-        showMessage(error.message || 'Error al anular compra', 'error');
-    }
+function cerrarModalDetalleCompra() {
+    const modal = document.getElementById('detalleCompraModal');
+    if (modal) modal.remove();
 }

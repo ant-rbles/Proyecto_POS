@@ -1,24 +1,6 @@
-﻿// proveedores.js - Gestión completa de proveedores
-
-// Variables globales para proveedores
-let currentProveedorId = null;
-
-// Inicializar módulo de proveedores
-document.addEventListener('DOMContentLoaded', () => {
-    setupProveedoresEventListeners();
-});
-
-function setupProveedoresEventListeners() {
-    const proveedorForm = document.getElementById('proveedorFormElement');
-    if (proveedorForm) {
-        proveedorForm.addEventListener('submit', handleProveedorSubmit);
-    }
-}
-
-// Mostrar formulario de proveedores
-function showProveedorForm(proveedor = null) {
+﻿function showProveedorForm(proveedor = null) {
+    console.log('Mostrando formulario de proveedor');
     openManagementTab('proveedores');
-
     const form = document.getElementById('proveedorForm');
     const title = document.getElementById('proveedorFormTitle');
 
@@ -30,61 +12,46 @@ function showProveedorForm(proveedor = null) {
         } else {
             title.textContent = 'Nuevo Proveedor';
             currentProveedorId = null;
-            resetProveedorForm();
+            const proveedorFormElement = document.getElementById('proveedorFormElement');
+            if (proveedorFormElement) proveedorFormElement.reset();
         }
         form.style.display = 'block';
+    } else {
+        console.error('No se encontró el formulario de proveedor');
     }
 }
 
-function resetProveedorForm() {
-    const form = document.getElementById('proveedorFormElement');
-    if (form) form.reset();
-}
-
-// Llenar formulario de proveedor
-function fillProveedorForm(proveedor) {
-    document.getElementById('proveedorId').value = proveedor.id;
-    document.getElementById('proveedorNombre').value = proveedor.nombre || '';
-    document.getElementById('proveedorRUC').value = proveedor.ruc || '';
-    document.getElementById('proveedorTelefono').value = proveedor.telefono || '';
-    document.getElementById('proveedorEmail').value = proveedor.email || '';
-    document.getElementById('proveedorDireccion').value = proveedor.direccion || '';
-    document.getElementById('proveedorContacto').value = proveedor.contacto || '';
-}
-
-// Ocultar formulario de proveedor
 function hideProveedorForm() {
     const form = document.getElementById('proveedorForm');
     if (form) form.style.display = 'none';
     currentProveedorId = null;
 }
 
-// Manejar envío del formulario de proveedor
+function fillProveedorForm(proveedor) {
+    document.getElementById('proveedorId').value = proveedor.id;
+    document.getElementById('proveedorNombre').value = proveedor.nombre;
+    document.getElementById('proveedorRUC').value = proveedor.ruc;
+    document.getElementById('proveedorTelefono').value = proveedor.telefono || '';
+    document.getElementById('proveedorEmail').value = proveedor.email || '';
+    document.getElementById('proveedorDireccion').value = proveedor.direccion || '';
+    document.getElementById('proveedorContacto').value = proveedor.contacto || '';
+}
+
 async function handleProveedorSubmit(e) {
     e.preventDefault();
+    console.log('Enviando formulario de proveedor');
 
-    const proveedorData = {
-        nombre: document.getElementById('proveedorNombre').value.trim(),
-        ruc: document.getElementById('proveedorRUC').value.trim(),
-        telefono: document.getElementById('proveedorTelefono').value.trim(),
-        email: document.getElementById('proveedorEmail').value.trim(),
-        direccion: document.getElementById('proveedorDireccion').value.trim(),
-        contacto: document.getElementById('proveedorContacto').value.trim()
+    const proveedor = {
+        nombre: document.getElementById('proveedorNombre').value,
+        ruc: document.getElementById('proveedorRUC').value,
+        telefono: document.getElementById('proveedorTelefono').value,
+        email: document.getElementById('proveedorEmail').value,
+        direccion: document.getElementById('proveedorDireccion').value,
+        contacto: document.getElementById('proveedorContacto').value
     };
 
-    // Validaciones
-    if (!proveedorData.nombre) {
-        showMessage('El nombre del proveedor es obligatorio', 'error');
-        return;
-    }
-
-    if (!proveedorData.ruc) {
-        showMessage('El RUC del proveedor es obligatorio', 'error');
-        return;
-    }
-
-    // Verificar RUC duplicado
-    const proveedorExistente = await verificarRUCProveedorExistente(proveedorData.ruc, currentProveedorId);
+    // Validar RUC duplicado
+    const proveedorExistente = await verificarRUCProveedorExistente(proveedor.ruc, currentProveedorId);
     if (proveedorExistente) {
         const estado = proveedorExistente.estado ? 'activo' : 'inactivo';
         showMessage(`Ya existe un proveedor ${estado} con este RUC. ${!proveedorExistente.estado ? 'Puede activarlo desde la lista.' : ''}`, 'error');
@@ -93,81 +60,184 @@ async function handleProveedorSubmit(e) {
     }
 
     try {
-        const submitBtn = document.querySelector('#proveedorFormElement button[type="submit"]');
-        const originalText = submitBtn.textContent;
-
-        // Mostrar loading
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Guardando...';
-
+        const authToken = localStorage.getItem('authToken');
         let response;
-        const url = currentProveedorId
-            ? `https://localhost:7000/api/proveedores/${currentProveedorId}`
-            : 'https://localhost:7000/api/proveedores';
 
-        const method = currentProveedorId ? 'PUT' : 'POST';
+        if (currentProveedorId) {
+            response = await fetch(`https://localhost:7000/api/proveedores/${currentProveedorId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(proveedor)
+            });
+        } else {
+            response = await fetch('https://localhost:7000/api/proveedores', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(proveedor)
+            });
+        }
 
-        response = await apiCall(url, {
-            method: method,
-            body: JSON.stringify(proveedorData)
-        });
-
-        showMessage('Proveedor guardado exitosamente', 'success');
-        hideProveedorForm();
-        loadProveedores();
-
+        if (response.ok) {
+            showMessage('Proveedor guardado exitosamente', 'success');
+            hideProveedorForm();
+            loadProveedores();
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al guardar proveedor', 'error');
+        }
     } catch (error) {
         console.error('Error:', error);
-        showMessage(error.message || 'Error al guardar proveedor', 'error');
-    } finally {
-        const submitBtn = document.querySelector('#proveedorFormElement button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = currentProveedorId ? 'Actualizar Proveedor' : 'Guardar Proveedor';
-        }
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Función para verificar RUC duplicado
+async function loadProveedores() {
+    try {
+        console.log(' INICIANDO CARGA DE PROVEEDORES ');
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            showMessage('No hay sesión activa', 'error');
+            return;
+        }
+
+        let proveedoresData = [];
+        let usandoEndpointTodos = false;
+
+        // PRIMERO intentar con el endpoint /todos
+        try {
+            console.log('Intentando endpoint /api/proveedores/todos...');
+            const responseTodos = await fetch('https://localhost:7000/api/proveedores/todos', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (responseTodos.ok) {
+                proveedoresData = await responseTodos.json();
+                usandoEndpointTodos = true;
+                console.log('Éxito con endpoint /todos. Proveedores cargados:', proveedoresData.length);
+            } else {
+                console.log('Endpoint /todos falló, intentando endpoint normal...');
+                throw new Error(`Status: ${responseTodos.status}`);
+            }
+        } catch (error) {
+            // Si falla /todos, intentar con endpoint normal
+            console.log('Intentando endpoint normal /api/proveedores...');
+            const responseNormal = await fetch('https://localhost:7000/api/proveedores', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (responseNormal.ok) {
+                proveedoresData = await responseNormal.json();
+                console.log('Éxito con endpoint normal. Proveedores cargados:', proveedoresData.length);
+                console.warn('Solo se cargan proveedores activos. Los proveedores inactivos no están disponibles.');
+            } else {
+                throw new Error(`Error ${responseNormal.status}: ${responseNormal.statusText}`);
+            }
+        }
+
+        // Procesar los datos
+        proveedores = proveedoresData;
+
+        // Mostrar estadísticas
+        const activos = proveedores.filter(p => p.estado === true).length;
+        const inactivos = proveedores.filter(p => p.estado === false).length;
+
+        console.log(`Resumen: ${activos} activos, ${inactivos} inactivos, Total: ${proveedores.length}`);
+
+        if (usandoEndpointTodos && inactivos === 0 && proveedores.length > 0) {
+            console.warn('El endpoint /todos se usó pero no se encontraron proveedores inactivos. Posible problema en el backend.');
+        }
+
+        // Renderizar tabla
+        renderProveedoresTable();
+
+        // Actualizar select de compras (solo proveedores activos)
+        updateProveedoresSelect();
+
+    } catch (error) {
+        console.error('Error crítico en loadProveedores:', error);
+        showMessage('Error al cargar los proveedores: ' + error.message, 'error');
+    }
+}
+
+// Actualizar la función updateProveedoresSelect para filtrar solo activos
+function updateProveedoresSelect() {
+    console.log('Actualizando select de proveedores para COMPRAS...');
+
+    try {
+        const selectProveedor = document.getElementById('compraProveedor');
+        if (selectProveedor && proveedores) {
+            // SOLO proveedores activos para compras
+            const proveedoresActivos = proveedores.filter(p => {
+                const estado = p.estado !== undefined ? p.estado : true;
+                return estado;
+            });
+
+            selectProveedor.innerHTML = '<option value="">Seleccionar proveedor</option>' +
+                proveedoresActivos.map(p =>
+                    `<option value="${p.id}">${p.nombre}</option>`
+                ).join('');
+            console.log('Select de proveedores actualizado para compras:', proveedoresActivos.length, 'proveedores activos');
+        }
+    } catch (error) {
+        console.error('Error en updateProveedoresSelect:', error);
+    }
+}
+
+// Función para verificar RUC duplicado 
 async function verificarRUCProveedorExistente(ruc, excludeId = null) {
     try {
-        const proveedores = await apiCall('https://localhost:7000/api/proveedores');
-        return proveedores.find(p =>
-            p.ruc === ruc &&
-            p.id !== excludeId
-        );
+        const authToken = localStorage.getItem('authToken');
+        // Usar el endpoint /todos para verificar contra todos los proveedores
+        let response = await fetch('https://localhost:7000/api/proveedores/todos', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        // Si falla /todos, usar endpoint normal
+        if (!response.ok) {
+            response = await fetch('https://localhost:7000/api/proveedores', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+        }
+
+        if (response.ok) {
+            const proveedores = await response.json();
+            return proveedores.find(p =>
+                p.ruc === ruc &&
+                p.id !== excludeId
+            );
+        }
+        return null;
     } catch (error) {
         console.error('Error verificando RUC:', error);
         return null;
     }
 }
 
-// Cargar proveedores
-async function loadProveedores() {
-    try {
-        proveedores = await apiCall('https://localhost:7000/api/proveedores');
-        renderProveedoresTable();
-        updateProveedoresSelect();
-    } catch (error) {
-        console.error('Error al cargar proveedores:', error);
-        showMessage('Error al cargar proveedores', 'error');
-    }
-}
-
-// Renderizar tabla de proveedores
+// Renderizar tabla de proveedores mostrando estado
 function renderProveedoresTable() {
     const tbody = document.getElementById('proveedoresTableBody');
-    if (!tbody) return;
-
-    if (!proveedores || proveedores.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center" style="padding: 20px; color: #6c757d;">
-                    <i class="fas fa-truck" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                    No hay proveedores registrados
-                </td>
-            </tr>
-        `;
+    if (!tbody) {
+        console.error('No se encontró proveedoresTableBody');
         return;
     }
 
@@ -184,13 +254,11 @@ function renderProveedoresTable() {
                 </span>
             </td>
             <td>
-                <button class="action-btn edit-btn" onclick="showProveedorForm(${JSON.stringify(proveedor).replace(/"/g, '&quot;')})" 
-                        title="Editar proveedor">
+                <button class="action-btn edit-btn" onclick="showProveedorForm(${JSON.stringify(proveedor).replace(/"/g, '&quot;')})">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="action-btn ${proveedor.estado ? 'delete-btn' : 'activate-btn'}" 
-                        onclick="${proveedor.estado ? 'desactivarProveedor' : 'activarProveedor'}(${proveedor.id})"
-                        title="${proveedor.estado ? 'Desactivar proveedor' : 'Activar proveedor'}">
+                        onclick="${proveedor.estado ? 'deleteProveedor' : 'activateProveedor'}(${proveedor.id})">
                     <i class="fas ${proveedor.estado ? 'fa-trash' : 'fa-check'}"></i>
                 </button>
             </td>
@@ -198,55 +266,51 @@ function renderProveedoresTable() {
     `).join('');
 }
 
-// Desactivar proveedor
-async function desactivarProveedor(id) {
-    if (!confirm('¿Está seguro de desactivar este proveedor?')) return;
+// Función para activar proveedor
+async function activateProveedor(id) {
+    if (!confirm('¿Está seguro de que desea activar este proveedor?')) return;
 
     try {
-        await apiCall(`https://localhost:7000/api/proveedores/${id}`, {
-            method: 'DELETE'
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/proveedores/${id}/activate`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
 
-        showMessage('Proveedor desactivado exitosamente', 'success');
-        loadProveedores();
+        if (response.ok) {
+            showMessage('Proveedor activado exitosamente', 'success');
+            loadProveedores();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
     } catch (error) {
-        showMessage(error.message || 'Error al desactivar proveedor', 'error');
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Activar proveedor
-async function activarProveedor(id) {
-    if (!confirm('¿Está seguro de activar este proveedor?')) return;
+async function deleteProveedor(id) {
+    if (!confirm('¿Está seguro de eliminar este proveedor?')) return;
 
     try {
-        await apiCall(`https://localhost:7000/api/proveedores/${id}/activate`, {
-            method: 'PUT'
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/proveedores/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
 
-        showMessage('Proveedor activado exitosamente', 'success');
-        loadProveedores();
+        if (response.ok) {
+            showMessage('Proveedor eliminado exitosamente', 'success');
+            loadProveedores();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
     } catch (error) {
-        showMessage(error.message || 'Error al activar proveedor', 'error');
-    }
-}
-
-// Actualizar select de proveedores en compras
-function updateProveedoresSelect() {
-    const selectProveedor = document.getElementById('compraProveedor');
-    if (selectProveedor && proveedores) {
-        const proveedoresActivos = proveedores.filter(p => p.estado);
-        populateSelect(selectProveedor, proveedoresActivos, 'id', 'nombre', 'Seleccionar proveedor');
-    }
-}
-
-// Buscar proveedor por RUC
-async function buscarProveedorPorRUC(ruc) {
-    if (!ruc) return null;
-
-    try {
-        const proveedores = await apiCall('https://localhost:7000/api/proveedores');
-        return proveedores.find(p => p.ruc === ruc && p.estado);
-    } catch (error) {
-        return null;
+        showMessage('Error de conexión', 'error');
     }
 }

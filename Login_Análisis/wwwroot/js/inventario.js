@@ -1,313 +1,230 @@
-﻿// inventario.js - Gestión de inventario y movimientos
-
-// Inicializar módulo de inventario
-document.addEventListener('DOMContentLoaded', () => {
-    setupInventarioEventListeners();
-});
-
-function setupInventarioEventListeners() {
-    const ajusteForm = document.getElementById('ajusteInventarioForm');
-    if (ajusteForm) {
-        ajusteForm.addEventListener('submit', handleAjusteInventario);
-    }
-}
-
-// Cargar inventario
+﻿// Funciones para Inventario
 async function loadInventario() {
     try {
-        // En un sistema real, aquí cargarías los datos del inventario
-        // Por ahora, usaremos los productos ya cargados
-        renderInventarioTable();
+        console.log('Cargando inventario desde la base de datos...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/productos', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            productos = await response.json();
+            console.log('Inventario cargado:', productos);
+
+            // Calcular estadísticas
+            const totalProductos = productos.length;
+            const totalStock = productos.reduce((sum, p) => sum + (p.stockActual || 0), 0);
+            const stockBajo = productos.filter(p => p.stockActual <= (p.stockMinimo || 0) && p.stockActual > 0).length;
+            const sinStock = productos.filter(p => p.stockActual <= 0).length;
+            const valorInventario = productos.reduce((sum, p) => sum + ((p.stockActual || 0) * (p.precioCostoPromedio || 0)), 0);
+
+            // Actualizar UI
+            document.getElementById('totalProductos').textContent = totalProductos;
+            document.getElementById('totalStock').textContent = totalStock.toFixed(2);
+            document.getElementById('stockBajo').textContent = stockBajo;
+            document.getElementById('valorInventario').textContent = `$${valorInventario.toFixed(2)}`;
+
+            // Renderizar tabla de inventario
+            renderInventarioTable();
+        } else {
+            showMessage('Error al cargar el inventario', 'error');
+        }
     } catch (error) {
         console.error('Error al cargar inventario:', error);
-        showMessage('Error al cargar inventario', 'error');
+        showMessage('Error de conexión al cargar inventario', 'error');
     }
 }
 
-// Renderizar tabla de inventario
 function renderInventarioTable() {
     const tbody = document.getElementById('inventarioTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('No se encontró el tbody de inventario');
+        return;
+    }
 
     if (!productos || productos.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center" style="padding: 20px; color: #6c757d;">
-                    <i class="fas fa-warehouse" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                    No hay productos en el inventario
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay productos en inventario</td></tr>';
         return;
     }
 
     tbody.innerHTML = productos.map(producto => {
-        const estadoStock = getEstadoStock(producto);
+        const id = producto.id || producto.Id;
+        const codigo = producto.codigo || producto.Codigo || 'N/A';
+        const nombre = producto.nombre || producto.Nombre || 'N/A';
+        const estado = producto.estado !== undefined ? producto.estado : (producto.Estado !== undefined ? producto.Estado : true);
+
+        // Categoría
+        let categoriaNombre = 'Sin categoría';
+        if (producto.categoria) {
+            categoriaNombre = producto.categoria.nombre || producto.categoria.Nombre || 'Sin categoría';
+        } else if (producto.Categoria) {
+            categoriaNombre = producto.Categoria.nombre || producto.Categoria.Nombre || 'Sin categoría';
+        }
+
+        // Unidad de medida
+        let unidadNombre = 'N/A';
+        if (producto.unidadMedidaBase) {
+            unidadNombre = producto.unidadMedidaBase.nombre || producto.unidadMedidaBase.Nombre || 'N/A';
+        } else if (producto.UnidadMedidaBase) {
+            unidadNombre = producto.UnidadMedidaBase.nombre || producto.UnidadMedidaBase.Nombre || 'N/A';
+        }
+
+        // Valores numéricos
+        const stockActual = parseFloat(producto.stockActual || producto.StockActual || 0);
+        const stockMinimo = parseFloat(producto.stockMinimo || producto.StockMinimo || 0);
+        const precioCosto = parseFloat(producto.precioCostoPromedio || producto.PrecioCostoPromedio || 0);
+        const precioVenta = parseFloat(producto.precioVenta || producto.PrecioVenta || 0);
+
+        // Calcular valor total en inventario
+        const valorTotal = stockActual * precioCosto;
+
         return `
-            <tr>
-                <td>${producto.codigo}</td>
-                <td>${producto.nombre}</td>
-                <td>${producto.categoria?.nombre || 'Sin categoría'}</td>
-                <td>${producto.stockActual}</td>
-                <td>${producto.stockMinimo}</td>
-                <td>${formatCurrency(producto.precioCostoPromedio)}</td>
-                <td>${formatCurrency(producto.precioVenta)}</td>
-                <td>
-                    <span class="badge ${estadoStock.clase}">
-                        ${estadoStock.texto}
-                    </span>
-                </td>
-                <td>
-                    <button class="action-btn view-btn" onclick="verMovimientosProducto(${producto.id})" 
-                            title="Ver movimientos">
-                        <i class="fas fa-history"></i>
-                    </button>
-                    <button class="action-btn edit-btn" onclick="mostrarAjusteInventario(${producto.id})" 
-                            title="Ajustar inventario">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </td>
-            </tr>
+        <tr>
+            <td>${codigo}</td>
+            <td>${nombre}</td>
+            <td>${categoriaNombre}</td>
+            <td>${unidadNombre}</td>
+            <td class="text-center">
+                <span class="stock-badge ${getStockStatusClass(stockActual, stockMinimo)}">
+                    ${stockActual.toFixed(2)}
+                </span>
+            </td>
+            <td class="text-center">${stockMinimo.toFixed(2)}</td>
+            <td class="text-right">Q ${precioCosto.toFixed(2)}</td>
+            <td class="text-right">Q ${precioVenta.toFixed(2)}</td>
+            <td class="text-right">Q ${valorTotal.toFixed(2)}</td>
+            <td class="text-center">
+                <span class="badge ${estado ? 'badge-success' : 'badge-danger'}">
+                    ${estado ? 'Activo' : 'Inactivo'}
+                </span>
+            </td>
+        </tr>
         `;
     }).join('');
 }
 
-// Determinar estado del stock
-function getEstadoStock(producto) {
-    if (producto.stockActual === 0) {
-        return { texto: 'SIN STOCK', clase: 'badge-danger' };
-    } else if (producto.stockActual <= producto.stockMinimo) {
-        return { texto: 'STOCK BAJO', clase: 'badge-warning' };
-    } else {
-        return { texto: 'NORMAL', clase: 'badge-success' };
+function getStockStatusClass(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'stock-critical';
+    if (stockActual <= stockMinimo) return 'stock-low';
+    return 'stock-normal';
+}
+
+function getStockStatusText(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'Sin Stock';
+    if (stockActual <= stockMinimo) return 'Stock Bajo';
+    return 'Normal';
+}
+
+// Funciones para Movimientos
+function showAjusteForm() {
+    console.log('Mostrando formulario de ajuste');
+    openManagementTab('movimientos');
+    const form = document.getElementById('ajusteForm');
+    if (form) {
+        form.style.display = 'block';
+        cargarProductosParaAjuste();
     }
 }
 
-// Mostrar formulario de ajuste de inventario
-function mostrarAjusteInventario(productoId) {
-    const producto = productos.find(p => p.id === productoId);
-    if (!producto) return;
-
-    const modalHTML = `
-        <div id="ajusteInventarioModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Ajustar Inventario - ${producto.nombre}</h3>
-                    <button class="modal-close" onclick="cerrarModalAjuste()">×</button>
-                </div>
-                <form id="ajusteInventarioForm">
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Stock Actual</label>
-                            <input type="text" class="form-control" value="${producto.stockActual}" disabled>
-                        </div>
-                        <div class="form-group">
-                            <label for="ajusteCantidad">Cantidad de Ajuste *</label>
-                            <input type="number" id="ajusteCantidad" class="form-control" step="0.01" required>
-                            <small class="text-muted">Use valores positivos para aumentar el stock, negativos para disminuirlo</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="ajusteObservaciones">Observaciones</label>
-                            <textarea id="ajusteObservaciones" class="form-control" rows="3" 
-                                      placeholder="Motivo del ajuste..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Nuevo Stock</label>
-                            <input type="text" id="nuevoStock" class="form-control" disabled>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="cerrarModalAjuste()">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Aplicar Ajuste</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    `;
-
-    // Remover modal existente si hay uno
-    const existingModal = document.getElementById('ajusteInventarioModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    // Calcular nuevo stock en tiempo real
-    const cantidadInput = document.getElementById('ajusteCantidad');
-    const nuevoStockInput = document.getElementById('nuevoStock');
-
-    cantidadInput.addEventListener('input', () => {
-        const ajuste = parseFloat(cantidadInput.value) || 0;
-        const nuevoStock = producto.stockActual + ajuste;
-        nuevoStockInput.value = nuevoStock;
-    });
-
-    // Enfocar el campo de cantidad
-    cantidadInput.focus();
+function hideAjusteForm() {
+    const form = document.getElementById('ajusteForm');
+    if (form) form.style.display = 'none';
+    const ajusteFormElement = document.getElementById('ajusteFormElement');
+    if (ajusteFormElement) ajusteFormElement.reset();
 }
 
-// Cerrar modal de ajuste
-function cerrarModalAjuste() {
-    const modal = document.getElementById('ajusteInventarioModal');
-    if (modal) {
-        modal.remove();
+function cargarProductosParaAjuste() {
+    const selectAjuste = document.getElementById('ajusteProducto');
+    if (selectAjuste) {
+        selectAjuste.innerHTML = '<option value="">Seleccionar producto</option>' +
+            productos.filter(p => p.estado).map(p =>
+                `<option value="${p.id}">${p.nombre} - Stock actual: ${p.stockActual}</option>`
+            ).join('');
     }
 }
 
-// Manejar ajuste de inventario
-async function handleAjusteInventario(e) {
+async function handleAjusteSubmit(e) {
     e.preventDefault();
 
-    const cantidadInput = document.getElementById('ajusteCantidad');
-    const observacionesInput = document.getElementById('ajusteObservaciones');
-
-    const cantidad = parseFloat(cantidadInput.value);
-    const observaciones = observacionesInput.value.trim();
-
-    if (!cantidad) {
-        showMessage('La cantidad de ajuste es obligatoria', 'error');
-        return;
-    }
-
-    // Obtener el producto del modal
-    const modal = document.getElementById('ajusteInventarioModal');
-    const productoNombre = modal.querySelector('h3').textContent.replace('Ajustar Inventario - ', '');
-    const producto = productos.find(p => p.nombre === productoNombre);
-
-    if (!producto) {
-        showMessage('Producto no encontrado', 'error');
-        return;
-    }
+    const ajuste = {
+        productoId: parseInt(document.getElementById('ajusteProducto').value),
+        cantidad: parseFloat(document.getElementById('ajusteCantidad').value),
+        observaciones: document.getElementById('ajusteObservaciones').value,
+        usuarioId: JSON.parse(localStorage.getItem('user')).id
+    };
 
     try {
-        const submitBtn = modal.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-
-        // Mostrar loading
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Aplicando...';
-
-        await apiCall('https://localhost:7000/api/movimientos/ajuste', {
+        const response = await fetch('/api/movimientos/ajuste', {
             method: 'POST',
-            body: JSON.stringify({
-                ProductoId: producto.id,
-                Cantidad: cantidad,
-                Observaciones: observaciones
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ajuste)
         });
 
-        showMessage('Ajuste de inventario aplicado exitosamente', 'success');
-        cerrarModalAjuste();
-        loadProductos(); // Recargar productos para actualizar stock
-        loadInventario(); // Recargar vista de inventario
-
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage(error.message || 'Error al aplicar ajuste de inventario', 'error');
-    } finally {
-        const submitBtn = modal.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
+        if (response.ok) {
+            showMessage('Ajuste aplicado exitosamente', 'success');
+            hideAjusteForm();
+            cargarMovimientos();
+            loadProductos(); // Recargar productos para actualizar stock
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al aplicar el ajuste', 'error');
         }
-    }
-}
-
-// Ver movimientos de un producto
-async function verMovimientosProducto(productoId) {
-    try {
-        const movimientos = await apiCall(`https://localhost:7000/api/movimientos/producto/${productoId}`);
-        mostrarModalMovimientos(movimientos, productoId);
     } catch (error) {
-        showMessage('Error al cargar movimientos del producto', 'error');
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Mostrar modal con movimientos del producto
-function mostrarModalMovimientos(movimientos, productoId) {
-    const producto = productos.find(p => p.id === productoId);
-    if (!producto) return;
+async function cargarMovimientos() {
+    const tipo = document.getElementById('movimientoTipo').value;
+    const fechaInicio = document.getElementById('movimientoFechaInicio').value;
+    const fechaFin = document.getElementById('movimientoFechaFin').value;
 
-    const modalHTML = `
-        <div id="movimientosProductoModal" class="modal">
-            <div class="modal-content" style="max-width: 900px;">
-                <div class="modal-header">
-                    <h3>Movimientos de Inventario - ${producto.nombre}</h3>
-                    <button class="modal-close" onclick="cerrarModalMovimientos()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Tipo</th>
-                                    <th>Cantidad</th>
-                                    <th>Stock Anterior</th>
-                                    <th>Stock Nuevo</th>
-                                    <th>Observaciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${movimientos.length > 0 ? movimientos.map(movimiento => `
-                                    <tr>
-                                        <td>${new Date(movimiento.fechaMovimiento).toLocaleString()}</td>
-                                        <td>
-                                            <span class="badge ${getClaseTipoMovimiento(movimiento.tipoMovimiento)}">
-                                                ${movimiento.tipoMovimiento}
-                                            </span>
-                                        </td>
-                                        <td>${movimiento.cantidad}</td>
-                                        <td>${movimiento.cantidadAnterior}</td>
-                                        <td>${movimiento.cantidadNueva}</td>
-                                        <td>${movimiento.observaciones || '-'}</td>
-                                    </tr>
-                                `).join('') : `
-                                    <tr>
-                                        <td colspan="6" class="text-center" style="padding: 20px; color: #6c757d;">
-                                            No hay movimientos registrados para este producto
-                                        </td>
-                                    </tr>
-                                `}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="cerrarModalMovimientos()">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    `;
+    try {
+        let url = '/api/movimientos';
+        const params = new URLSearchParams();
 
-    // Remover modal existente si hay uno
-    const existingModal = document.getElementById('movimientosProductoModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
+        if (fechaInicio) params.append('fechaInicio', fechaInicio);
+        if (fechaFin) params.append('fechaFin', fechaFin);
+        if (tipo) params.append('tipoMovimiento', tipo);
 
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
 
-// Obtener clase CSS para el tipo de movimiento
-function getClaseTipoMovimiento(tipo) {
-    switch (tipo) {
-        case 'ENTRADA':
-        case 'AJUSTE_POSITIVO':
-            return 'badge-success';
-        case 'SALIDA':
-        case 'AJUSTE_NEGATIVO':
-            return 'badge-danger';
-        default:
-            return 'badge-info';
+        const response = await fetch(url);
+        if (response.ok) {
+            const movimientos = await response.json();
+            renderMovimientosTable(movimientos);
+        } else {
+            showMessage('Error al cargar los movimientos', 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Cerrar modal de movimientos
-function cerrarModalMovimientos() {
-    const modal = document.getElementById('movimientosProductoModal');
-    if (modal) {
-        modal.remove();
-    }
+function renderMovimientosTable(movimientos) {
+    const tbody = document.getElementById('movimientosTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = movimientos.map(mov => `
+        <tr>
+            <td>${new Date(mov.fechaMovimiento).toLocaleString()}</td>
+            <td>${mov.producto?.nombre}</td>
+            <td>
+                <span class="status-badge ${mov.tipoMovimiento === 'ENTRADA' ? 'normal' :
+            mov.tipoMovimiento === 'SALIDA' ? 'warning' : 'critical'
+        }">
+                    ${mov.tipoMovimiento}
+                </span>
+            </td>
+            <td>${mov.cantidad}</td>
+            <td>${mov.cantidadAnterior}</td>
+            <td>${mov.cantidadNueva}</td>
+            <td>${mov.observaciones || '-'}</td>
+        </tr>
+    `).join('');
 }

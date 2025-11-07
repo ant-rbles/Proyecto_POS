@@ -1,189 +1,177 @@
-﻿// utils.js - Funciones de utilidad general
-
-// Formateadores
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('es-GT', {
-        style: 'currency',
-        currency: 'GTQ'
-    }).format(amount);
+﻿// Validación del campo email
+function validateEmailField(input, group) {
+    if (!group) return;
+    if (input.value === '') {
+        group.classList.remove('valid', 'invalid');
+        return;
+    }
+    if (validateEmail(input.value)) {
+        group.classList.add('valid');
+        group.classList.remove('invalid');
+    } else {
+        group.classList.remove('valid');
+        group.classList.add('invalid');
+    }
 }
 
-function formatDate(date) {
-    return new Date(date).toLocaleDateString('es-GT');
+// Validación del campo contraseña
+function validatePasswordField(input, group) {
+    if (!group) return;
+    if (input.value === '') {
+        group.classList.remove('valid', 'invalid');
+        return;
+    }
+    if (validatePassword(input.value)) {
+        group.classList.add('valid');
+        group.classList.remove('invalid');
+    } else {
+        group.classList.remove('valid');
+        group.classList.add('invalid');
+    }
 }
 
-function formatDateTime(date) {
-    return new Date(date).toLocaleString('es-GT');
-}
-
-// Validaciones
-function isValidEmail(email) {
+// Validación de email
+function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     return re.test(email) && email.includes('.');
 }
 
-function isValidPassword(password) {
-    return password.length >= 8;
+// Longitud mínima de contraseña
+function validatePassword(password) {
+    return password.length >= 12;
 }
 
-// Helpers de arrays
-function findById(array, id) {
-    return array.find(item => item.id === id);
+// Configurar validación de contraseña
+function setupPasswordValidation() {
+    const adminPassword = document.getElementById('adminRegPassword');
+    const adminConfirmPassword = document.getElementById('adminConfirmPassword');
+
+    if (adminPassword) {
+        adminPassword.addEventListener('input', checkAdminPasswordStrength);
+        adminPassword.addEventListener('input', checkAdminPasswordMatch);
+    }
+
+    if (adminConfirmPassword) {
+        adminConfirmPassword.addEventListener('input', checkAdminPasswordMatch);
+    }
 }
 
-function filterActive(items) {
-    return items.filter(item => item.estado !== false);
+// Función para verificar fortaleza de contraseña
+function checkAdminPasswordStrength() {
+    const pwd = document.getElementById('adminRegPassword');
+    const bar = document.getElementById('adminPasswordStrengthBar');
+    if (!pwd || !bar) return;
+
+    const v = pwd.value || '';
+    let score = 0;
+
+    if (v.length >= 12) score++;
+    if (/[A-Z]/.test(v)) score++;
+    if (/[a-z]/.test(v)) score++;
+    if (/[0-9]/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+
+    const pct = Math.round((score / 5) * 100);
+    bar.style.width = pct + '%';
+
+    if (pct < 40) {
+        bar.style.backgroundColor = '#e74c3c';
+    } else if (pct < 80) {
+        bar.style.backgroundColor = '#f39c12';
+    } else {
+        bar.style.backgroundColor = '#2ecc71';
+    }
 }
 
-// Mostrar mensajes
-function showMessage(message, type = 'info') {
-    const messageDiv = document.getElementById('message');
-    if (!messageDiv) {
-        // Crear elemento si no existe
-        const newMessageDiv = document.createElement('div');
-        newMessageDiv.id = 'message';
-        newMessageDiv.className = `message ${type}`;
-        newMessageDiv.textContent = message;
-        newMessageDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            padding: 15px 20px;
-            border-radius: 5px;
-            color: white;
-            font-weight: 500;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        `;
+// Función para verificar coincidencia de contraseñas
+function checkAdminPasswordMatch() {
+    const pwd = document.getElementById('adminRegPassword')?.value || '';
+    const conf = document.getElementById('adminConfirmPassword')?.value || '';
+    const matchEl = document.getElementById('adminPasswordMatchSuccess');
+    const noMatchEl = document.getElementById('adminPasswordMatch');
 
-        if (type === 'success') {
-            newMessageDiv.style.background = '#28a745';
-        } else if (type === 'error') {
-            newMessageDiv.style.background = '#dc3545';
-        } else if (type === 'warning') {
-            newMessageDiv.style.background = '#ffc107';
-            newMessageDiv.style.color = '#212529';
-        } else {
-            newMessageDiv.style.background = '#17a2b8';
-        }
+    if (!matchEl && !noMatchEl) return;
 
-        document.body.appendChild(newMessageDiv);
-
-        // Auto-remover después de 5 segundos
-        setTimeout(() => {
-            newMessageDiv.remove();
-        }, 5000);
+    if (pwd === '' && conf === '') {
+        if (matchEl) matchEl.style.display = 'none';
+        if (noMatchEl) noMatchEl.style.display = 'none';
         return;
     }
 
-    messageDiv.textContent = message;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = 'block';
-
-    // Ocultar después de 5 segundos
-    setTimeout(() => {
-        messageDiv.style.display = 'none';
-    }, 5000);
-}
-
-// Limpiar mensajes
-function clearMessage() {
-    const messageDiv = document.getElementById('message');
-    if (messageDiv) {
-        messageDiv.style.display = 'none';
+    if (pwd === conf && pwd.length >= 8) {
+        if (matchEl) matchEl.style.display = 'block';
+        if (noMatchEl) noMatchEl.style.display = 'none';
+    } else {
+        if (matchEl) matchEl.style.display = 'none';
+        if (noMatchEl) noMatchEl.style.display = 'block';
     }
 }
 
-// Helpers para API
-async function apiCall(url, options = {}) {
-    const authToken = localStorage.getItem('authToken');
-    const config = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-        },
-        ...options
-    };
+// Función para obtener la clase del estado del stock
+function getStockStatusClass(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'stock-critical';
+    if (stockActual <= stockMinimo) return 'stock-low';
+    return 'stock-normal';
+}
 
+// Función para obtener el texto del estado del stock
+function getStockStatusText(stockActual, stockMinimo) {
+    if (stockActual <= 0) return 'Sin Stock';
+    if (stockActual <= stockMinimo) return 'Stock Bajo';
+    return 'Normal';
+}
+
+// Función para calcular totales en tiempo real
+function calcularTotalesVentaEnTiempoReal() {
+    const detalles = detallesVenta;
+    const subtotal = detalles.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
+    const impuestos = parseFloat(document.getElementById('ventaImpuestos')?.value) || 0;
+    const total = subtotal + impuestos;
+
+    // Actualizar UI
+    if (document.getElementById('ventaSubtotal')) {
+        document.getElementById('ventaSubtotal').textContent = subtotal.toFixed(2);
+    }
+    if (document.getElementById('ventaImpuestosTotal')) {
+        document.getElementById('ventaImpuestosTotal').textContent = impuestos.toFixed(2);
+    }
+    if (document.getElementById('ventaTotal')) {
+        document.getElementById('ventaTotal').textContent = total.toFixed(2);
+    }
+
+    return { subtotal, impuestos, total };
+}
+
+// Función para procesar ventas (puede ser utilizada por otros módulos)
+async function procesarVenta(ventaData) {
     try {
-        const response = await fetch(url, config);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('/api/ventas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(ventaData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            return { success: true, data: result };
+        } else {
+            const error = await response.json();
+            return { success: false, error: error.message };
         }
-        return await response.json();
     } catch (error) {
-        console.error('API call failed:', error);
-        throw error;
+        return { success: false, error: 'Error de conexión' };
     }
 }
 
-// Validación de formularios en tiempo real
-function setupFieldValidation(inputElement, validationFn, errorMessage) {
-    const group = inputElement.closest('.form-group');
-    if (!group) return;
-
-    inputElement.addEventListener('blur', () => {
-        if (inputElement.value.trim() === '') {
-            group.classList.remove('valid', 'invalid');
-            return;
-        }
-
-        if (validationFn(inputElement.value)) {
-            group.classList.add('valid');
-            group.classList.remove('invalid');
-        } else {
-            group.classList.remove('valid');
-            group.classList.add('invalid');
-        }
-    });
+// Función para calcular descuento por cantidad (ejemplo, se puede modificar)
+function calcularDescuentoPorCantidad(productoId, cantidad) {
+    // Lógica de descuento por cantidad
+    if (cantidad >= 100) return 10;
+    if (cantidad >= 50) return 5;
+    if (cantidad >= 10) return 2;
+    return 0;
 }
-
-// Toggle password visibility
-function setupPasswordToggle() {
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.toggle-password')) {
-            const toggle = e.target.closest('.toggle-password');
-            const input = toggle.closest('.form-group').querySelector('input');
-            const icon = toggle.querySelector('i');
-
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
-    });
-}
-
-// Cargar selects con datos
-function populateSelect(selectElement, data, valueField = 'id', textField = 'nombre', placeholder = 'Seleccionar...') {
-    if (!selectElement) return;
-
-    selectElement.innerHTML = `<option value="">${placeholder}</option>` +
-        data.map(item =>
-            `<option value="${item[valueField]}">${item[textField]}</option>`
-        ).join('');
-}
-
-// Debounce para búsquedas
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Inicializar utilidades cuando se carga el DOM
-document.addEventListener('DOMContentLoaded', () => {
-    setupPasswordToggle();
-});

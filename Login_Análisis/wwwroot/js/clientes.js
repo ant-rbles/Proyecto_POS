@@ -1,24 +1,63 @@
-﻿// clientes.js - Gestión completa de clientes
+﻿async function loadClientes() {
+    try {
+        console.log('Cargando clientes...');
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://localhost:7000/api/clientes', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
-// Variables globales para clientes
-let currentClienteId = null;
-
-// Inicializar módulo de clientes
-document.addEventListener('DOMContentLoaded', () => {
-    setupClientesEventListeners();
-});
-
-function setupClientesEventListeners() {
-    const clienteForm = document.getElementById('clienteFormElement');
-    if (clienteForm) {
-        clienteForm.addEventListener('submit', handleClienteSubmit);
+        if (response.ok) {
+            clientes = await response.json();
+            console.log('Clientes cargados:', clientes);
+            renderClientesTable();
+        } else {
+            console.error('Error al cargar clientes');
+        }
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
     }
 }
 
-// Mostrar formulario de clientes
+function renderClientesTable() {
+    const tbody = document.getElementById('clientesTableBody');
+    if (!tbody) return;
+
+    if (!clientes || clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay clientes registrados</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = clientes.map(cliente => `
+        <tr>
+            <td>${cliente.nombre}</td>
+            <td>${cliente.nit || 'N/A'}</td>
+            <td>${cliente.telefono || '-'}</td>
+            <td>${cliente.email || '-'}</td>
+            <td>${cliente.direccion || '-'}</td>
+            <td>
+                <span class="badge ${cliente.estado ? 'badge-success' : 'badge-danger'}">
+                    ${cliente.estado ? 'Activo' : 'Inactivo'}
+                </span>
+            </td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editCliente(${cliente.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn ${cliente.estado ? 'delete-btn' : 'activate-btn'}" 
+                        onclick="${cliente.estado ? 'deleteCliente' : 'activateCliente'}(${cliente.id})">
+                    <i class="fas ${cliente.estado ? 'fa-trash' : 'fa-check'}"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
 function showClienteForm(cliente = null) {
     openManagementTab('clientes');
-
     const form = document.getElementById('clienteForm');
     const title = document.getElementById('clienteFormTitle');
 
@@ -30,193 +69,120 @@ function showClienteForm(cliente = null) {
         } else {
             title.textContent = 'Nuevo Cliente';
             currentClienteId = null;
-            resetClienteForm();
+            document.getElementById('clienteFormElement').reset();
         }
         form.style.display = 'block';
     }
 }
 
-function resetClienteForm() {
-    const form = document.getElementById('clienteFormElement');
-    if (form) form.reset();
-}
-
-// Llenar formulario de cliente
-function fillClienteForm(cliente) {
-    document.getElementById('clienteId').value = cliente.id;
-    document.getElementById('clienteNombre').value = cliente.nombre || '';
-    document.getElementById('clienteNIT').value = cliente.nit || '';
-    document.getElementById('clienteDireccion').value = cliente.direccion || '';
-    document.getElementById('clienteTelefono').value = cliente.telefono || '';
-    document.getElementById('clienteEmail').value = cliente.email || '';
-}
-
-// Ocultar formulario de cliente
 function hideClienteForm() {
     const form = document.getElementById('clienteForm');
     if (form) form.style.display = 'none';
     currentClienteId = null;
 }
 
-// Manejar envío del formulario de cliente
+function fillClienteForm(cliente) {
+    document.getElementById('clienteNombre').value = cliente.nombre;
+    document.getElementById('clienteNIT').value = cliente.nit || '';
+    document.getElementById('clienteTelefono').value = cliente.telefono || '';
+    document.getElementById('clienteEmail').value = cliente.email || '';
+    document.getElementById('clienteDireccion').value = cliente.direccion || '';
+}
+
 async function handleClienteSubmit(e) {
     e.preventDefault();
 
     const clienteData = {
         nombre: document.getElementById('clienteNombre').value.trim(),
         nit: document.getElementById('clienteNIT').value.trim(),
-        direccion: document.getElementById('clienteDireccion').value.trim(),
         telefono: document.getElementById('clienteTelefono').value.trim(),
-        email: document.getElementById('clienteEmail').value.trim()
+        email: document.getElementById('clienteEmail').value.trim(),
+        direccion: document.getElementById('clienteDireccion').value.trim()
     };
 
-    // Validaciones
-    if (!clienteData.nombre) {
-        showMessage('El nombre del cliente es obligatorio', 'error');
-        return;
-    }
-
     try {
-        const submitBtn = document.querySelector('#clienteFormElement button[type="submit"]');
-        const originalText = submitBtn.textContent;
-
-        // Mostrar loading
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Guardando...';
-
+        const authToken = localStorage.getItem('authToken');
         let response;
-        const url = currentClienteId
-            ? `https://localhost:7000/api/clientes/${currentClienteId}`
-            : 'https://localhost:7000/api/clientes';
 
-        const method = currentClienteId ? 'PUT' : 'POST';
+        if (currentClienteId) {
+            response = await fetch(`https://localhost:7000/api/clientes/${currentClienteId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(clienteData)
+            });
+        } else {
+            response = await fetch('https://localhost:7000/api/clientes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(clienteData)
+            });
+        }
 
-        response = await apiCall(url, {
-            method: method,
-            body: JSON.stringify(clienteData)
-        });
-
-        showMessage('Cliente guardado exitosamente', 'success');
-        hideClienteForm();
-        loadClientes();
-
+        if (response.ok) {
+            showMessage('Cliente guardado exitosamente', 'success');
+            hideClienteForm();
+            await loadClientes();
+        } else {
+            const error = await response.json();
+            showMessage(error.message || 'Error al guardar cliente', 'error');
+        }
     } catch (error) {
         console.error('Error:', error);
-        showMessage(error.message || 'Error al guardar cliente', 'error');
-    } finally {
-        const submitBtn = document.querySelector('#clienteFormElement button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = currentClienteId ? 'Actualizar Cliente' : 'Guardar Cliente';
+        showMessage('Error de conexión', 'error');
+    }
+}
+
+async function deleteCliente(id) {
+    if (!confirm('¿Está seguro de eliminar este cliente?')) return;
+
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/clientes/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Cliente eliminado exitosamente', 'success');
+            await loadClientes();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
         }
-    }
-}
-
-// Cargar clientes
-async function loadClientes() {
-    try {
-        clientes = await apiCall('https://localhost:7000/api/clientes');
-        renderClientesTable();
-        updateClientesVentaSelect();
     } catch (error) {
-        console.error('Error al cargar clientes:', error);
-        showMessage('Error al cargar clientes', 'error');
+        showMessage('Error de conexión', 'error');
     }
 }
 
-// Renderizar tabla de clientes
-function renderClientesTable() {
-    const tbody = document.getElementById('clientesTableBody');
-    if (!tbody) return;
-
-    if (!clientes || clientes.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center" style="padding: 20px; color: #6c757d;">
-                    <i class="fas fa-users" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                    No hay clientes registrados
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = clientes.map(cliente => `
-        <tr>
-            <td>${cliente.nombre}</td>
-            <td>${cliente.nit || '-'}</td>
-            <td>${cliente.direccion || '-'}</td>
-            <td>${cliente.telefono || '-'}</td>
-            <td>${cliente.email || '-'}</td>
-            <td>
-                <span class="badge ${cliente.estado ? 'badge-success' : 'badge-danger'}">
-                    ${cliente.estado ? 'Activo' : 'Inactivo'}
-                </span>
-            </td>
-            <td>
-                <button class="action-btn edit-btn" onclick="showClienteForm(${JSON.stringify(cliente).replace(/"/g, '&quot;')})" 
-                        title="Editar cliente">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="action-btn ${cliente.estado ? 'delete-btn' : 'activate-btn'}" 
-                        onclick="${cliente.estado ? 'desactivarCliente' : 'activarCliente'}(${cliente.id})"
-                        title="${cliente.estado ? 'Desactivar cliente' : 'Activar cliente'}">
-                    <i class="fas ${cliente.estado ? 'fa-trash' : 'fa-check'}"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+async function activateCliente(id) {
+    // Para implementar cuando tengas el endpoint de activar cliente
+    showMessage('Función de activar cliente no implementada', 'error');
 }
 
-// Desactivar cliente
-async function desactivarCliente(id) {
-    if (!confirm('¿Está seguro de desactivar este cliente?')) return;
-
+async function editCliente(id) {
     try {
-        await apiCall(`https://localhost:7000/api/clientes/${id}`, {
-            method: 'DELETE'
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/clientes/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
         });
 
-        showMessage('Cliente desactivado exitosamente', 'success');
-        loadClientes();
-    } catch (error) {
-        showMessage(error.message || 'Error al desactivar cliente', 'error');
-    }
-}
-
-// Activar cliente
-async function activarCliente(id) {
-    if (!confirm('¿Está seguro de activar este cliente?')) return;
-
-    try {
-        await apiCall(`https://localhost:7000/api/clientes/${id}/activate`, {
-            method: 'PUT'
-        });
-
-        showMessage('Cliente activado exitosamente', 'success');
-        loadClientes();
-    } catch (error) {
-        showMessage(error.message || 'Error al activar cliente', 'error');
-    }
-}
-
-// Actualizar select de clientes en ventas
-function updateClientesVentaSelect() {
-    const selectCliente = document.getElementById('ventaCliente');
-    if (selectCliente && clientes) {
-        const clientesActivos = clientes.filter(c => c.estado);
-        populateSelect(selectCliente, clientesActivos, 'id', 'nombre', 'Seleccionar cliente');
-    }
-}
-
-// Buscar cliente por NIT
-async function buscarClientePorNIT(nit) {
-    if (!nit) return null;
-
-    try {
-        const response = await apiCall(`https://localhost:7000/api/clientes/buscar-por-nit/${encodeURIComponent(nit)}`);
-        return response;
-    } catch (error) {
-        return null;
+        if (response.ok) {
+            const cliente = await response.json();
+            showClienteForm(cliente);
+        } else {
+            showMessage('Error al cargar el cliente', 'error');
+        }
+    } catch (err) {
+        showMessage('Error de conexión', 'error');
     }
 }

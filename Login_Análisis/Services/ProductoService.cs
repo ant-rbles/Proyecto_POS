@@ -19,14 +19,17 @@ namespace Login_Análisis.Services
         public ApplicationDbContext Context => _context;
 
         // Métodos para Proveedores
-        public async Task<List<Proveedor>> ObtenerProveedores()
+        public async Task<List<Proveedor>> ObtenerTodosProveedoresAsync()
+        {
+            return await _context.Proveedores
+                .ToListAsync();
+        }
+        public async Task<List<Proveedor>> ObtenerProveedoresActivosAsync()
         {
             return await _context.Proveedores
                 .Where(p => p.Estado)
-                .OrderBy(p => p.Nombre)
                 .ToListAsync();
         }
-
         public async Task<Proveedor> ObtenerProveedor(int id)
         {
             return await _context.Proveedores.FindAsync(id);
@@ -110,24 +113,21 @@ namespace Login_Análisis.Services
             }
         }
 
-        public async Task<List<Producto>> ObtenerProductos()
+        public async Task<List<Producto>> ObtenerTodosProductosAsync()
         {
-            try
-            {
-                var productos = await _context.Productos
-                    .Include(p => p.Categoria) 
-                    .Include(p => p.UnidadMedidaBase) 
-                    .Where(p => p.Estado)
-                    .OrderBy(p => p.Nombre)
-                    .ToListAsync();
+            return await _context.Productos
+                .Include(p => p.Categoria)
+                .Include(p => p.UnidadMedidaBase)
+                .ToListAsync();
+        }
 
-                return productos;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ERROR: {ex.Message}");
-                return new List<Producto>();
-            }
+        public async Task<List<Producto>> ObtenerProductosActivosAsync()
+        {
+            return await _context.Productos
+                .Where(p => p.Estado)
+                .Include(p => p.Categoria)
+                .Include(p => p.UnidadMedidaBase)
+                .ToListAsync();
         }
 
         public async Task<Producto> ObtenerProducto(int id)
@@ -793,7 +793,7 @@ namespace Login_Análisis.Services
 
         public async Task<object> GenerarReporteInventario()
         {
-            var productos = await ObtenerProductos();
+            var productos = await ObtenerTodosProductosAsync();
 
             var reporte = new
             {

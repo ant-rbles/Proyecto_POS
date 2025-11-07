@@ -22,17 +22,23 @@ namespace Login_Análisis.Controllers
         //Productos
 
         [HttpGet]
-        public async Task<IActionResult> ObtenerProductos()
+        public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
+        {
+            var productos = await _productoService.ObtenerProductosActivosAsync();
+            return Ok(productos);
+        }
+
+        [HttpGet("todos")]
+        public async Task<ActionResult<IEnumerable<Producto>>> GetTodosProductos()
         {
             try
             {
-                var productos = await _productoService.ObtenerProductos();
+                var productos = await _productoService.ObtenerTodosProductosAsync();
                 return Ok(productos);
             }
             catch (Exception ex)
             {
-                // En producción, no devolver el error real al cliente
-                return Ok(new List<object>());
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
 

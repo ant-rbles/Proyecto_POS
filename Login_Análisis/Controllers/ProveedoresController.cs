@@ -18,30 +18,23 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ObtenerProveedores()
+        public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedores()
+        {
+            var proveedores = await _proveedorService.ObtenerProveedoresActivosAsync();
+            return Ok(proveedores);
+        }
+
+        [HttpGet("todos")]
+        public async Task<ActionResult<IEnumerable<Proveedor>>> GetTodosProveedores()
         {
             try
             {
-                var proveedores = await _productoService.ObtenerProveedores();
-                var proveedoresResponse = proveedores.Select(p => new ProveedorResponse
-                {
-                    Id = p.Id,
-                    Nombre = p.Nombre,
-                    RUC = p.RUC,
-                    Direccion = p.Direccion,
-                    Telefono = p.Telefono,
-                    Email = p.Email,
-                    Contacto = p.Contacto,
-                    Estado = p.Estado,
-                    FechaCreacion = p.FechaCreacion,
-                    FechaActualizacion = p.FechaActualizacion
-                }).ToList();
-
-                return Ok(proveedoresResponse);
+                var proveedores = await _proveedorService.ObtenerTodosProveedoresAsync();
+                return Ok(proveedores);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
 

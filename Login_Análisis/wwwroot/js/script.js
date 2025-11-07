@@ -3641,4 +3641,4 @@ window.handleCompraSubmit = handleCompraSubmit;
 window.handleVentaSubmit = handleVentaSubmit;
 window.handleCategoriaSubmit = handleCategoriaSubmit;
 window.handleUnidadSubmit = handleUnidadSubmit;
-window.cargarPrecioProductoVenta = cargarPrecioProductoVenta;
+window.cargarPrecioProductoVenta = cargarPrecioProductoVenta; 
