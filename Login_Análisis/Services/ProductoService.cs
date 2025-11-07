@@ -113,39 +113,31 @@ namespace Login_Análisis.Services
         {
             try
             {
-                Console.WriteLine("=== MODO EXTREMO: DIAGNÓSTICO COMPLETO ===");
+                Console.WriteLine("=== USANDO LÓGICA IDÉNTICA A PROVEEDORES ===");
 
-                // 1. Verificar conexión
-                var canConnect = await _context.Database.CanConnectAsync();
-                Console.WriteLine($"Conexión a BD: {canConnect}");
+                // MISMA lógica exacta que ObtenerProveedores
+                var productos = await _context.Productos
+                    .Where(p => p.Estado) // Igual que proveedores
+                    .OrderBy(p => p.Nombre) // Igual que proveedores
+                    .ToListAsync(); // Igual que proveedores
 
-                // 2. Contar productos de forma directa
-                var count = await _context.Productos.CountAsync();
-                Console.WriteLine($"Productos en BD: {count}");
+                Console.WriteLine($"Productos obtenidos: {productos.Count}");
 
-                // 3. Si hay productos, forzar la carga
-                if (count > 0)
+                // Mostrar primeros 3 para diagnóstico
+                for (int i = 0; i < Math.Min(3, productos.Count); i++)
                 {
-                    // Cargar productos SIN Entity Framework - método directo
-                    var productos = await _context.Productos
-                        .FromSqlRaw("SELECT * FROM Productos") // SQL directo
-                        .Include(p => p.Categoria)
-                        .Include(p => p.UnidadMedidaBase)
-                        .ToListAsync();
-
-                    Console.WriteLine($"Productos cargados con SQL directo: {productos.Count}");
-                    return productos;
+                    var p = productos[i];
+                    Console.WriteLine($"Producto {i + 1}: ID={p.Id}, Código={p.Codigo}, Nombre={p.Nombre}, Estado={p.Estado}");
                 }
 
-                return new List<Producto>();
+                return productos;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ERROR EXTREMO: {ex.Message}");
+                Console.WriteLine($"ERROR: {ex.Message}");
                 return new List<Producto>();
             }
         }
-
         public async Task<Producto> ObtenerProducto(int id)
         {
             return await _context.Productos

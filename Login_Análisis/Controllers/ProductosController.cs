@@ -3,6 +3,7 @@ using Login_Análisis.DTOs.Requests;
 using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Login_Análisis.Controllers
@@ -26,16 +27,11 @@ namespace Login_Análisis.Controllers
             try
             {
                 var productos = await _productoService.ObtenerProductos();
-
-                Console.WriteLine($"Controlador - Productos recibidos: {productos?.Count ?? 0}");
-
-                // Siempre devolver un array, aunque esté vacío
-                return Ok(productos ?? new List<Producto>());
+                return Ok(productos);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ERROR en controlador: {ex.Message}");
-                // Devolver array vacío en lugar de error
+                // En producción, no devolver el error real al cliente
                 return Ok(new List<object>());
             }
         }

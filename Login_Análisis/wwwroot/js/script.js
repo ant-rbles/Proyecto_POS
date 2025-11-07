@@ -1178,15 +1178,7 @@ async function deleteProducto(id) {
 
 async function loadProductos() {
     try {
-        console.log('Iniciando carga de productos...');
         const authToken = localStorage.getItem('authToken');
-        
-        if (!authToken) {
-            console.error('No hay token de autenticación');
-            showMessage('Error: No hay sesión activa', 'error');
-            return;
-        }
-
         const response = await fetch('https://localhost:7000/api/productos', {
             method: 'GET',
             headers: {
@@ -1195,89 +1187,40 @@ async function loadProductos() {
             }
         });
 
-        console.log('Status de respuesta:', response.status);
-        console.log('URL solicitada:', response.url);
-
         if (response.ok) {
-            const data = await response.json();
-            console.log('Datos recibidos del servidor:', data);
-            
-            productos = Array.isArray(data) ? data : [];
-            console.log(`Productos procesados: ${productos.length}`);
-            
+            productos = await response.json();
             renderProductosTable();
-            
-            if (productos.length === 0) {
-                showMessage('No se encontraron productos activos en el sistema', 'warning');
-            } else {
-                showMessage(`Se cargaron ${productos.length} productos correctamente`, 'success');
-            }
         } else {
-            console.error('Error en respuesta:', response.status, response.statusText);
-            const errorText = await response.text();
-            console.error('Detalles del error:', errorText);
-            
-            productos = [];
-            renderProductosTable();
-            showMessage('Error al cargar productos desde el servidor', 'error');
+            console.error('Error al cargar productos');
         }
     } catch (error) {
-        console.error('Error de conexion:', error);
-        productos = [];
-        renderProductosTable();
-        showMessage('Error de conexion con el servidor', 'error');
+        console.error('Error:', error);
     }
 }
 
 function renderProductosTable() {
     const tbody = document.getElementById('productosTableBody');
-    if (!tbody) {
-        console.error('No se encontró productosTableBody');
-        return;
-    }
+    if (!tbody) return;
 
     if (!productos || productos.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="no-data" style="text-align: center; padding: 20px;">
-                    No hay productos disponibles o hay un problema temporal con los datos.
-                    <br><small>Intenta recargar la página o contactar al administrador.</small>
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay productos disponibles</td></tr>';
         return;
     }
 
     tbody.innerHTML = productos.map(producto => {
-        // Valores por defecto para evitar errores de undefined
-        const codigo = producto.codigo || 'SIN CÓDIGO';
-        const nombre = producto.nombre || 'SIN NOMBRE';
-        const categoriaNombre = (producto.categoria && producto.categoria.nombre) ? producto.categoria.nombre : 'Sin categoría';
-        const unidadNombre = (producto.unidadMedidaBase && producto.unidadMedidaBase.nombre) ? producto.unidadMedidaBase.nombre : 'N/A';
-        const stockActual = producto.stockActual || 0;
-        const stockMinimo = producto.stockMinimo || 0;
-        const precioVenta = producto.precioVenta || 0;
-
-        const stockStatus = getStockStatusClass(stockActual, stockMinimo);
-        const stockStatusText = stockActual <= 0 ? 'Sin Stock' :
-            stockActual <= stockMinimo ? 'Stock Bajo' : 'Normal';
-
         return `
         <tr>
-            <td>${codigo}</td>
-            <td>${nombre}</td>
-            <td>${categoriaNombre}</td>
-            <td>${unidadNombre}</td>
+            <td>${producto.codigo}</td>
+            <td>${producto.nombre}</td>
+            <td>${producto.categoria ? producto.categoria.nombre : '-'}</td>
+            <td>${producto.unidadMedidaBase ? producto.unidadMedidaBase.nombre : '-'}</td>
+            <td>${producto.stockActual}</td>
+            <td>$${producto.precioVenta?.toFixed(2) || '0.00'}</td>
             <td>
-                <span class="stock-badge ${stockStatus}">${stockActual.toFixed(2)}</span>
-                <small style="display: block; font-size: 12px; color: #6c757d;">${stockStatusText}</small>
-            </td>
-            <td>$${precioVenta.toFixed(2)}</td>
-            <td>
-                <button class="action-btn edit-btn" onclick="editProducto(${producto.id})" title="Editar">
+                <button class="action-btn edit-btn" onclick="editProducto(${producto.id})">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="action-btn delete-btn" onclick="deleteProducto(${producto.id})" title="Eliminar">
+                <button class="action-btn delete-btn" onclick="deleteProducto(${producto.id})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
