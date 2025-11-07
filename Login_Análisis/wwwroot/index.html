@@ -176,1109 +176,1121 @@
                 </a>
             </div>
 
-                <div class="dashboard-content">
-                    <!-- Vista de Bienvenida -->
-                    <div class="welcome-card">
-                        <div class="welcome-icon">
-                        </div>
-                        <h2 class="welcome-title">¡Bienvenido, <span id="welcomeName">Usuario</span>!</h2>
-                        <p class="welcome-message">Has iniciado sesión exitosamente en Centro Plástico Leonor. Aquí puedes gestionar todas tus actividades.</p>
-                        <button class="btn" style="max-width: 200px;" onclick="showNotification()">Comenzar</button>
+            <div class="dashboard-content">
+                <!-- Vista de Bienvenida -->
+                <div class="welcome-card">
+                    <div class="welcome-icon">
                     </div>
+                    <h2 class="welcome-title">¡Bienvenido, <span id="welcomeName">Usuario</span>!</h2>
+                    <p class="welcome-message">Has iniciado sesión exitosamente en Centro Plástico Leonor. Aquí puedes gestionar todas tus actividades.</p>
+                    <button class="btn" style="max-width: 200px;" onclick="showNotification()">Comenzar</button>
+                </div>
 
-                    <!-- Contenedor para las pestañas de gestión -->
-                    <div id="managementTabs" class="management-tabs-container" style="display: none;">
-                        <!-- Pestaña de Proveedores -->
-                        <div id="tab-proveedores" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-truck"></i> Gestión de Proveedores</h3>
-                                <button class="btn btn-primary" onclick="showProveedorForm()">
-                                    <i class="fas fa-plus"></i> Nuevo Proveedor
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Proveedor -->
-                            <div id="proveedorForm" class="form-panel" style="display: none;">
-                                <h4 id="proveedorFormTitle">Nuevo Proveedor</h4>
-                                <form id="proveedorFormElement">
-                                    <input type="hidden" id="proveedorId">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="proveedorNombre">Nombre *</label>
-                                                <input type="text" id="proveedorNombre" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="proveedorRUC">RUC *</label>
-                                                <input type="text" id="proveedorRUC" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="proveedorTelefono">Teléfono</label>
-                                                <input type="text" id="proveedorTelefono">
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="proveedorEmail">Email</label>
-                                                <input type="email" id="proveedorEmail">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="proveedorDireccion">Dirección</label>
-                                        <input type="text" id="proveedorDireccion">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="proveedorContacto">Persona de Contacto</label>
-                                        <input type="text" id="proveedorContacto">
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideProveedorForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
-                                    </div>
-                                </form>
-                            </div>
-
-
-                            <!-- Lista de Proveedores -->
-                            <div class="table-container">
-                                <table id="proveedoresTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>RUC</th>
-                                            <th>Teléfono</th>
-                                            <th>Email</th>
-                                            <th>Contacto</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="proveedoresTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
+                <!-- Contenedor para las pestañas de gestión -->
+                <div id="managementTabs" class="management-tabs-container" style="display: none;">
+                    <!-- Pestaña de Proveedores -->
+                    <div id="tab-proveedores" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-truck"></i> Gestión de Proveedores</h3>
+                            <button class="btn btn-primary" onclick="showProveedorForm()">
+                                <i class="fas fa-plus"></i> Nuevo Proveedor
+                            </button>
                         </div>
 
-                        <!-- Pestaña de Clientes - MEJORADA -->
-                        <div id="tab-clientes" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-users"></i> Gestión de Clientes</h3>
-                                <button class="btn btn-primary" onclick="showClienteForm()">
-                                    <i class="fas fa-plus"></i> Nuevo Cliente
-                                </button>
-                            </div>
-
-                            <!-- Lista de Clientes -->
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>NIT</th>
-                                            <th>Teléfono</th>
-                                            <th>Email</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="clientesTableBody">
-                                        <!-- Los clientes se cargarán aquí -->
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Formulario de Cliente - ESTILO MEJORADO -->
-                            <div id="clienteForm" class="content-section" style="display: none; margin-top: 20px;">
-                                <div class="section-title" id="clienteFormTitle">Nuevo Cliente</div>
-                                <form id="clienteFormElement" onsubmit="handleClienteSubmit(event)">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="clienteNombre">Nombre *</label>
-                                                <input type="text" id="clienteNombre" class="form-control" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="clienteNIT">NIT</label>
-                                                <input type="text" id="clienteNIT" class="form-control" placeholder="CF para consumidor final">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="clienteTelefono">Teléfono</label>
-                                                <input type="text" id="clienteTelefono" class="form-control">
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="clienteEmail">Email</label>
-                                                <input type="email" id="clienteEmail" class="form-control">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="clienteDireccion">Dirección</label>
-                                        <textarea id="clienteDireccion" class="form-control" rows="2"></textarea>
-                                    </div>
-
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideClienteForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Cliente</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Descuentos - MEJORADA -->
-                        <div id="tab-descuentos" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-tag"></i> Configurar Descuentos</h3>
-                                <button class="btn btn-primary" onclick="showDescuentoForm()">
-                                    <i class="fas fa-plus"></i> Nuevo Descuento
-                                </button>
-                            </div>
-
-                            <!-- Lista de Descuentos -->
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th>Cantidad Mínima</th>
-                                            <th>Descuento</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="descuentosTableBody">
-                                        <!-- Los descuentos se cargarán aquí -->
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Formulario de Descuentos - ESTILO MEJORADO -->
-                            <div id="descuentoForm" class="content-section" style="display: none; margin-top: 20px;">
-                                <div class="section-title">Configurar Descuento por Cantidad</div>
-                                <form id="descuentoFormElement" onsubmit="handleDescuentoSubmit(event)">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="descuentoProducto">Producto *</label>
-                                                <select id="descuentoProducto" class="form-control" required>
-                                                    <option value="">Seleccionar producto...</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="descuentoCantidadMinima">Cantidad Mínima *</label>
-                                                <input type="number" id="descuentoCantidadMinima" class="form-control" required min="1" step="1">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="descuentoPorcentaje">Porcentaje de Descuento (%) *</label>
-                                                <input type="number" id="descuentoPorcentaje" class="form-control" required min="0" max="100" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideDescuentoForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Descuento</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Productos -->
-                        <div id="tab-productos" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-boxes"></i> Gestión de Productos</h3>
-                                <button class="btn btn-primary" onclick="showProductoForm()">
-                                    <i class="fas fa-plus"></i> Nuevo Producto
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Producto -->
-                            <div id="productoForm" class="form-panel" style="display: none;">
-                                <h4 id="productoFormTitle">Nuevo Producto</h4>
-                                <form id="productoFormElement">
-                                    <input type="hidden" id="productoId">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoCodigo">Código *</label>
-                                                <input type="text" id="productoCodigo" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoNombre">Nombre *</label>
-                                                <input type="text" id="productoNombre" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="productoDescripcion">Descripción</label>
-                                        <textarea id="productoDescripcion" rows="3"></textarea>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoCategoria">Categoría</label>
-                                                <select id="productoCategoria">
-                                                    <option value="">Sin categoría</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoUnidadBase">Unidad Base *</label>
-                                                <select id="productoUnidadBase" required>
-                                                    <option value="">Seleccionar unidad</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoStockMinimo">Stock Mínimo</label>
-                                                <input type="number" id="productoStockMinimo" value="0" step="0.01">
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="productoMargen">Margen Ganancia (%)</label>
-                                                <input type="number" id="productoMargen" value="30" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideProductoForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Producto</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Lista de Productos -->
-                            <div class="table-container">
-                                <table id="productosTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Código</th>
-                                            <th>Nombre</th>
-                                            <th>Categoría</th>
-                                            <th>Unidad Medida</th>
-                                            <th class="text-center">Stock Actual</th>
-                                            <th class="text-right">Precio Costo</th>
-                                            <th class="text-right">Precio Venta</th>
-                                            <th class="text-center">Estado</th>
-                                            <th class="text-center">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="productosTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Compras -->
-                        <div id="tab-compras" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-shopping-cart"></i> Registro de Compras</h3>
-                                <button class="btn btn-primary" onclick="showCompraForm()">
-                                    <i class="fas fa-plus"></i> Nueva Compra
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Compra -->
-                            <div id="compraForm" class="form-panel" style="display: none;">
-                                <h4>Nueva Compra</h4>
-                                <form id="compraFormElement">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="compraProveedor">Proveedor *</label>
-                                                <select id="compraProveedor" required>
-                                                    <option value="">Seleccionar proveedor</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="compraFactura">N° Factura *</label>
-                                                <input type="text" id="compraFactura" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="compraFecha">Fecha Compra *</label>
-                                                <input type="date" id="compraFecha" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="compraImpuestos">Impuestos</label>
-                                                <input type="number" id="compraImpuestos" value="0" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="compraObservaciones">Observaciones</label>
-                                        <textarea id="compraObservaciones" rows="2"></textarea>
-                                    </div>
-
-                                    <!-- Detalles de la Compra -->
-                                    <div class="detalles-section">
-                                        <h5>Detalles de la Compra</h5>
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="detalleProducto">Producto</label>
-                                                    <select id="detalleProducto">
-                                                        <option value="">Seleccionar producto</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="detalleUnidad">Unidad</label>
-                                                    <select id="detalleUnidad">
-                                                        <option value="">Seleccionar unidad</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="detalleCantidad">Cantidad</label>
-                                                    <input type="number" id="detalleCantidad" value="0" step="0.01">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="detallePrecio">Precio Unitario</label>
-                                                    <input type="number" id="detallePrecio" value="0" step="0.01">
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="detalleTotal">Total Línea</label>
-                                                    <input type="number" id="detalleTotal" readonly>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <button type="button" class="btn btn-secondary" onclick="agregarDetalle()" style="margin-top: 25px;">
-                                                    <i class="fas fa-plus"></i> Agregar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Lista de Detalles -->
-                                    <div class="table-container">
-                                        <table id="detallesTable" class="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Producto</th>
-                                                    <th>Unidad</th>
-                                                    <th>Cantidad</th>
-                                                    <th>Precio Unit.</th>
-                                                    <th>Total</th>
-                                                    <th>Acciones</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="detallesTableBody">
-                                            </tbody>
-                                            <tfoot>
-                                                <tr>
-                                                    <td colspan="4" class="text-right"><strong>Subtotal:</strong></td>
-                                                    <td id="compraSubtotal">0.00</td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="4" class="text-right"><strong>Impuestos:</strong></td>
-                                                    <td id="compraImpuestosTotal">0.00</td>
-                                                    <td></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="4" class="text-right"><strong>Total:</strong></td>
-                                                    <td id="compraTotal">0.00</td>
-                                                    <td></td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideCompraForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Registrar Compra</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Lista de Compras -->
-                            <div class="table-container">
-                                <table id="comprasTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Factura</th>
-                                            <th>Proveedor</th>
-                                            <th>Fecha</th>
-                                            <th>Subtotal</th>
-                                            <th>Impuestos</th>
-                                            <th>Total</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="comprasTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Ventas - COMPLETA -->
-                        <div id="tab-ventas" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-cash-register"></i> Registrar Venta</h3>
-                                <button class="btn btn-primary" onclick="showVentaForm()">
-                                    <i class="fas fa-plus"></i> Nueva Venta
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Venta - VISIBLE POR DEFECTO -->
-                            <div id="ventaForm" class="content-section">
-                                <div class="section-title">Información de la Venta</div>
-                                <form id="ventaFormElement" onsubmit="handleVentaSubmit(event)">
-
-                                    <!-- Estadísticas Rápidas -->
-                                    <div class="inventory-stats">
-                                        <div class="stat-card primary">
-                                            <div class="stat-title">Ventas Hoy</div>
-                                            <div class="stat-value" id="ventasHoy">0</div>
-                                            <div class="stat-icon">
-                                                <i class="fas fa-shopping-cart"></i>
-                                            </div>
-                                        </div>
-                                        <div class="stat-card success">
-                                            <div class="stat-title">Ingresos Hoy</div>
-                                            <div class="stat-value" id="ingresosHoy">$0.00</div>
-                                            <div class="stat-icon">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </div>
-                                        </div>
-                                        <div class="stat-card warning">
-                                            <div class="stat-title">Ventas Mes</div>
-                                            <div class="stat-value" id="ventasMes">0</div>
-                                            <div class="stat-icon">
-                                                <i class="fas fa-chart-line"></i>
-                                            </div>
-                                        </div>
-                                        <div class="stat-card info">
-                                            <div class="stat-title">Ingresos Mes</div>
-                                            <div class="stat-value" id="ingresosMes">$0.00</div>
-                                            <div class="stat-icon">
-                                                <i class="fas fa-money-bill-wave"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Información del Cliente -->
-                                    <div class="form-panel">
-                                        <h5><i class="fas fa-user"></i> Información del Cliente</h5>
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label>Buscar por NIT</label>
-                                                    <div style="display: flex; gap: 10px; align-items: flex-end;">
-                                                        <input type="text" id="ventaClienteNIT" class="form-control" placeholder="Ingrese NIT del cliente">
-                                                        <button type="button" class="btn btn-secondary" onclick="buscarClientePorNIT()" style="white-space: nowrap;">
-                                                            <i class="fas fa-search"></i> Buscar
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaClienteNombre">Nombre del Cliente *</label>
-                                                    <input type="text" id="ventaClienteNombre" class="form-control" required>
-                                                    <input type="hidden" id="ventaClienteId">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaAplicarIVA" style="display: flex; align-items: center; gap: 8px;">
-                                                        <input type="checkbox" id="ventaAplicarIVA" checked>
-                                                        Aplicar IVA (12%)
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaDescuentoGlobal">Descuento Global (Q)</label>
-                                                    <input type="number" id="ventaDescuentoGlobal" class="form-control" value="0" min="0" step="0.01" onchange="calcularTotalesVenta()">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Agregar Productos -->
-                                    <div class="form-panel">
-                                        <h5><i class="fas fa-shopping-cart"></i> Agregar Productos</h5>
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaProducto">Producto *</label>
-                                                    <select id="ventaProducto" class="form-control" required onchange="onProductoSelectChange()">
-                                                        <option value="">Seleccionar producto...</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaCantidad">Cantidad *</label>
-                                                    <input type="number" id="ventaCantidad" class="form-control" value="1" min="0.01" step="0.01" required>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-row">
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaPrecioUnitario">Precio Unitario (Q)</label>
-                                                    <input type="number" id="ventaPrecioUnitario" class="form-control" readonly style="background-color: #f8f9fa;">
-                                                    <small class="text-muted">Precio fijo del producto</small>
-                                                </div>
-                                            </div>
-                                            <div class="form-column">
-                                                <div class="form-group">
-                                                    <label for="ventaDescuentoProducto">Descuento (%)</label>
-                                                    <input type="number" id="ventaDescuentoProducto" class="form-control" value="0" min="0" max="100" step="0.01">
-                                                    <small class="text-muted">Descuento automático por cantidad</small>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <button type="button" class="btn btn-primary" onclick="agregarDetalleVenta()">
-                                            <i class="fas fa-plus"></i> Agregar Producto
-                                        </button>
-                                    </div>
-
-                                    <!-- Productos Agregados -->
-                                    <div class="form-panel">
-                                        <h5><i class="fas fa-list"></i> Productos en la Venta</h5>
-                                        <div class="table-container">
-                                            <table class="data-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Producto</th>
-                                                        <th>Cantidad</th>
-                                                        <th>Precio Unitario</th>
-                                                        <th>Descuento</th>
-                                                        <th>Total</th>
-                                                        <th>Acciones</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="detallesVentaTableBody">
-                                                    <tr>
-                                                        <td colspan="6" class="no-data">No hay productos agregados</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Totales -->
-                                    <div class="form-panel">
-                                        <h5><i class="fas fa-calculator"></i> Totales</h5>
-                                        <div class="totales-section">
-                                            <div class="total-row">
-                                                <span>Subtotal:</span>
-                                                <span id="ventaSubtotal">Q 0.00</span>
-                                            </div>
-                                            <div class="total-row">
-                                                <span>Descuento Global:</span>
-                                                <span id="ventaDescuentoGlobalTotal">Q 0.00</span>
-                                            </div>
-                                            <div class="total-row">
-                                                <span>IVA (12%):</span>
-                                                <span id="ventaImpuestos">Q 0.00</span>
-                                            </div>
-                                            <div class="total-row total-final">
-                                                <span><strong>Total:</strong></span>
-                                                <span><strong id="ventaTotal">Q 0.00</strong></span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Observaciones -->
-                                    <div class="form-panel">
-                                        <div class="form-group">
-                                            <label for="ventaObservaciones">Observaciones</label>
-                                            <textarea id="ventaObservaciones" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
-                                        </div>
-                                    </div>
-
-                                    <!-- Botones de Acción -->
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="limpiarVentaForm()">Limpiar</button>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-receipt"></i> Registrar Venta y Generar Factura
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Reportes -->
-                        <div id="tab-reportes" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-chart-bar"></i> Reportes y Análisis</h3>
-                                <div id="botonesReporteContainer">
-                                    <button class="btn btn-primary" onclick="generarReporteVentas()">
-                                        <i class="fas fa-download"></i> Descargar PDF
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Filtros de Reportes -->
-                            <div class="form-panel">
-                                <h4>Filtros</h4>
+                        <!-- Formulario de Proveedor -->
+                        <div id="proveedorForm" class="form-panel" style="display: none;">
+                            <h4 id="proveedorFormTitle">Nuevo Proveedor</h4>
+                            <form id="proveedorFormElement">
+                                <input type="hidden" id="proveedorId">
                                 <div class="form-row">
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="reporteTipo">Tipo de Reporte</label>
-                                            <select id="reporteTipo" onchange="cambiarTipoReporte()">
-                                                <option value="ventas">Ventas</option>
-                                                <option value="inventario">Inventario</option>
-                                                <option value="productos-mas-vendidos">Productos Más Vendidos</option>
-                                                <option value="movimientos">Movimientos</option>
-                                                <option value="compras">Compras</option>
+                                            <label for="proveedorNombre">Nombre *</label>
+                                            <input type="text" id="proveedorNombre" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="proveedorRUC">RUC *</label>
+                                            <input type="text" id="proveedorRUC" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="proveedorTelefono">Teléfono</label>
+                                            <input type="text" id="proveedorTelefono">
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="proveedorEmail">Email</label>
+                                            <input type="email" id="proveedorEmail">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proveedorDireccion">Dirección</label>
+                                    <input type="text" id="proveedorDireccion">
+                                </div>
+                                <div class="form-group">
+                                    <label for="proveedorContacto">Persona de Contacto</label>
+                                    <input type="text" id="proveedorContacto">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideProveedorForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
+                                </div>
+                            </form>
+                        </div>
+
+
+                        <!-- Lista de Proveedores -->
+                        <div class="table-container">
+                            <table id="proveedoresTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>RUC</th>
+                                        <th>Teléfono</th>
+                                        <th>Email</th>
+                                        <th>Contacto</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proveedoresTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Clientes - MEJORADA -->
+                    <div id="tab-clientes" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-users"></i> Gestión de Clientes</h3>
+                            <button class="btn btn-primary" onclick="showClienteForm()">
+                                <i class="fas fa-plus"></i> Nuevo Cliente
+                            </button>
+                        </div>
+
+                        <!-- Lista de Clientes -->
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>NIT</th>
+                                        <th>Teléfono</th>
+                                        <th>Email</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientesTableBody">
+                                    <!-- Los clientes se cargarán aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Formulario de Cliente - ESTILO MEJORADO -->
+                        <div id="clienteForm" class="content-section" style="display: none; margin-top: 20px;">
+                            <div class="section-title" id="clienteFormTitle">Nuevo Cliente</div>
+                            <form id="clienteFormElement" onsubmit="handleClienteSubmit(event)">
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="clienteNombre">Nombre *</label>
+                                            <input type="text" id="clienteNombre" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="clienteNIT">NIT</label>
+                                            <input type="text" id="clienteNIT" class="form-control" placeholder="CF para consumidor final">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="clienteTelefono">Teléfono</label>
+                                            <input type="text" id="clienteTelefono" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="clienteEmail">Email</label>
+                                            <input type="email" id="clienteEmail" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="clienteDireccion">Dirección</label>
+                                    <textarea id="clienteDireccion" class="form-control" rows="2"></textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideClienteForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Cliente</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Descuentos - MEJORADA -->
+                    <div id="tab-descuentos" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-tag"></i> Configurar Descuentos</h3>
+                            <button class="btn btn-primary" onclick="showDescuentoForm()">
+                                <i class="fas fa-plus"></i> Nuevo Descuento
+                            </button>
+                        </div>
+
+                        <!-- Lista de Descuentos -->
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad Mínima</th>
+                                        <th>Descuento</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="descuentosTableBody">
+                                    <!-- Los descuentos se cargarán aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Formulario de Descuentos - ESTILO MEJORADO -->
+                        <div id="descuentoForm" class="content-section" style="display: none; margin-top: 20px;">
+                            <div class="section-title">Configurar Descuento por Cantidad</div>
+                            <form id="descuentoFormElement" onsubmit="handleDescuentoSubmit(event)">
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="descuentoProducto">Producto *</label>
+                                            <select id="descuentoProducto" class="form-control" required>
+                                                <option value="">Seleccionar producto...</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="reporteFechaInicio">Fecha Inicio</label>
-                                            <input type="date" id="reporteFechaInicio">
+                                            <label for="descuentoCantidadMinima">Cantidad Mínima *</label>
+                                            <input type="number" id="descuentoCantidadMinima" class="form-control" required min="1" step="1">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="descuentoPorcentaje">Porcentaje de Descuento (%) *</label>
+                                            <input type="number" id="descuentoPorcentaje" class="form-control" required min="0" max="100" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideDescuentoForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Descuento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Productos -->
+                    <div id="tab-productos" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-boxes"></i> Gestión de Productos</h3>
+                            <button class="btn btn-primary" onclick="showProductoForm()">
+                                <i class="fas fa-plus"></i> Nuevo Producto
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Producto -->
+                        <div id="productoForm" class="form-panel" style="display: none;">
+                            <h4 id="productoFormTitle">Nuevo Producto</h4>
+                            <form id="productoFormElement">
+                                <input type="hidden" id="productoId">
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="productoCodigo">Código *</label>
+                                            <input type="text" id="productoCodigo" required>
                                         </div>
                                     </div>
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="reporteFechaFin">Fecha Fin</label>
-                                            <input type="date" id="reporteFechaFin">
+                                            <label for="productoNombre">Nombre *</label>
+                                            <input type="text" id="productoNombre" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productoDescripcion">Descripción</label>
+                                    <textarea id="productoDescripcion" rows="3"></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="productoCategoria">Categoría</label>
+                                            <select id="productoCategoria">
+                                                <option value="">Sin categoría</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="form-column">
-                                        <button class="btn btn-primary" onclick="cargarReporte()" style="margin-top: 25px;">
-                                            <i class="fas fa-chart-bar"></i> Generar Reporte
-                                        </button>
+                                        <div class="form-group">
+                                            <label for="productoUnidadBase">Unidad Base *</label>
+                                            <select id="productoUnidadBase" required>
+                                                <option value="">Seleccionar unidad</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Resultados del Reporte -->
-                            <div id="reporteResultados">
-                                <div class="table-container">
-                                    <table id="reporteTable" class="data-table">
-                                        <thead id="reporteTableHead">
-                                        </thead>
-                                        <tbody id="reporteTableBody">
-                                        </tbody>
-                                    </table>
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="productoStockMinimo">Stock Mínimo</label>
+                                            <input type="number" id="productoStockMinimo" value="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="productoMargen">Margen Ganancia (%)</label>
+                                            <input type="number" id="productoMargen" value="30" step="0.01">
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideProductoForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                                </div>
+                            </form>
                         </div>
 
-                        <!-- Pestaña de Movimientos -->
-                        <div id="tab-movimientos" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-exchange-alt"></i> Movimientos de Inventario</h3>
-                                <button class="btn btn-primary" onclick="showAjusteForm()">
-                                    <i class="fas fa-plus"></i> Nuevo Ajuste
-                                </button>
-                            </div>
+                        <!-- Lista de Productos -->
+                        <div class="table-container">
+                            <table id="productosTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Categoría</th>
+                                        <th>Unidad Medida</th>
+                                        <th class="text-center">Stock Actual</th>
+                                        <th class="text-right">Precio Costo</th>
+                                        <th class="text-right">Precio Venta</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productosTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                            <!-- Formulario de Ajuste -->
-                            <div id="ajusteForm" class="form-panel" style="display: none;">
-                                <h4>Ajuste de Inventario</h4>
-                                <form id="ajusteFormElement">
+                    <!-- Pestaña de Compras -->
+                    <div id="tab-compras" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-shopping-cart"></i> Registro de Compras</h3>
+                            <button class="btn btn-primary" onclick="showCompraForm()">
+                                <i class="fas fa-plus"></i> Nueva Compra
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Compra -->
+                        <div id="compraForm" class="form-panel" style="display: none;">
+                            <h4>Nueva Compra</h4>
+                            <form id="compraFormElement">
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="compraProveedor">Proveedor *</label>
+                                            <select id="compraProveedor" required>
+                                                <option value="">Seleccionar proveedor</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="compraFactura">N° Factura *</label>
+                                            <input type="text" id="compraFactura" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="compraFecha">Fecha Compra *</label>
+                                            <input type="date" id="compraFecha" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="compraImpuestos">Impuestos</label>
+                                            <input type="number" id="compraImpuestos" value="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="compraObservaciones">Observaciones</label>
+                                    <textarea id="compraObservaciones" rows="2"></textarea>
+                                </div>
+
+                                <!-- Detalles de la Compra -->
+                                <div class="detalles-section">
+                                    <h5>Detalles de la Compra</h5>
                                     <div class="form-row">
                                         <div class="form-column">
                                             <div class="form-group">
-                                                <label for="ajusteProducto">Producto *</label>
-                                                <select id="ajusteProducto" required>
+                                                <label for="detalleProducto">Producto</label>
+                                                <select id="detalleProducto">
                                                     <option value="">Seleccionar producto</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="form-column">
                                             <div class="form-group">
-                                                <label for="ajusteCantidad">Cantidad *</label>
-                                                <input type="number" id="ajusteCantidad" required step="0.01" placeholder="Use negativo para reducir">
-                                                <small>Use valores negativos para reducir el stock</small>
+                                                <label for="detalleUnidad">Unidad</label>
+                                                <select id="detalleUnidad">
+                                                    <option value="">Seleccionar unidad</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="detalleCantidad">Cantidad</label>
+                                                <input type="number" id="detalleCantidad" value="0" step="0.01">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="ajusteObservaciones">Observaciones *</label>
-                                        <textarea id="ajusteObservaciones" required rows="3" placeholder="Motivo del ajuste..."></textarea>
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="detallePrecio">Precio Unitario</label>
+                                                <input type="number" id="detallePrecio" value="0" step="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="detalleTotal">Total Línea</label>
+                                                <input type="number" id="detalleTotal" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <button type="button" class="btn btn-secondary" onclick="agregarDetalle()" style="margin-top: 25px;">
+                                                <i class="fas fa-plus"></i> Agregar
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideAjusteForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Aplicar Ajuste</button>
-                                    </div>
-                                </form>
-                            </div>
+                                </div>
 
-                            <!-- Filtros de Movimientos -->
-                            <div class="form-panel">
+                                <!-- Lista de Detalles -->
+                                <div class="table-container">
+                                    <table id="detallesTable" class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Producto</th>
+                                                <th>Unidad</th>
+                                                <th>Cantidad</th>
+                                                <th>Precio Unit.</th>
+                                                <th>Total</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="detallesTableBody">
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="4" class="text-right"><strong>Subtotal:</strong></td>
+                                                <td id="compraSubtotal">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-right"><strong>Impuestos:</strong></td>
+                                                <td id="compraImpuestosTotal">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-right"><strong>Total:</strong></td>
+                                                <td id="compraTotal">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideCompraForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Registrar Compra</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Lista de Compras -->
+                        <div class="table-container">
+                            <table id="comprasTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Factura</th>
+                                        <th>Proveedor</th>
+                                        <th>Fecha</th>
+                                        <th>Subtotal</th>
+                                        <th>Impuestos</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comprasTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Ventas - COMPLETA -->
+                    <div id="tab-ventas" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-cash-register"></i> Registrar Venta</h3>
+                            <button class="btn btn-primary" onclick="showVentaForm()">
+                                <i class="fas fa-plus"></i> Nueva Venta
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Venta - VISIBLE POR DEFECTO -->
+                        <div id="ventaForm" class="content-section">
+                            <div class="section-title">Información de la Venta</div>
+                            <form id="ventaFormElement" onsubmit="handleVentaSubmit(event)">
+
+                                <!-- Estadísticas Rápidas -->
+                                <div class="inventory-stats">
+                                    <div class="stat-card primary">
+                                        <div class="stat-title">Ventas Hoy</div>
+                                        <div class="stat-value" id="ventasHoy">0</div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-shopping-cart"></i>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card success">
+                                        <div class="stat-title">Ingresos Hoy</div>
+                                        <div class="stat-value" id="ingresosHoy">$0.00</div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-dollar-sign"></i>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card warning">
+                                        <div class="stat-title">Ventas Mes</div>
+                                        <div class="stat-value" id="ventasMes">0</div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-chart-line"></i>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card info">
+                                        <div class="stat-title">Ingresos Mes</div>
+                                        <div class="stat-value" id="ingresosMes">$0.00</div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Información del Cliente -->
+                                <div class="form-panel">
+                                    <h5><i class="fas fa-user"></i> Información del Cliente</h5>
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label>Buscar por NIT</label>
+                                                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                                    <input type="text" id="ventaClienteNIT" class="form-control" placeholder="Ingrese NIT del cliente">
+                                                    <button type="button" class="btn btn-secondary" onclick="buscarClientePorNIT()" style="white-space: nowrap;">
+                                                        <i class="fas fa-search"></i> Buscar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaClienteNombre">Nombre del Cliente *</label>
+                                                <input type="text" id="ventaClienteNombre" class="form-control" required>
+                                                <input type="hidden" id="ventaClienteId">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaAplicarIVA" style="display: flex; align-items: center; gap: 8px;">
+                                                    <input type="checkbox" id="ventaAplicarIVA" checked>
+                                                    Aplicar IVA (12%)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaDescuentoGlobal">Descuento Global (Q)</label>
+                                                <input type="number" id="ventaDescuentoGlobal" class="form-control" value="0" min="0" step="0.01" onchange="calcularTotalesVenta()">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Agregar Productos -->
+                                <div class="form-panel">
+                                    <h5><i class="fas fa-shopping-cart"></i> Agregar Productos</h5>
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaProducto">Producto *</label>
+                                                <select id="ventaProducto" class="form-control" required onchange="onProductoSelectChange()">
+                                                    <option value="">Seleccionar producto...</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaCantidad">Cantidad *</label>
+                                                <input type="number" id="ventaCantidad" class="form-control" value="1" min="0.01" step="0.01" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaPrecioUnitario">Precio Unitario (Q)</label>
+                                                <input type="number" id="ventaPrecioUnitario" class="form-control" readonly style="background-color: #f8f9fa;">
+                                                <small class="text-muted">Precio fijo del producto</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-column">
+                                            <div class="form-group">
+                                                <label for="ventaDescuentoProducto">Descuento (%)</label>
+                                                <input type="number" id="ventaDescuentoProducto" class="form-control" value="0" min="0" max="100" step="0.01">
+                                                <small class="text-muted">Descuento automático por cantidad</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="btn btn-primary" onclick="agregarDetalleVenta()">
+                                        <i class="fas fa-plus"></i> Agregar Producto
+                                    </button>
+                                </div>
+
+                                <!-- Productos Agregados -->
+                                <div class="form-panel">
+                                    <h5><i class="fas fa-list"></i> Productos en la Venta</h5>
+                                    <div class="table-container">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th>Cantidad</th>
+                                                    <th>Precio Unitario</th>
+                                                    <th>Descuento</th>
+                                                    <th>Total</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="detallesVentaTableBody">
+                                                <tr>
+                                                    <td colspan="6" class="no-data">No hay productos agregados</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Totales -->
+                                <div class="form-panel">
+                                    <h5><i class="fas fa-calculator"></i> Totales</h5>
+                                    <div class="totales-section">
+                                        <div class="total-row">
+                                            <span>Subtotal:</span>
+                                            <span id="ventaSubtotal">Q 0.00</span>
+                                        </div>
+                                        <div class="total-row">
+                                            <span>Descuento Global:</span>
+                                            <span id="ventaDescuentoGlobalTotal">Q 0.00</span>
+                                        </div>
+                                        <div class="total-row">
+                                            <span>IVA (12%):</span>
+                                            <span id="ventaImpuestos">Q 0.00</span>
+                                        </div>
+                                        <div class="total-row total-final">
+                                            <span><strong>Total:</strong></span>
+                                            <span><strong id="ventaTotal">Q 0.00</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Observaciones -->
+                                <div class="form-panel">
+                                    <div class="form-group">
+                                        <label for="ventaObservaciones">Observaciones</label>
+                                        <textarea id="ventaObservaciones" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Botones de Acción -->
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="limpiarVentaForm()">Limpiar</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-receipt"></i> Registrar Venta y Generar Factura
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Reportes -->
+                    <div id="tab-reportes" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-chart-bar"></i> Reportes y Análisis</h3>
+                            <div id="botonesReporteContainer">
+                                <button class="btn btn-primary" onclick="generarReporteVentas()">
+                                    <i class="fas fa-download"></i> Descargar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filtros de Reportes -->
+                        <div class="form-panel">
+                            <h4>Filtros</h4>
+                            <div class="form-row">
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="reporteTipo">Tipo de Reporte</label>
+                                        <select id="reporteTipo" onchange="cambiarTipoReporte()">
+                                            <option value="ventas">Ventas</option>
+                                            <option value="inventario">Inventario</option>
+                                            <option value="productos-mas-vendidos">Productos Más Vendidos</option>
+                                            <option value="movimientos">Movimientos</option>
+                                            <option value="compras">Compras</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="reporteFechaInicio">Fecha Inicio</label>
+                                        <input type="date" id="reporteFechaInicio">
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="reporteFechaFin">Fecha Fin</label>
+                                        <input type="date" id="reporteFechaFin">
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <button class="btn btn-primary" onclick="cargarReporte()" style="margin-top: 25px;">
+                                        <i class="fas fa-chart-bar"></i> Generar Reporte
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resultados del Reporte -->
+                        <div id="reporteResultados">
+                            <div class="table-container">
+                                <table id="reporteTable" class="data-table">
+                                    <thead id="reporteTableHead">
+                                    </thead>
+                                    <tbody id="reporteTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Movimientos -->
+                    <div id="tab-movimientos" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-exchange-alt"></i> Movimientos de Inventario</h3>
+                            <button class="btn btn-primary" onclick="showAjusteForm()">
+                                <i class="fas fa-plus"></i> Nuevo Ajuste
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Ajuste -->
+                        <div id="ajusteForm" class="form-panel" style="display: none;">
+                            <h4>Ajuste de Inventario</h4>
+                            <form id="ajusteFormElement">
                                 <div class="form-row">
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="movimientoTipo">Tipo de Movimiento</label>
-                                            <select id="movimientoTipo">
-                                                <option value="">Todos</option>
-                                                <option value="ENTRADA">Entradas</option>
-                                                <option value="SALIDA">Salidas</option>
-                                                <option value="AJUSTE">Ajustes</option>
+                                            <label for="ajusteProducto">Producto *</label>
+                                            <select id="ajusteProducto" required>
+                                                <option value="">Seleccionar producto</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="movimientoFechaInicio">Fecha Inicio</label>
-                                            <input type="date" id="movimientoFechaInicio">
+                                            <label for="ajusteCantidad">Cantidad *</label>
+                                            <input type="number" id="ajusteCantidad" required step="0.01" placeholder="Use negativo para reducir">
+                                            <small>Use valores negativos para reducir el stock</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ajusteObservaciones">Observaciones *</label>
+                                    <textarea id="ajusteObservaciones" required rows="3" placeholder="Motivo del ajuste..."></textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideAjusteForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Aplicar Ajuste</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Filtros de Movimientos -->
+                        <div class="form-panel">
+                            <div class="form-row">
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="movimientoTipo">Tipo de Movimiento</label>
+                                        <select id="movimientoTipo">
+                                            <option value="">Todos</option>
+                                            <option value="ENTRADA">Entradas</option>
+                                            <option value="SALIDA">Salidas</option>
+                                            <option value="AJUSTE">Ajustes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="movimientoFechaInicio">Fecha Inicio</label>
+                                        <input type="date" id="movimientoFechaInicio">
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="movimientoFechaFin">Fecha Fin</label>
+                                        <input type="date" id="movimientoFechaFin">
+                                    </div>
+                                </div>
+                                <div class="form-column">
+                                    <button class="btn btn-primary" onclick="cargarMovimientos()" style="margin-top: 25px;">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Movimientos -->
+                        <div class="table-container">
+                            <table id="movimientosTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Producto</th>
+                                        <th>Tipo</th>
+                                        <th>Cantidad</th>
+                                        <th>Stock Anterior</th>
+                                        <th>Stock Nuevo</th>
+                                        <th>Observaciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="movimientosTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Categorías -->
+                    <div id="tab-categorias" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-tags"></i> Gestión de Categorías</h3>
+                            <button class="btn btn-primary" onclick="showCategoriaForm()">
+                                <i class="fas fa-plus"></i> Nueva Categoría
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Categoría -->
+                        <div id="categoriaForm" class="form-panel" style="display: none;">
+                            <h4 id="categoriaFormTitle">Nueva Categoría</h4>
+                            <form id="categoriaFormElement">
+                                <input type="hidden" id="categoriaId">
+                                <div class="form-group">
+                                    <label for="categoriaNombre">Nombre *</label>
+                                    <input type="text" id="categoriaNombre" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="categoriaDescripcion">Descripción</label>
+                                    <textarea id="categoriaDescripcion" rows="3"></textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideCategoriaForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Lista de Categorías -->
+                        <div class="table-container">
+                            <table id="categoriasTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Descripción</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categoriasTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña de Unidades de Medida -->
+                    <div id="tab-unidades" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-balance-scale"></i> Gestión de Unidades de Medida</h3>
+                            <button class="btn btn-primary" onclick="showUnidadForm()">
+                                <i class="fas fa-plus"></i> Nueva Unidad
+                            </button>
+                        </div>
+
+                        <!-- Formulario de Unidad de Medida -->
+                        <div id="unidadForm" class="form-panel" style="display: none;">
+                            <h4 id="unidadFormTitle">Nueva Unidad de Medida</h4>
+                            <form id="unidadFormElement">
+                                <input type="hidden" id="unidadId">
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="unidadNombre">Nombre *</label>
+                                            <input type="text" id="unidadNombre" required>
                                         </div>
                                     </div>
                                     <div class="form-column">
                                         <div class="form-group">
-                                            <label for="movimientoFechaFin">Fecha Fin</label>
-                                            <input type="date" id="movimientoFechaFin">
+                                            <label for="unidadAbreviatura">Abreviatura *</label>
+                                            <input type="text" id="unidadAbreviatura" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="unidadFactor">Factor de Conversión *</label>
+                                            <input type="number" id="unidadFactor" value="1" step="0.001" required>
                                         </div>
                                     </div>
                                     <div class="form-column">
-                                        <button class="btn btn-primary" onclick="cargarMovimientos()" style="margin-top: 25px;">
-                                            <i class="fas fa-search"></i> Buscar
-                                        </button>
+                                        <div class="form-group">
+                                            <label for="unidadEsBase" style="display: flex; align-items: center; margin-top: 25px;">
+                                                <input type="checkbox" id="unidadEsBase" style="margin-right: 10px;">
+                                                Es Unidad Base
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="hideUnidadForm()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar Unidad</button>
+                                </div>
+                            </form>
+                        </div>
 
-                            <!-- Lista de Movimientos -->
-                            <div class="table-container">
-                                <table id="movimientosTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Fecha</th>
-                                            <th>Producto</th>
-                                            <th>Tipo</th>
-                                            <th>Cantidad</th>
-                                            <th>Stock Anterior</th>
-                                            <th>Stock Nuevo</th>
-                                            <th>Observaciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="movimientosTableBody">
-                                    </tbody>
-                                </table>
+                        <!-- Lista de Unidades de Medida -->
+                        <div class="table-container">
+                            <table id="unidadesTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Abreviatura</th>
+                                        <th>Es Base</th>
+                                        <th>Factor</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unidadesTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Pestaña de Inventario -->
+                    <div id="tab-inventario" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-warehouse"></i> Control de Inventario</h3>
+                        </div>
+
+                        <!-- Resumen de Inventario -->
+                        <div class="inventory-stats">
+                            <div class="stat-card primary">
+                                <div class="stat-title">Total Productos</div>
+                                <div class="stat-value" id="totalProductos">0</div>
+                                <div class="stat-icon">
+                                    <i class="fas fa-boxes"></i>
+                                </div>
+                            </div>
+                            <div class="stat-card success">
+                                <div class="stat-title">Stock Total</div>
+                                <div class="stat-value" id="totalStock">0</div>
+                                <div class="stat-icon">
+                                    <i class="fas fa-cubes"></i>
+                                </div>
+                            </div>
+                            <div class="stat-card warning">
+                                <div class="stat-title">Stock Bajo</div>
+                                <div class="stat-value" id="stockBajo">0</div>
+                                <div class="stat-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                            <div class="stat-card info">
+                                <div class="stat-title">Valor Inventario</div>
+                                <div class="stat-value" id="valorInventario">$0.00</div>
+                                <div class="stat-icon">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Pestaña de Categorías -->
-                        <div id="tab-categorias" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-tags"></i> Gestión de Categorías</h3>
-                                <button class="btn btn-primary" onclick="showCategoriaForm()">
-                                    <i class="fas fa-plus"></i> Nueva Categoría
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Categoría -->
-                            <div id="categoriaForm" class="form-panel" style="display: none;">
-                                <h4 id="categoriaFormTitle">Nueva Categoría</h4>
-                                <form id="categoriaFormElement">
-                                    <input type="hidden" id="categoriaId">
-                                    <div class="form-group">
-                                        <label for="categoriaNombre">Nombre *</label>
-                                        <input type="text" id="categoriaNombre" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="categoriaDescripcion">Descripción</label>
-                                        <textarea id="categoriaDescripcion" rows="3"></textarea>
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideCategoriaForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Categoría</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Lista de Categorías -->
-                            <div class="table-container">
-                                <table id="categoriasTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>Descripción</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="categoriasTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Pestaña de Unidades de Medida -->
-                        <div id="tab-unidades" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-balance-scale"></i> Gestión de Unidades de Medida</h3>
-                                <button class="btn btn-primary" onclick="showUnidadForm()">
-                                    <i class="fas fa-plus"></i> Nueva Unidad
-                                </button>
-                            </div>
-
-                            <!-- Formulario de Unidad de Medida -->
-                            <div id="unidadForm" class="form-panel" style="display: none;">
-                                <h4 id="unidadFormTitle">Nueva Unidad de Medida</h4>
-                                <form id="unidadFormElement">
-                                    <input type="hidden" id="unidadId">
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="unidadNombre">Nombre *</label>
-                                                <input type="text" id="unidadNombre" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="unidadAbreviatura">Abreviatura *</label>
-                                                <input type="text" id="unidadAbreviatura" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="unidadFactor">Factor de Conversión *</label>
-                                                <input type="number" id="unidadFactor" value="1" step="0.001" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="unidadEsBase" style="display: flex; align-items: center; margin-top: 25px;">
-                                                    <input type="checkbox" id="unidadEsBase" style="margin-right: 10px;">
-                                                    Es Unidad Base
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="hideUnidadForm()">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Unidad</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Lista de Unidades de Medida -->
-                            <div class="table-container">
-                                <table id="unidadesTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>Abreviatura</th>
-                                            <th>Es Base</th>
-                                            <th>Factor</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="unidadesTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <!-- Pestaña de Inventario -->
-                        <div id="tab-inventario" class="management-tab">
-                            <div class="tab-header">
-                                <h3><i class="fas fa-warehouse"></i> Control de Inventario</h3>
-                            </div>
-
-                            <!-- Resumen de Inventario -->
-                            <div class="inventory-stats">
-                                <div class="stat-card primary">
-                                    <div class="stat-title">Total Productos</div>
-                                    <div class="stat-value" id="totalProductos">0</div>
-                                    <div class="stat-icon">
-                                        <i class="fas fa-boxes"></i>
-                                    </div>
-                                </div>
-                                <div class="stat-card success">
-                                    <div class="stat-title">Stock Total</div>
-                                    <div class="stat-value" id="totalStock">0</div>
-                                    <div class="stat-icon">
-                                        <i class="fas fa-cubes"></i>
-                                    </div>
-                                </div>
-                                <div class="stat-card warning">
-                                    <div class="stat-title">Stock Bajo</div>
-                                    <div class="stat-value" id="stockBajo">0</div>
-                                    <div class="stat-icon">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </div>
-                                </div>
-                                <div class="stat-card info">
-                                    <div class="stat-title">Valor Inventario</div>
-                                    <div class="stat-value" id="valorInventario">$0.00</div>
-                                    <div class="stat-icon">
-                                        <i class="fas fa-dollar-sign"></i>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Lista de Inventario -->
-                            <div class="table-container">
-                                <table id="inventarioTable" class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Código</th>
-                                            <th>Producto</th>
-                                            <th>Stock Actual</th>
-                                            <th>Stock Mínimo</th>
-                                            <th>P. Costo Prom.</th>
-                                            <th>P. Venta</th>
-                                            <th>Valor Stock</th>
-                                            <th>Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="inventarioTableBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Botón para volver -->
-                        <div class="tab-actions">
-                            <button class="btn btn-secondary" onclick="closeManagementTabs()">
-                                <i class="fas fa-arrow-left"></i> Volver al Dashboard
-                            </button>
+                        <!-- Lista de Inventario -->
+                        <div class="table-container">
+                            <table id="inventarioTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>P. Costo Prom.</th>
+                                        <th>P. Venta</th>
+                                        <th>Valor Stock</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventarioTableBody">
+                                    <!-- Los datos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- Gestión de Usuarios -->
-                    <div id="viewUsersContainer" class="content-section" style="display: none;">
-                        <h3 class="section-title">Gestión de Usuarios</h3>
-                        <p>Administra los usuarios del sistema: visualiza, edita o elimina registros.</p>
-                        <div id="usersTableContainer"></div>
+                    <!-- Botón para volver -->
+                    <div class="tab-actions">
+                        <button class="btn btn-secondary" onclick="closeManagementTabs()">
+                            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                        </button>
                     </div>
-
-                    <!-- Gestión de Productos -->
-                    <div id="viewProductsContainer" class="content-section" style="display: none;">
-                        <h3 class="section-title">Gestión de Productos</h3>
-                        <p>Administra el inventario de productos: agrega, modifica o elimina items.</p>
-                        <div id="productsTableContainer"></div>
-                    </div>
-
-                    <!-- Formulario de Registro de Usuarios -->
-                    <div id="userRegistrationForm" class="user-registration-form" style="display: none;">
-                        <h3 class="section-title">Registrar Nuevo Usuario</h3>
-
-                        <div class="form-row">
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminRegNombre">Nombre Completo</label>
-                                    <input type="text" id="adminRegNombre" name="nombre" required>
-                                </div>
-                            </div>
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminRegUsuario">Nombre de Usuario</label>
-                                    <input type="text" id="adminRegUsuario" name="usuario" required>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminRegEmail">Correo Electrónico</label>
-                                    <input type="email" id="adminRegEmail" name="email" required>
-                                </div>
-                            </div>
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminRegRol">Rol</label>
-                                    <select id="adminRegRol" name="rol" required class="form-control">
-                                        <option value="">Seleccione un rol</option>
-                                        <option value="Vendedor">Vendedor</option>
-                                        <option value="Cajero">Cajero</option>
-                                        <option value="Administrador">Administrador</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminRegPassword">Contraseña</label>
-                                    <input type="password" id="adminRegPassword" name="password" required oninput="checkAdminPasswordStrength()">
-                                    <span class="toggle-password" onclick="togglePassword('adminRegPassword')">
-                                        <i class="fas fa-eye"></i>
-                                    </span>
-                                    <div class="password-strength">
-                                        <div class="password-strength-bar" id="adminPasswordStrengthBar"></div>
-                                    </div>
-                                    <div class="password-rules">La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números.</div>
-                                </div>
-                            </div>
-                            <div class="form-column">
-                                <div class="form-group">
-                                    <label for="adminConfirmPassword">Confirmar Contraseña</label>
-                                    <input type="password" id="adminConfirmPassword" name="confirmPassword" required oninput="checkAdminPasswordMatch()">
-                                    <div class="password-match no-match" id="adminPasswordMatch">Las contraseñas no coinciden</div>
-                                    <div class="password-match match" id="adminPasswordMatchSuccess">Las contraseñas coinciden</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button type="button" class="btn" id="adminRegisterBtn" onclick="registerUserByAdmin()">Registrar Usuario</button>
-                    </div>
-
-                    <div id="dbTableContainer"></div>
                 </div>
+
+                <!-- Gestión de Usuarios -->
+                <div id="viewUsersContainer" class="content-section" style="display: none;">
+                    <h3 class="section-title">Gestión de Usuarios</h3>
+                    <p>Administra los usuarios del sistema: visualiza, edita o elimina registros.</p>
+                    <div id="usersTableContainer"></div>
+                </div>
+
+                <!-- Gestión de Productos -->
+                <div id="viewProductsContainer" class="content-section" style="display: none;">
+                    <h3 class="section-title">Gestión de Productos</h3>
+                    <p>Administra el inventario de productos: agrega, modifica o elimina items.</p>
+                    <div id="productsTableContainer"></div>
+                </div>
+
+                <!-- Formulario de Registro de Usuarios -->
+                <div id="userRegistrationForm" class="user-registration-form" style="display: none;">
+                    <h3 class="section-title">Registrar Nuevo Usuario</h3>
+
+                    <div class="form-row">
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminRegNombre">Nombre Completo</label>
+                                <input type="text" id="adminRegNombre" name="nombre" required>
+                            </div>
+                        </div>
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminRegUsuario">Nombre de Usuario</label>
+                                <input type="text" id="adminRegUsuario" name="usuario" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminRegEmail">Correo Electrónico</label>
+                                <input type="email" id="adminRegEmail" name="email" required>
+                            </div>
+                        </div>
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminRegRol">Rol</label>
+                                <select id="adminRegRol" name="rol" required class="form-control">
+                                    <option value="">Seleccione un rol</option>
+                                    <option value="Vendedor">Vendedor</option>
+                                    <option value="Cajero">Cajero</option>
+                                    <option value="Administrador">Administrador</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminRegPassword">Contraseña</label>
+                                <input type="password" id="adminRegPassword" name="password" required oninput="checkAdminPasswordStrength()">
+                                <span class="toggle-password" onclick="togglePassword('adminRegPassword')">
+                                    <i class="fas fa-eye"></i>
+                                </span>
+                                <div class="password-strength">
+                                    <div class="password-strength-bar" id="adminPasswordStrengthBar"></div>
+                                </div>
+                                <div class="password-rules">La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números.</div>
+                            </div>
+                        </div>
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label for="adminConfirmPassword">Confirmar Contraseña</label>
+                                <input type="password" id="adminConfirmPassword" name="confirmPassword" required oninput="checkAdminPasswordMatch()">
+                                <div class="password-match no-match" id="adminPasswordMatch">Las contraseñas no coinciden</div>
+                                <div class="password-match match" id="adminPasswordMatchSuccess">Las contraseñas coinciden</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn" id="adminRegisterBtn" onclick="registerUserByAdmin()">Registrar Usuario</button>
+                </div>
+
+                <div id="dbTableContainer"></div>
             </div>
+        </div>
     </div>
 
-    <script src="js/script.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/ventas.js"></script>
+    <script src="js/clientes.js"></script>
+    <script src="js/productos.js"></script>
+    <script src="js/proveedores.js"></script>
+    <script src="js/compras.js"></script>
+    <script src="js/inventario.js"></script>
+    <script src="js/unidades.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/reportes.js"></script>
+
 </body>
 </html>
