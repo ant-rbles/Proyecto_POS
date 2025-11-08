@@ -505,160 +505,133 @@
                     </div>
 
                     <!-- Pestaña de Compras -->
-                    <div id="tab-compras" class="management-tab">
+                    <div id="tab-compras" class="management-tab" style="display: none;">
                         <div class="tab-header">
-                            <h3><i class="fas fa-shopping-cart"></i> Registro de Compras</h3>
-                            <button class="btn btn-primary" onclick="showCompraForm()">
-                                <i class="fas fa-plus"></i> Nueva Compra
-                            </button>
+                            <h3><i class="fas fa-shopping-cart"></i> Gestión de Compras</h3>
+                            <div>
+                                <button class="btn btn-primary" onclick="showCompraForm()">
+                                    <i class="fas fa-plus"></i> Nueva Compra
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Formulario de Compra -->
-                        <div id="compraForm" class="form-panel" style="display: none;">
-                            <h4>Nueva Compra</h4>
+                        <!-- Formulario de compra (inicialmente oculto) -->
+                        <div id="compraForm" style="display: none; background: white; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                            <h4>Registrar Nueva Compra</h4>
                             <form id="compraFormElement">
+                                <!-- Información básica -->
                                 <div class="form-row">
                                     <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="compraProveedor">Proveedor *</label>
-                                            <select id="compraProveedor" required>
-                                                <option value="">Seleccionar proveedor</option>
-                                            </select>
-                                        </div>
+                                        <label for="compraProveedor">Proveedor *</label>
+                                        <select id="compraProveedor" required>
+                                            <option value="">Seleccionar proveedor</option>
+                                        </select>
                                     </div>
                                     <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="compraFactura">N° Factura *</label>
-                                            <input type="text" id="compraFactura" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="compraFecha">Fecha Compra *</label>
-                                            <input type="date" id="compraFecha" required>
-                                        </div>
+                                        <label for="compraFactura">N° Factura *</label>
+                                        <input type="text" id="compraFactura" required>
                                     </div>
                                     <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="compraImpuestos">Impuestos</label>
-                                            <input type="number" id="compraImpuestos" value="0" step="0.01">
-                                        </div>
+                                        <label for="compraFecha">Fecha *</label>
+                                        <input type="date" id="compraFecha" required>
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="compraObservaciones">Observaciones</label>
-                                    <textarea id="compraObservaciones" rows="2"></textarea>
                                 </div>
 
-                                <!-- Detalles de la Compra -->
-                                <div class="detalles-section">
-                                    <h5>Detalles de la Compra</h5>
+                                <!-- Agregar productos -->
+                                <div style="background: #f8f9fc; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                                    <h5>Agregar Productos</h5>
                                     <div class="form-row">
                                         <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="detalleProducto">Producto</label>
-                                                <select id="detalleProducto">
-                                                    <option value="">Seleccionar producto</option>
-                                                </select>
-                                            </div>
+                                            <label for="detalleProducto">Producto *</label>
+                                            <select id="detalleProducto" required>
+                                                <option value="">Seleccionar producto</option>
+                                            </select>
                                         </div>
                                         <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="detalleUnidad">Unidad</label>
-                                                <select id="detalleUnidad">
-                                                    <option value="">Seleccionar unidad</option>
-                                                </select>
-                                            </div>
+                                            <label for="detalleUnidad">Unidad *</label>
+                                            <select id="detalleUnidad" required>
+                                                <option value="">Seleccionar unidad</option>
+                                            </select>
                                         </div>
                                         <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="detalleCantidad">Cantidad</label>
-                                                <input type="number" id="detalleCantidad" value="0" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="detallePrecio">Precio Unitario</label>
-                                                <input type="number" id="detallePrecio" value="0" step="0.01">
-                                            </div>
+                                            <label for="detalleCantidad">Cantidad *</label>
+                                            <input type="number" id="detalleCantidad" step="0.01" min="0.01" value="1" required>
                                         </div>
                                         <div class="form-column">
-                                            <div class="form-group">
-                                                <label for="detalleTotal">Total Línea</label>
-                                                <input type="number" id="detalleTotal" readonly>
-                                            </div>
+                                            <label for="detallePrecio">Precio Unitario *</label>
+                                            <input type="number" id="detallePrecio" step="0.01" min="0.01" value="0" required>
                                         </div>
                                         <div class="form-column">
-                                            <button type="button" class="btn btn-secondary" onclick="agregarDetalle()" style="margin-top: 25px;">
+                                            <button type="button" class="btn btn-primary" onclick="agregarDetalleCompra()" style="margin-top: 25px;">
                                                 <i class="fas fa-plus"></i> Agregar
                                             </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Lista de Detalles -->
-                                <div class="table-container">
-                                    <table id="detallesTable" class="data-table">
+                                <!-- Tabla de detalles -->
+                                <div style="margin: 15px 0;">
+                                    <table style="width: 100%; border-collapse: collapse;">
                                         <thead>
-                                            <tr>
-                                                <th>Producto</th>
-                                                <th>Unidad</th>
-                                                <th>Cantidad</th>
-                                                <th>Precio Unit.</th>
-                                                <th>Total</th>
-                                                <th>Acciones</th>
+                                            <tr style="background: #4e73df; color: white;">
+                                                <th style="padding: 10px; text-align: left;">Producto</th>
+                                                <th style="padding: 10px; text-align: left;">Unidad</th>
+                                                <th style="padding: 10px; text-align: right;">Cantidad</th>
+                                                <th style="padding: 10px; text-align: right;">Precio</th>
+                                                <th style="padding: 10px; text-align: right;">Total</th>
+                                                <th style="padding: 10px; text-align: center;">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody id="detallesTableBody">
+                                            <!-- Los detalles se cargan aquí -->
                                         </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="4" class="text-right"><strong>Subtotal:</strong></td>
-                                                <td id="compraSubtotal">0.00</td>
-                                                <td></td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="4" class="text-right"><strong>Impuestos:</strong></td>
-                                                <td id="compraImpuestosTotal">0.00</td>
-                                                <td></td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="4" class="text-right"><strong>Total:</strong></td>
-                                                <td id="compraTotal">0.00</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
                                     </table>
                                 </div>
 
-                                <div class="form-actions">
-                                    <button type="button" class="btn btn-secondary" onclick="hideCompraForm()">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Registrar Compra</button>
+                                <!-- Totales -->
+                                <div style="background: #f8f9fc; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                                    <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                                        <span>Subtotal:</span>
+                                        <span id="compraSubtotal">Q 0.00</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                                        <span>IVA (12%):</span>
+                                        <span id="compraIVA">Q 0.00</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid #ccc; font-weight: bold;">
+                                        <span>TOTAL:</span>
+                                        <span id="compraTotal">Q 0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Botones -->
+                                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                    <button type="button" class="btn btn-secondary" onclick="hideCompraForm()">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        Guardar Compra
+                                    </button>
                                 </div>
                             </form>
                         </div>
 
-                        <!-- Lista de Compras -->
-                        <div class="table-container">
-                            <table id="comprasTable" class="data-table">
+                        <!-- Lista de compras -->
+                        <div style="background: white; padding: 20px; border-radius: 5px; margin-top: 20px;">
+                            <h4>Historial de Compras</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                                 <thead>
-                                    <tr>
-                                        <th>Factura</th>
-                                        <th>Proveedor</th>
-                                        <th>Fecha</th>
-                                        <th>Subtotal</th>
-                                        <th>Impuestos</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
+                                    <tr style="background: #4e73df; color: white;">
+                                        <th style="padding: 10px;">Factura</th>
+                                        <th style="padding: 10px;">Proveedor</th>
+                                        <th style="padding: 10px;">Fecha</th>
+                                        <th style="padding: 10px; text-align: right;">Total</th>
+                                        <th style="padding: 10px; text-align: center;">Estado</th>
+                                        <th style="padding: 10px; text-align: center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="comprasTableBody">
-                                    <!-- Los datos se cargarán dinámicamente -->
+                                    <!-- Las compras se cargan aquí -->
                                 </tbody>
                             </table>
                         </div>

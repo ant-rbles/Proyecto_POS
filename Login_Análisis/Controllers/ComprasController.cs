@@ -29,6 +29,7 @@ namespace Login_Análisis.Controllers
                 });
             }
 
+
             try
             {
                 // Generar número de factura automático si no se proporciona
@@ -172,11 +173,28 @@ namespace Login_Análisis.Controllers
 
             return $"FAC-{numero:00000}";
         }
+
+        [HttpGet("{id}/pdf")]
+        public async Task<IActionResult> DescargarFacturaCompraPdf(int id)
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarFacturaCompraPdf(id);
+                if (pdfBytes == null)
+                    return NotFound(new { Message = "Compra no encontrada" });
+
+                return File(pdfBytes, "application/pdf", $"compra_{id}_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
+            }
+        }
     }
+}
 
     public class CambiarEstadoCompraRequest
     {
         [Required]
         public string Estado { get; set; }
     }
-}

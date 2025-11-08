@@ -15,6 +15,7 @@ namespace Login_Análisis.Services
         Task<byte[]> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin);
         Task<byte[]> GenerarReporteInventario();
         Task<byte[]> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin);
+        Task<byte[]> GenerarFacturaCompra(int compraId);
     }
 
     public class PdfService : IPdfService
@@ -603,6 +604,163 @@ namespace Login_Análisis.Services
                             text.CurrentPageNumber();
                             text.Span(" de ");
                             text.TotalPages();
+                        });
+                });
+            });
+
+            return document.GeneratePdf();
+        }
+
+    public async Task<byte[]> GenerarFacturaCompra(int compraId)
+        {
+            var compra = await _context.Compras
+                .Include(c => c.Proveedor)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(c => c.Id == compraId);
+
+            if (compra == null)
+                return null;
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(2, Unit.Centimetre);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(12));
+
+                    page.Header()
+                        .Height(3, Unit.Centimetre)
+                        .Background(Colors.Blue.Medium)
+                        .AlignCenter()
+                        .AlignMiddle()
+                        .Text("FACTURA DE COMPRA - CENTRO PLÁSTICO LEONOR")
+                        .Bold().FontSize(20).FontColor(Colors.White);
+
+                    page.Content()
+                        .PaddingVertical(1, Unit.Centimetre)
+                        .Column(column =>
+                        {
+                            column.Spacing(20);
+
+                            // Información de la empresa
+                            column.Item().Background(Colors.Grey.Lighten3).Padding(10).Column(infoColumn =>
+                            {
+                                infoColumn.Item().Text("Centro Plástico Leonor").Bold().FontSize(16);
+                                infoColumn.Item().Text("Tel: (502) 1234-5678 | Email: info@centroplasticoleonor.com");
+                                infoColumn.Item().Text("Dirección: Av. Principal #123, Ciudad de Guatemala");
+                                infoColumn.Item().Text("NIT: 1234567-8");
+                            });
+
+                            // Información de la factura
+                            column.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn();
+                                    columns.RelativeColumn();
+                                });
+
+                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("NÚMERO DE FACTURA").Bold();
+                                table.Cell().Border(1).Padding(5).Text(compra.NumeroFactura);
+
+                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("FECHA DE COMPRA").Bold();
+                                table.Cell().Border(1).Padding(5).Text(compra.FechaCompra.ToString("dd/MM/yyyy HH:mm"));
+
+                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("PROVEEDOR").Bold();
+                                table.Cell().Border(1).Padding(5).Text(compra.Proveedor?.Nombre ?? "N/A");
+
+                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("RUC PROVEEDOR").Bold();
+                                table.Cell().Border(1).Padding(5).Text(compra.Proveedor?.RUC ?? "N/A");
+
+                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("ESTADO").Bold();
+                                table.Cell().Border(1).Padding(5).Text(compra.Estado);
+                            });
+
+                            // Detalles de la compra
+                            column.Item().Text("DETALLES DE LA COMPRA").Bold().FontSize(16);
+                            column.Item().Table(detallesTable =>
+                            {
+                                detallesTable.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(50);
+                                    columns.RelativeColumn(3);
+                                    columns.ConstantColumn(80);
+                                    columns.ConstantColumn(80);
+                                    columns.ConstantColumn(100);
+                                    columns.ConstantColumn(100);
+                                });
+
+                                // Encabezado
+                                detallesTable.Header(header =>
+                                {
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("#").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).Text("PRODUCTO").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("CANTIDAD").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("UNIDAD").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignRight().Text("PRECIO UNIT.").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignRight().Text("TOTAL").FontColor(Colors.White).Bold();
+                                });
+
+                                // Detalles
+                                foreach (var (detalle, index) in compra.Detalles.Select((d, i) => (d, i + 1)))
+                                {
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(index.ToString());
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).Text(detalle.Producto?.Nombre ?? "N/A");
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(detalle.Cantidad.ToString("F2"));
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(detalle.UnidadMedida?.Abreviatura ?? "N/A");
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(detalle.PrecioUnitario.ToString("C"));
+                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(detalle.TotalLinea.ToString("C"));
+                                }
+                            });
+
+                            // Totales
+                            column.Item().AlignRight().Width(300).Table(totalesTable =>
+                            {
+                                totalesTable.ColumnsDefinition(columns =>
+                                {
+                                    columns.RelativeColumn();
+                                    columns.ConstantColumn(150);
+                                });
+
+                                totalesTable.Cell().BorderBottom(1).Padding(5).Text("SUBTOTAL:").Bold();
+                                totalesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(compra.Subtotal.ToString("C")).Bold();
+
+                                totalesTable.Cell().BorderBottom(1).Padding(5).Text("IVA (12%):").Bold();
+                                totalesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(compra.Impuestos.ToString("C")).Bold();
+
+                                totalesTable.Cell().BorderBottom(1).Padding(5).Background(Colors.Grey.Lighten3).Text("TOTAL:").Bold().FontSize(14);
+                                totalesTable.Cell().BorderBottom(1).Padding(5).Background(Colors.Grey.Lighten3).AlignRight().Text(compra.Total.ToString("C")).Bold().FontSize(14);
+                            });
+
+                            // Observaciones
+                            if (!string.IsNullOrEmpty(compra.Observaciones))
+                            {
+                                column.Item().PaddingTop(10).Column(obsColumn =>
+                                {
+                                    obsColumn.Item().Text("OBSERVACIONES").Bold().FontSize(14);
+                                    obsColumn.Item().Padding(5).Background(Colors.Grey.Lighten3).Text(compra.Observaciones);
+                                });
+                            }
+
+                            // Pie de página
+                            column.Item().PaddingTop(20).AlignCenter().Text("¡Gracias por su servicio!").Italic().FontColor(Colors.Grey.Medium);
+                        });
+
+                    page.Footer()
+                        .AlignCenter()
+                        .Text(text =>
+                        {
+                            text.Span("Página ");
+                            text.CurrentPageNumber();
+                            text.Span(" de ");
+                            text.TotalPages();
+                            text.Span(" | Generado el ");
+                            text.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
                         });
                 });
             });

@@ -186,9 +186,12 @@ namespace Login_Análisis.Services
                     return (false, "Ya existe una compra con este número de factura", null);
                 }
 
-                // Calcular totales
                 compra.Subtotal = detalles.Sum(d => d.TotalLinea);
+                compra.Impuestos = compra.Subtotal * 0.12m; 
                 compra.Total = compra.Subtotal + compra.Impuestos;
+
+                var unidadBase = await _context.UnidadesMedida
+                .FirstOrDefaultAsync(u => u.EsUnidadBase && u.Estado);
 
                 // Guardar compra
                 _context.Compras.Add(compra);
@@ -199,7 +202,6 @@ namespace Login_Análisis.Services
                 {
                     detalle.CompraId = compra.Id;
 
-                    // Obtener producto y unidad de medida
                     var producto = await _context.Productos.FindAsync(detalle.ProductoId);
                     var unidadMedida = await _context.UnidadesMedida.FindAsync(detalle.UnidadMedidaId);
 
@@ -208,7 +210,7 @@ namespace Login_Análisis.Services
                         throw new Exception("Producto o unidad de medida no encontrado");
                     }
 
-                    // Convertir cantidad a unidad base
+                    // CONVERSIÓN AUTOMÁTICA A UNIDAD BASE
                     detalle.CantidadBase = detalle.Cantidad * unidadMedida.FactorConversion;
 
                     // Guardar detalle
@@ -334,6 +336,11 @@ namespace Login_Análisis.Services
             {
                 return (false, $"Error: {ex.Message}");
             }
+        }
+
+        public async Task<byte[]> GenerarFacturaCompraPdf(int compraId)
+        {
+            return await _pdfService.GenerarFacturaCompra(compraId);
         }
 
         public async Task<(bool success, string message)> AnularCompra(int compraId)

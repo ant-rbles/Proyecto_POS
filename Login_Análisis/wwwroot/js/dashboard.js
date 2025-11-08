@@ -99,8 +99,15 @@ function openManagementTab(tabName) {
                     loadProductos();
                     break;
                 case 'compras':
-                    loadCompras();
-                    updateProductosSelects();
+                    console.log('Cargando módulo de compras...');
+                    // Asegurarnos de que el formulario esté oculto inicialmente
+                    const compraForm = document.getElementById('compraForm');
+                    if (compraForm) {
+                        compraForm.style.display = 'none';
+                    }
+
+                    // Cargar todos los datos necesarios para compras
+                    cargarDatosCompras();
                     break;
                 case 'inventario':
                     loadInventario();

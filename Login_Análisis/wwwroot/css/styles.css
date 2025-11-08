@@ -1430,3 +1430,124 @@ body {
     font-size: 11px;
     padding: 3px 6px;
 }
+
+/* ESTILOS MÍNIMOS PARA COMPRAS */
+.management-tab {
+    display: none;
+}
+
+    .management-tab.active {
+        display: block;
+    }
+
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eaeaea;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-column {
+    flex: 1;
+}
+
+    .form-column label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    .form-column input,
+    .form-column select,
+    .form-column textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d3e2;
+        border-radius: 4px;
+    }
+
+.btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #4e73df;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.action-btn {
+    padding: 5px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin: 0 2px;
+}
+
+.view-btn {
+    background: #4e73df;
+    color: white;
+}
+
+.info-btn {
+    background: #6f42c1;
+    color: white;
+}
+
+.delete-btn {
+    background: #e74a3b;
+    color: white;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.no-data {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    font-style: italic;
+}
