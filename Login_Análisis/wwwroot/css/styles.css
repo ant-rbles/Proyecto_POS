@@ -1394,3 +1394,39 @@ body {
             padding: 8px 10px;
         }
 }
+
+/* Estilos para productos desactivados */
+.producto-desactivado {
+    background-color: #f8f9fa !important;
+    opacity: 0.7;
+}
+
+    .producto-desactivado:hover {
+        background-color: #e9ecef !important;
+    }
+
+.text-muted {
+    color: #6c757d !important;
+    font-style: italic;
+}
+
+.stock-disabled {
+    background-color: #6c757d;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Asegurar que los badges tengan buen espaciado */
+.badge {
+    margin-left: 4px;
+    font-size: 11px;
+    padding: 3px 6px;
+}

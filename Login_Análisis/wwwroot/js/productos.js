@@ -97,7 +97,6 @@ async function handleProductoSubmit(e) {
 
         let response;
         if (currentProductoId) {
-            // ACTUALIZAR
             response = await fetch(`https://localhost:7000/api/productos/${currentProductoId}`, {
                 method: 'PUT',
                 headers: {
@@ -107,7 +106,6 @@ async function handleProductoSubmit(e) {
                 body: JSON.stringify(productData)
             });
         } else {
-            // CREAR
             response = await fetch('https://localhost:7000/api/productos', {
                 method: 'POST',
                 headers: {
@@ -148,7 +146,6 @@ async function handleProductoSubmit(e) {
 async function verificarCodigoProductoExistente(codigo, excludeId = null) {
     try {
         const authToken = localStorage.getItem('authToken');
-        // Usar el endpoint /todos para verificar contra todos los productos
         const response = await fetch('https://localhost:7000/api/productos/todos', {
             method: 'GET',
             headers: {
@@ -392,15 +389,19 @@ function renderProductosTable() {
                     ${estado ? 'Activo' : 'Inactivo'}
                 </span>
             </td>
-            <td class="text-center">
-                <button class="db-btn db-view" onclick="editProducto(${id})">Editar</button>
-                <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" 
-                        onclick="${estado ? 'deleteProducto' : 'activateProducto'}(${id})"
-                        id="btn-estado-${id}">
-                    ${estado ? 'Desactivar' : 'Activar'}
-                </button>
-            </td>
-        </tr>
+            <td class="text-center" style="min-width: 120px;">
+    <div style="display: flex; gap: 4px; justify-content: center;">
+        <button class="db-btn db-view" onclick="editProducto(${id})" title="Editar">
+            <i class="fas fa-edit"></i>
+        </button>
+        <button class="db-btn ${estado ? 'db-clear' : 'db-view'}" 
+                onclick="${estado ? 'deleteProducto' : 'activateProducto'}(${id})"
+                title="${estado ? 'Desactivar' : 'Activar'}"
+                style="min-width: 40px;">
+            <i class="fas ${estado ? 'fa-times' : 'fa-check'}"></i>
+        </button>
+    </div>
+</td>
         `;
     }).join('');
 
