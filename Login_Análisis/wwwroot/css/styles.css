@@ -1191,3 +1191,206 @@ body {
         width: 100%;
     }
 }
+
+.action-btn.info-btn {
+    background-color: #6f42c1;
+    color: white;
+}
+
+    .action-btn.info-btn:hover {
+        background-color: #5e32b0;
+    }
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Estilos para el resumen compacto */
+.resumen-mejorado {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.tarjeta-resumen {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #4e73df;
+    transition: all 0.3s ease;
+    border: 1px solid #eaeaea;
+    text-align: center;
+}
+
+    .tarjeta-resumen:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .tarjeta-resumen:nth-child(1) {
+        border-left-color: #4e73df;
+    }
+
+    .tarjeta-resumen:nth-child(2) {
+        border-left-color: #1cc88a;
+    }
+
+    .tarjeta-resumen:nth-child(3) {
+        border-left-color: #f6c23e;
+    }
+
+    .tarjeta-resumen:nth-child(4) {
+        border-left-color: #e74a3b;
+    }
+
+.contenido-resumen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.valor-resumen {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.etiqueta-resumen {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Mejoras para la tabla */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* Para controlar mejor el ancho de columnas */
+}
+
+    .data-table th {
+        background-color: #f8f9fc;
+        color: #4e73df;
+        font-weight: 600;
+        padding: 12px 15px;
+        border-bottom: 2px solid #eaeaea;
+        position: sticky;
+        top: 0;
+    }
+
+    .data-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eaeaea;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .data-table tr:hover {
+        background-color: #f8f9fc;
+    }
+
+    /* Asegurar que el texto no se corte mal */
+    .data-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+        /* Para celdas con contenido largo, permitir wrap */
+        .data-table td:nth-child(2) { /* Columna Producto */
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+/* Estilos para estados */
+.badge {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Botón de detalle */
+.action-btn.view-btn {
+    background-color: #4e73df;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+    .action-btn.view-btn:hover {
+        background-color: #224abe;
+    }
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .resumen-mejorado {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .resumen-mejorado {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .tarjeta-resumen {
+        padding: 20px;
+    }
+
+    .valor-resumen {
+        font-size: 28px;
+    }
+
+    .etiqueta-resumen {
+        font-size: 13px;
+    }
+
+    .data-table {
+        font-size: 14px;
+    }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 10px;
+        }
+}
