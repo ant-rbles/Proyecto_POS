@@ -217,10 +217,6 @@ async function deleteProducto(id) {
 async function activateProducto(id) {
     console.log('Intentando activar producto ID:', id);
 
-    if (!confirm('¿Está seguro de que desea activar este producto?')) {
-        return;
-    }
-
     try {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {
@@ -267,7 +263,6 @@ async function loadProductos() {
             return;
         }
 
-        // USAR EL NUEVO ENDPOINT QUE INCLUYE PRODUCTOS INACTIVOS
         const response = await fetch('https://localhost:7000/api/productos/todos', {
             method: 'GET',
             headers: {
@@ -313,7 +308,7 @@ async function loadProductos() {
 function renderProductosTable() {
     const tbody = document.getElementById('productosTableBody');
     if (!tbody) {
-        console.error('❌ No se encontró el elemento con id "productosTableBody"');
+        console.error('No se encontró el elemento con id "productosTableBody"');
         return;
     }
 

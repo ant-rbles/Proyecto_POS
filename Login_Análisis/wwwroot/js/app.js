@@ -120,6 +120,7 @@ function setupManagementEventListeners() {
     // Formulario de clientes
     const clienteForm = document.getElementById('clienteFormElement');
     if (clienteForm) {
+        clienteForm.removeEventListener('submit', handleClienteSubmit);
         clienteForm.addEventListener('submit', handleClienteSubmit);
     }
 

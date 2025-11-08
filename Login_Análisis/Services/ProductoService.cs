@@ -623,10 +623,9 @@ namespace Login_Análisis.Services
         }
 
         // Métodos para Clientes
-        public async Task<List<Cliente>> ObtenerClientes()
+        public async Task<List<Cliente>> ObtenerTodosClientesAsync()
         {
             return await _context.Clientes
-                .Where(c => c.Estado)
                 .OrderBy(c => c.Nombre)
                 .ToListAsync();
         }

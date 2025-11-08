@@ -16,17 +16,17 @@ namespace Login_Análisis.Controllers
             _productoService = productoService;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> ObtenerClientes()
+        [HttpGet("todos")]
+        public async Task<IActionResult> ObtenerTodosClientes()
         {
             try
             {
-                var clientes = await _productoService.ObtenerClientes();
+                var clientes = await _productoService.ObtenerTodosClientesAsync();
                 return Ok(clientes);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
 
@@ -74,6 +74,15 @@ namespace Login_Análisis.Controllers
 
             try
             {
+                if (!string.IsNullOrEmpty(request.NIT))
+                {
+                    var clienteExistente = await _productoService.ObtenerClientePorNIT(request.NIT);
+                    if (clienteExistente != null)
+                    {
+                        return BadRequest(new { Message = "Ya existe un cliente con este NIT" });
+                    }
+                }
+
                 var cliente = new Cliente
                 {
                     Nombre = request.Nombre,
@@ -111,11 +120,13 @@ namespace Login_Análisis.Controllers
                 if (clienteExistente == null)
                     return NotFound(new { Message = "Cliente no encontrado" });
 
-                // Verificar si otro cliente tiene el mismo NIT
-                var clienteConMismoNIT = await _productoService.ObtenerClientePorNIT(request.NIT);
-                if (clienteConMismoNIT != null && clienteConMismoNIT.Id != id)
+                if (!string.IsNullOrEmpty(request.NIT))
                 {
-                    return BadRequest(new { Message = "Ya existe un cliente con este NIT" });
+                    var clienteConMismoNIT = await _productoService.ObtenerClientePorNIT(request.NIT);
+                    if (clienteConMismoNIT != null && clienteConMismoNIT.Id != id)
+                    {
+                        return BadRequest(new { Message = "Ya existe un cliente con este NIT" });
+                    }
                 }
 
                 // Actualizar propiedades
@@ -128,6 +139,28 @@ namespace Login_Análisis.Controllers
 
                 await _productoService.Context.SaveChangesAsync();
                 return Ok(new { Message = "Cliente actualizado exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}/activate")]
+        public async Task<IActionResult> ActivarCliente(int id)
+        {
+            try
+            {
+                var cliente = await _productoService.ObtenerCliente(id);
+                if (cliente == null)
+                    return NotFound(new { Message = "Cliente no encontrado" });
+
+                // Activar el cliente
+                cliente.Estado = true;
+                cliente.FechaActualizacion = DateTime.UtcNow;
+
+                await _productoService.Context.SaveChangesAsync();
+                return Ok(new { Message = "Cliente activado exitosamente" });
             }
             catch (Exception ex)
             {

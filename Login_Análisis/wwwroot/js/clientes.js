@@ -1,11 +1,11 @@
-﻿let clientes = [];
-let currentClienteId = null;
+﻿window.clientes = window.clientes || [];
+window.currentClienteId = window.currentClienteId || null;
 
 async function loadClientes() {
     try {
         console.log('Cargando clientes...');
         const authToken = localStorage.getItem('authToken');
-        const response = await fetch('https://localhost:7000/api/clientes', {
+        const response = await fetch('https://localhost:7000/api/clientes/todos', { 
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${authToken}`,
@@ -14,8 +14,8 @@ async function loadClientes() {
         });
 
         if (response.ok) {
-            clientes = await response.json();
-            console.log('Clientes cargados:', clientes);
+            window.clientes = await response.json();
+            console.log('Clientes cargados:', window.clientes.length);
             renderClientesTable();
         } else {
             const error = await response.json();
@@ -69,17 +69,25 @@ function fillClienteForm(cliente) {
 async function handleClienteSubmit(e) {
     e.preventDefault();
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn.disabled) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading"></span> Guardando...';
+
     const clienteData = {
         nombre: document.getElementById('clienteNombre').value.trim(),
         nit: document.getElementById('clienteNIT').value.trim(),
+        direccion: document.getElementById('clienteDireccion').value.trim(),
         telefono: document.getElementById('clienteTelefono').value.trim(),
-        email: document.getElementById('clienteEmail').value.trim(),
-        direccion: document.getElementById('clienteDireccion').value.trim()
+        email: document.getElementById('clienteEmail').value.trim()
     };
 
     // Validaciones básicas
-    if (!clienteData.nombre) {
-        showMessage('El nombre del cliente es obligatorio', 'error');
+    if (!clienteData.nombre || !clienteData.nit) {
+        showMessage('Nombre y NIT son obligatorios', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar Cliente';
         return;
     }
 
@@ -87,9 +95,9 @@ async function handleClienteSubmit(e) {
         const authToken = localStorage.getItem('authToken');
         let response;
 
-        if (currentClienteId) {
-            // Editar cliente existente
-            response = await fetch(`https://localhost:7000/api/clientes/${currentClienteId}`, {
+        if (window.currentClienteId) {
+            console.log('Actualizando cliente ID:', window.currentClienteId);
+            response = await fetch(`https://localhost:7000/api/clientes/${window.currentClienteId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -98,7 +106,7 @@ async function handleClienteSubmit(e) {
                 body: JSON.stringify(clienteData)
             });
         } else {
-            // Crear nuevo cliente
+            console.log('Creando nuevo cliente');
             response = await fetch('https://localhost:7000/api/clientes', {
                 method: 'POST',
                 headers: {
@@ -110,16 +118,28 @@ async function handleClienteSubmit(e) {
         }
 
         if (response.ok) {
+            const result = await response.json();
             showMessage('Cliente guardado exitosamente', 'success');
             hideClienteForm();
-            await loadClientes(); // Recargar la lista
+            await loadClientes();
         } else {
             const error = await response.json();
-            showMessage('Error al guardar cliente: ' + error.message, 'error');
+
+            // MEJORA: Si el error es por NIT duplicado, ofrecer buscar y editar
+            if (error.message.includes('Ya existe un cliente con este NIT')) {
+                showMessage('Ya existe un cliente con este NIT. ¿Quieres editarlo?', 'error');
+                // Opcional: Aquí podrías agregar un botón para buscar automáticamente
+                buscarYEditarCliente(clienteData.nit);
+            } else {
+                showMessage('Error al guardar cliente: ' + error.message, 'error');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error de conexión', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar Cliente';
     }
 }
 
@@ -128,12 +148,12 @@ function renderClientesTable() {
     const tbody = document.getElementById('clientesTableBody');
     if (!tbody) return;
 
-    if (!clientes || clientes.length === 0) {
+    if (!window.clientes || window.clientes.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay clientes registrados</td></tr>';
         return;
     }
 
-    tbody.innerHTML = clientes.map(cliente => `
+    tbody.innerHTML = window.clientes.map(cliente => `
         <tr>
             <td>${cliente.nombre}</td>
             <td>${cliente.nit || 'N/A'}</td>
@@ -150,9 +170,9 @@ function renderClientesTable() {
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="action-btn ${cliente.estado ? 'delete-btn' : 'activate-btn'}" 
-                        onclick="${cliente.estado ? 'deleteCliente' : 'activateCliente'}(${cliente.id})" 
+                        onclick="${cliente.estado ? 'desactivarCliente' : 'activarCliente'}(${cliente.id})" 
                         title="${cliente.estado ? 'Desactivar' : 'Activar'}">
-                    <i class="fas ${cliente.estado ? 'fa-trash' : 'fa-check'}"></i>
+                    <i class="fas ${cliente.estado ? 'fa-times' : 'fa-check'}"></i>
                 </button>
             </td>
         </tr>
@@ -180,33 +200,7 @@ async function editCliente(id) {
     }
 }
 
-// Eliminar/Desactivar cliente
-async function deleteCliente(id) {
-    if (!confirm('¿Está seguro de desactivar este cliente?')) return;
-
-    try {
-        const authToken = localStorage.getItem('authToken');
-        const response = await fetch(`https://localhost:7000/api/clientes/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (response.ok) {
-            showMessage('Cliente desactivado exitosamente', 'success');
-            await loadClientes();
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
-    }
-}
-
-// Activar cliente
-async function activateCliente(id) {
+async function activarCliente(id) {
     try {
         const authToken = localStorage.getItem('authToken');
         const response = await fetch(`https://localhost:7000/api/clientes/${id}/activate`, {
@@ -228,3 +222,24 @@ async function activateCliente(id) {
     }
 }
 
+async function desactivarCliente(id) {
+    try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(`https://localhost:7000/api/clientes/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Cliente desactivado exitosamente', 'success');
+            await loadClientes();
+        } else {
+            const error = await response.json();
+            showMessage(error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión', 'error');
+    }
+}

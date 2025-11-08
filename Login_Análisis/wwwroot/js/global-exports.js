@@ -66,7 +66,7 @@ window.toggleProductRegistrationForm = toggleProductRegistrationForm;
 window.deleteProducto = deleteProducto;
 window.activateProducto = activateProducto;
 window.updateProductoRow = updateProductoRow;
-window.diagnosticarProductosAPI = diagnosticarProductosAPI;
+
 
 // Handlers de formularios
 window.handleProveedorSubmit = handleProveedorSubmit;
