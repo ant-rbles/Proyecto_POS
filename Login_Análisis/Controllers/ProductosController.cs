@@ -93,6 +93,7 @@ namespace Login_Análisis.Controllers
                     Codigo = request.Codigo?.Trim() ?? throw new ArgumentException("El código es requerido"),
                     Nombre = request.Nombre?.Trim() ?? throw new ArgumentException("El nombre es requerido"),
                     Descripcion = request.Descripcion?.Trim() ?? "",
+                    ProveedorId = request.ProveedorId,
                     CategoriaId = request.CategoriaId,
                     UnidadMedidaBaseId = request.UnidadMedidaBaseId,
                     StockMinimo = request.StockMinimo >= 0 ? request.StockMinimo : 0,
@@ -117,6 +118,7 @@ namespace Login_Análisis.Controllers
                         producto.Codigo,
                         producto.Nombre,
                         producto.Descripcion,
+                        producto.ProveedorId,
                         producto.CategoriaId,
                         producto.UnidadMedidaBaseId,
                         producto.StockMinimo,
@@ -180,6 +182,7 @@ namespace Login_Análisis.Controllers
                 productoExistente.Codigo = request.Codigo?.Trim();
                 productoExistente.Nombre = request.Nombre?.Trim();
                 productoExistente.Descripcion = request.Descripcion?.Trim() ?? "";
+                productoExistente.ProveedorId = request.ProveedorId;
                 productoExistente.CategoriaId = request.CategoriaId;
                 productoExistente.UnidadMedidaBaseId = request.UnidadMedidaBaseId;
                 productoExistente.StockMinimo = request.StockMinimo >= 0 ? request.StockMinimo : 0;

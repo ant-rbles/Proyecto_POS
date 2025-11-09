@@ -1551,3 +1551,10 @@ body {
     color: #6c757d;
     font-style: italic;
 }
+
+.filter-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}

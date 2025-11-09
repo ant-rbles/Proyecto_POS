@@ -1,12 +1,23 @@
-﻿// inventario.js - Versión simplificada
-let inventarioData = [];
+﻿let inventarioData = [];
 let totalValorInventario = 0;
+let proveedoresData = [];
 
 async function loadInventario() {
     try {
         mostrarCargando();
 
         const authToken = localStorage.getItem('authToken');
+
+        const responseProv = await fetch('https://localhost:7000/api/proveedores', {
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        if (responseProv.ok) {
+            proveedoresData = await responseProv.json();
+            cargarProveedoresEnFiltro();
+        } else {
+            console.warn("No se pudieron cargar proveedores para el filtro.");
+        }
+
         const response = await fetch('https://localhost:7000/api/productos/todos', {
             method: 'GET',
             headers: {
@@ -45,32 +56,42 @@ function actualizarResumenInventario() {
     document.getElementById('productosSinStock').textContent = productosSinStock;
 }
 
-function renderizarTablaInventario() {
+function renderizarTablaInventario(datos = inventarioData) {
     const tbody = document.getElementById('inventarioTableBody');
     if (!tbody) return;
 
-    if (!inventarioData || inventarioData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="no-data">No hay productos en el inventario</td></tr>';
+    if (!datos || datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="no-data">No hay productos en el inventario</td></tr>';
         return;
     }
 
-    tbody.innerHTML = inventarioData.map(producto => {
-        const valorInventario = producto.stockActual * producto.precioCostoPromedio;
+    // LOG para inspección rápida en consola
+    console.log('Renderizando inventario. Productos:', datos.length, 'Proveedores cargados:', proveedoresData.length);
+
+    tbody.innerHTML = datos.map(producto => {
+        const valorInventario = (producto.stockActual || 0) * (producto.precioCostoPromedio || 0);
         const estado = obtenerEstadoStock(producto);
+
+        // Resolución de nombre de proveedor tolerante
+        const proveedorNombre =
+            (producto.proveedor && (producto.proveedor.nombre || producto.proveedor.Nombre)) ||
+            (producto.Proveedor && (producto.Proveedor.nombre || producto.Proveedor.Nombre)) ||
+            obtenerNombreProveedorPorId(producto.proveedorId ?? producto.ProveedorId ?? producto.proveedorID);
 
         return `
             <tr>
-                <td><strong>${producto.codigo}</strong></td>
+                <td><strong>${producto.codigo ?? ''}</strong></td>
                 <td>
-                    <div style="font-weight: 500;">${producto.nombre}</div>
+                    <div style="font-weight: 500;">${producto.nombre ?? ''}</div>
                     ${producto.descripcion ? `<small class="text-muted" style="display: block; margin-top: 4px;">${producto.descripcion}</small>` : ''}
                 </td>
-                <td>${producto.categoria ? producto.categoria.nombre : '-'}</td>
-                <td class="text-center">${producto.unidadMedidaBase ? producto.unidadMedidaBase.abreviatura : 'N/A'}</td>
-                <td class="text-center">${producto.stockActual.toFixed(2)}</td>
-                <td class="text-center">${producto.stockMinimo.toFixed(2)}</td>
-                <td class="text-right">Q ${producto.precioCostoPromedio.toFixed(2)}</td>
-                <td class="text-right">Q ${producto.precioVenta.toFixed(2)}</td>
+                <td>${producto.categoria ? (producto.categoria.nombre ?? producto.categoria.Nombre) : '-'}</td>
+                <td>${proveedorNombre || 'Sin proveedor'}</td>
+                <td class="text-center">${producto.unidadMedidaBase ? (producto.unidadMedidaBase.abreviatura ?? producto.unidadMedidaBase.Abreviatura) : 'N/A'}</td>
+                <td class="text-center">${(producto.stockActual ?? 0).toFixed(2)}</td>
+                <td class="text-center">${(producto.stockMinimo ?? 0).toFixed(2)}</td>
+                <td class="text-right">Q ${(producto.precioCostoPromedio ?? 0).toFixed(2)}</td>
+                <td class="text-right">Q ${(producto.precioVenta ?? 0).toFixed(2)}</td>
                 <td class="text-right"><strong>Q ${valorInventario.toFixed(2)}</strong></td>
                 <td class="text-center">
                     <span class="badge ${estado.clase}">${estado.texto}</span>
@@ -85,6 +106,29 @@ function renderizarTablaInventario() {
     }).join('');
 }
 
+function obtenerNombreProveedorPorId(id) {
+    if (id === null || id === undefined) return 'Sin proveedor';
+
+    // Asegurar que proveedoresData está disponible
+    if (!Array.isArray(proveedoresData) || proveedoresData.length === 0) {
+        console.warn('proveedoresData vacío o no cargado aún');
+        return 'Sin proveedor';
+    }
+
+    // Normalizar a número si es posible
+    const idNum = (typeof id === 'string') ? parseInt(id, 10) : id;
+
+    // Buscar por múltiples posibles propiedades
+    const prov = proveedoresData.find(p => {
+        const pid = p.id ?? p.Id ?? p.proveedorId ?? p.ProveedorId;
+        // intentar comparar como número y como string
+        if (pid === undefined || pid === null) return false;
+        return Number(pid) === Number(idNum) || String(pid) === String(id);
+    });
+
+    return prov ? (prov.nombre ?? prov.Nombre ?? 'Sin proveedor') : 'Sin proveedor';
+}
+
 function obtenerEstadoStock(producto) {
     if (producto.stockActual === 0) {
         return { texto: 'Agotado', clase: 'badge-danger' };
@@ -96,58 +140,63 @@ function obtenerEstadoStock(producto) {
 }
 
 function filtrarInventario() {
-    const filtro = document.getElementById('filtroInventario').value.toLowerCase();
-    const estado = document.getElementById('filtroEstado').value;
+    const filtroTexto = document.getElementById('filtroInventario')?.value.toLowerCase() || '';
+    const filtroEstado = document.getElementById('filtroEstado')?.value || '';
+    const filtroProveedor = document.getElementById('filtroProveedorInventario')?.value || '';
 
     let datosFiltrados = inventarioData;
 
-    if (filtro) {
-        datosFiltrados = datosFiltrados.filter(producto =>
-            producto.codigo.toLowerCase().includes(filtro) ||
-            producto.nombre.toLowerCase().includes(filtro)
+    if (filtroTexto) {
+        datosFiltrados = datosFiltrados.filter(p =>
+            (p.codigo ?? '').toString().toLowerCase().includes(filtroTexto) ||
+            (p.nombre ?? '').toString().toLowerCase().includes(filtroTexto)
         );
     }
 
-    if (estado) {
-        datosFiltrados = datosFiltrados.filter(producto => {
-            if (estado === 'normal') return producto.stockActual > producto.stockMinimo;
-            if (estado === 'bajo') return producto.stockActual <= producto.stockMinimo && producto.stockActual > 0;
-            if (estado === 'agotado') return producto.stockActual === 0;
+    if (filtroEstado) {
+        datosFiltrados = datosFiltrados.filter(p => {
+            if (filtroEstado === 'normal') return (p.stockActual ?? 0) > (p.stockMinimo ?? 0);
+            if (filtroEstado === 'bajo') return (p.stockActual ?? 0) <= (p.stockMinimo ?? 0) && (p.stockActual ?? 0) > 0;
+            if (filtroEstado === 'agotado') return (p.stockActual ?? 0) === 0;
             return true;
         });
     }
 
-    // Re-renderizar la tabla con datos filtrados
-    const tbody = document.getElementById('inventarioTableBody');
-    tbody.innerHTML = datosFiltrados.map(producto => {
-        const valorInventario = producto.stockActual * producto.precioCostoPromedio;
-        const estado = obtenerEstadoStock(producto);
+    if (filtroProveedor) {
+        const provId = parseInt(filtroProveedor, 10);
+        datosFiltrados = datosFiltrados.filter(p => {
+            const pid = p.proveedorId ?? p.ProveedorId ?? p.proveedor?.id ?? p.Proveedor?.id;
+            return Number(pid) === provId;
+        });
+    }
 
-        return `
-            <tr>
-                <td><strong>${producto.codigo}</strong></td>
-                <td>
-                    <div style="font-weight: 500;">${producto.nombre}</div>
-                    ${producto.descripcion ? `<small class="text-muted" style="display: block; margin-top: 4px;">${producto.descripcion}</small>` : ''}
-                </td>
-                <td>${producto.categoria ? producto.categoria.nombre : '-'}</td>
-                <td class="text-center">${producto.unidadMedidaBase ? producto.unidadMedidaBase.abreviatura : 'N/A'}</td>
-                <td class="text-center">${producto.stockActual.toFixed(2)}</td>
-                <td class="text-center">${producto.stockMinimo.toFixed(2)}</td>
-                <td class="text-right">Q ${producto.precioCostoPromedio.toFixed(2)}</td>
-                <td class="text-right">Q ${producto.precioVenta.toFixed(2)}</td>
-                <td class="text-right"><strong>Q ${valorInventario.toFixed(2)}</strong></td>
-                <td class="text-center">
-                    <span class="badge ${estado.clase}">${estado.texto}</span>
-                </td>
-                <td class="text-center">
-                    <button class="action-btn view-btn" onclick="verDetalleProducto(${producto.id})">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    renderizarTablaInventario(datosFiltrados);
+}
+
+function cargarProveedoresEnFiltro() {
+    const select = document.getElementById('filtroProveedorInventario');
+    if (!select) {
+        console.warn('No existe #filtroProveedorInventario en el DOM');
+        return;
+    }
+
+    select.innerHTML = '<option value="">Todos los proveedores</option>';
+
+    if (!Array.isArray(proveedoresData) || proveedoresData.length === 0) {
+        console.warn('proveedoresData vacío al intentar llenar el filtro');
+        return;
+    }
+
+    proveedoresData.forEach(p => {
+        const option = document.createElement('option');
+        // normalizar id
+        const pid = p.id ?? p.Id ?? p.proveedorId ?? p.ProveedorId;
+        option.value = pid ?? '';
+        option.textContent = p.nombre ?? p.Nombre ?? `Proveedor ${pid}`;
+        select.appendChild(option);
+    });
+
+    console.log(`✅ Filtro de proveedores cargado (${proveedoresData.length})`, proveedoresData);
 }
 
 // Funciones de utilidad

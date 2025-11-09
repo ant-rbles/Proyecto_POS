@@ -1,6 +1,7 @@
 ﻿//Funciones Productos   
 function showProductoForm(producto = null) {
     openManagementTab('productos');
+    loadProveedores(); 
 
     const form = document.getElementById('productoForm');
     const title = document.getElementById('productoFormTitle');
@@ -252,6 +253,25 @@ async function activateProducto(id) {
 
 // Función principal para cargar productos 
 async function loadProductos() {
+
+    if (!proveedores || proveedores.length === 0) {
+        try {
+            const token = localStorage.getItem('authToken');
+            const responseProv = await fetch('https://localhost:7000/api/proveedores', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+
+            if (responseProv.ok) {
+                proveedores = await responseProv.json();
+                console.log('Proveedores precargados:', proveedores);
+            } else {
+                console.warn('No se pudieron cargar los proveedores antes de renderizar productos');
+            }
+        } catch (err) {
+            console.error('Error precargando proveedores:', err);
+        }
+    }
+
     try {
         console.log(' INICIANDO CARGA DE TODOS LOS PRODUCTOS ');
         const authToken = localStorage.getItem('authToken');
@@ -300,67 +320,19 @@ async function loadProductos() {
         console.error('Error en loadProductos:', error);
         showMessage('Error de conexión: ' + error.message, 'error');
     }
-}
 
-async function loadProveedoresEnProductos() {
-    try {
-        console.log('Cargando proveedores para formulario de productos...');
-        const authToken = localStorage.getItem('authToken');
-
-        if (!authToken) {
-            console.warn('No hay authToken en localStorage; los proveedores no se cargarán.');
-            // Si quieres permitirlo sin auth, intenta la llamada sin header
-        }
-
-        const response = await fetch('https://localhost:7000/api/proveedores', {
-            method: 'GET',
-            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
-        });
-
-        if (!response.ok) {
-            console.error('Error al obtener proveedores. Status:', response.status);
-            // opcional: leer body de error
-            try {
-                const txt = await response.text();
-                console.error('Response body:', txt);
-            } catch (e) { }
-            showMessage('No se pudieron cargar los proveedores (ver consola).', 'error');
-            return;
-        }
-
-        const proveedores = await response.json();
-
-        const selectProveedor = document.getElementById('productoProveedor');
-        if (!selectProveedor) {
-            console.warn('No existe elemento #productoProveedor en el DOM');
-            return;
-        }
-
-        selectProveedor.innerHTML = '<option value="">Seleccionar proveedor</option>';
-
+    const selectProductoProveedor = document.getElementById('productoProveedor');
+    if (selectProductoProveedor) {
+        console.log("Actualizando <select> de productoProveedor con proveedores cargados...");
+        selectProductoProveedor.innerHTML = '<option value="">Seleccionar proveedor</option>';
         proveedores.forEach(p => {
-            // soportar Id/Id, id/id, Nombre/Nombre, nombre/nombre
-            const id = p.id ?? p.Id ?? null;
-            const nombre = p.nombre ?? p.Nombre ?? (p.NombreCompleto ?? 'Proveedor');
-
-            if (id == null) {
-                console.warn('Proveedor sin id:', p);
-                return;
-            }
-
             const option = document.createElement('option');
-            option.value = id;
-            option.textContent = nombre;
-            selectProveedor.appendChild(option);
+            option.value = p.id ?? p.Id ?? p.proveedorId ?? '';
+            option.textContent = p.nombre ?? p.Nombre ?? 'Proveedor sin nombre';
+            selectProductoProveedor.appendChild(option);
         });
-
-        console.log(`Proveedores cargados: ${selectProveedor.options.length - 1}`);
-    } catch (error) {
-        console.error('Error en loadProveedoresEnProductos():', error);
-        showMessage('Error de conexión al cargar proveedores', 'error');
     }
 }
-
 
 // 🔹 Cargar productos según el proveedor seleccionado
 async function loadProductosPorProveedor(proveedorId) {
@@ -405,6 +377,7 @@ async function loadProductosPorProveedor(proveedorId) {
         console.error('Error en loadProductosPorProveedor:', error);
         showMessage('Error de conexión: ' + error.message, 'error');
     }
+
 }
 
 // Función para renderizar tabla de productos - VERSIÓN MEJORADA
@@ -451,12 +424,30 @@ function renderProductosTable() {
 
         // Proveedor
         let proveedorNombre = 'Sin proveedor';
+
         if (producto.proveedor) {
             proveedorNombre = producto.proveedor.nombre || producto.proveedor.Nombre || 'Sin proveedor';
-        } else if (producto.Proveedor) {
+        }
+
+        else if (producto.Proveedor) {
             proveedorNombre = producto.Proveedor.nombre || producto.Proveedor.Nombre || 'Sin proveedor';
-        } else if (producto.proveedorId) {
-            proveedorNombre = `Proveedor ID: ${producto.proveedorId}`;
+        }
+        else if (producto.proveedorId || producto.ProveedorId) {
+            const proveedorId = producto.proveedorId || producto.ProveedorId;
+
+            if (typeof proveedores !== 'undefined' && Array.isArray(proveedores)) {
+                const proveedorEncontrado = proveedores.find(p =>
+                    p.id === proveedorId || p.Id === proveedorId
+                );
+
+                if (proveedorEncontrado) {
+                    proveedorNombre = proveedorEncontrado.nombre || proveedorEncontrado.Nombre || 'Sin proveedor';
+                } else {
+                    proveedorNombre = `Proveedor ID: ${proveedorId}`;
+                }
+            } else {
+                proveedorNombre = `Proveedor ID: ${proveedorId}`;
+            }
         }
 
         // Categoría

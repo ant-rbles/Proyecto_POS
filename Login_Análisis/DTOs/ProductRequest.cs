@@ -15,6 +15,8 @@ namespace Login_Análisis.DTOs.Requests
         [MaxLength(500, ErrorMessage = "La descripción no puede exceder 500 caracteres")]
         public string Descripcion { get; set; }
 
+        public int? ProveedorId { get; set; }
+
         public int? CategoriaId { get; set; }
 
         [Required(ErrorMessage = "La unidad de medida es obligatoria")]

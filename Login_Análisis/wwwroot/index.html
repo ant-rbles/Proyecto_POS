@@ -466,12 +466,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="productoProveedor">Proveedor</label>
-                                    <select id="productoProveedor" class="form-control">
-                                        <option value="">Seleccionar proveedor</option>
-                                    </select>
-                                </div>
                                 <div class="form-row">
                                     <div class="form-column">
                                         <div class="form-group">
@@ -522,7 +516,7 @@
                         <div class="tab-header">
                             <h3><i class="fas fa-shopping-cart"></i> Registro de Compras</h3>
                             <button onclick="showCompraForm()" class="btn btn-primary">
-                            <i class="fas fa-cart-plus"></i> Nueva Compra
+                                <i class="fas fa-cart-plus"></i> Nueva Compra
                             </button>
                         </div>
 
@@ -1189,6 +1183,14 @@
                                     <input type="text" id="filtroInventario" class="form-control"
                                            placeholder="Código o nombre del producto" oninput="filtrarInventario()">
                                 </div>
+
+                                <div class="filter-container">
+                                    <label for="inventarioProveedor">Filtrar por proveedor:</label>
+                                    <select id="inventarioProveedor" class="form-select">
+                                        <option value="">Todos los proveedores</option>
+                                    </select>
+                                </div>
+
                                 <div class="form-column">
                                     <label>Filtrar por estado:</label>
                                     <select id="filtroEstado" class="form-control" onchange="filtrarInventario()">
@@ -1208,6 +1210,7 @@
                                     <tr>
                                         <th width="120">Código</th>
                                         <th width="250">Producto</th>
+                                        <th width="150">Proveedor</th>
                                         <th width="150">Categoría</th>
                                         <th width="100">Unidad</th>
                                         <th width="120" class="text-center">Stock Actual</th>
@@ -1323,6 +1326,7 @@
     <script src="js/app.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/global-exports.js"></script>
     <script src="js/clientes.js"></script>
     <script src="js/users.js"></script>
     <script src="js/proveedores.js"></script>
@@ -1333,7 +1337,6 @@
     <script src="js/ventas.js"></script>
     <script src="js/inventario.js"></script>
     <script src="js/reportes.js"></script>
-    <script src="js/global-exports.js"></script>
 
 </body>
 </html>
