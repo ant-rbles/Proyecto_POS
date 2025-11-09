@@ -2,6 +2,8 @@
 using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 using System.ComponentModel.DataAnnotations;
 
 namespace Login_Análisis.Controllers
@@ -82,20 +84,51 @@ namespace Login_Análisis.Controllers
 
         [HttpGet]
         public async Task<IActionResult> ObtenerCompras(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin,
-            [FromQuery] string? estado = null)
+      [FromQuery] DateTime? fechaInicio,
+      [FromQuery] DateTime? fechaFin,
+      [FromQuery] string? estado = null)
         {
             try
             {
                 var compras = await _productoService.ObtenerCompras(fechaInicio, fechaFin, estado);
-                return Ok(compras);
+
+                // Mapear a DTOs (evita ciclos)
+                var response = compras.Select(c => new CompraResponse
+                {
+                    Id = c.Id,
+                    NumeroFactura = c.NumeroFactura,
+                    Proveedor = c.Proveedor == null ? null : new ProveedorResponse
+                    {
+                        Id = c.Proveedor.Id,
+                        Nombre = c.Proveedor.Nombre
+                    },
+                    FechaCompra = c.FechaCompra,
+                    Subtotal = c.Subtotal,
+                    Impuestos = c.Impuestos,
+                    Total = c.Total,
+                    Estado = c.Estado,
+                    Observaciones = c.Observaciones,
+                    Detalles = c.Detalles?.Select(d => new DetalleCompraResponse
+                    {
+                        Id = d.Id,
+                        ProductoId = d.ProductoId,
+                        ProductoNombre = d.Producto?.Nombre ?? "",
+                        UnidadMedidaId = d.UnidadMedidaId,
+                        UnidadMedidaNombre = d.UnidadMedida?.Nombre ?? "",
+                        Cantidad = d.Cantidad,
+                        PrecioUnitario = d.PrecioUnitario,
+                        TotalLinea = d.TotalLinea
+                    }).ToList() ?? new List<DetalleCompraResponse>()
+                }).ToList();
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = $"Error interno del servidor: {ex.Message}" });
             }
         }
+
 
         [HttpGet("{id}")]
         public async Task<IActionResult> ObtenerCompra(int id)
@@ -175,21 +208,78 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("{id}/pdf")]
-        public async Task<IActionResult> DescargarFacturaCompraPdf(int id)
+        public async Task<IActionResult> DescargarCompraPDF(int id)
         {
-            try
-            {
-                var pdfBytes = await _productoService.GenerarFacturaCompraPdf(id);
-                if (pdfBytes == null)
-                    return NotFound(new { Message = "Compra no encontrada" });
+            var compra = await _productoService.ObtenerCompra(id);
 
-                return File(pdfBytes, "application/pdf", $"compra_{id}_{DateTime.Now:yyyyMMdd}.pdf");
-            }
-            catch (Exception ex)
+            if (compra == null)
+                return NotFound(new { Message = "Compra no encontrada" });
+
+            // Crear documento PDF
+            var document = Document.Create(container =>
             {
-                return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
-            }
+                container.Page(page =>
+                {
+                    page.Margin(40);
+                    page.Header().Text($"Detalle de Compra - Factura #{compra.NumeroFactura}")
+                        .FontSize(20).Bold().AlignCenter();
+
+                    page.Content().Column(col =>
+                    {
+                        col.Spacing(10);
+
+                        // Información del proveedor
+                        col.Item().Text($"Proveedor: {compra.Proveedor?.Nombre ?? "N/A"}");
+                        col.Item().Text($"Fecha Compra: {compra.FechaCompra:dd/MM/yyyy}");
+                        col.Item().Text($"Observaciones: {compra.Observaciones ?? "Ninguna"}");
+
+                        // Tabla de productos
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(c =>
+                            {
+                                c.ConstantColumn(180); // Producto
+                                c.ConstantColumn(80);  // Unidad
+                                c.ConstantColumn(70);  // Cantidad
+                                c.ConstantColumn(90);  // Precio Unitario
+                                c.ConstantColumn(90);  // Total Línea
+                            });
+
+                            // Encabezados
+                            table.Header(h =>
+                            {
+                                h.Cell().Text("Producto").Bold();
+                                h.Cell().Text("Unidad").Bold();
+                                h.Cell().Text("Cantidad").Bold();
+                                h.Cell().Text("Precio U.").Bold();
+                                h.Cell().Text("Total").Bold();
+                            });
+
+                            foreach (var d in compra.Detalles)
+                            {
+                                table.Cell().Text(d.Producto?.Nombre ?? "");
+                                table.Cell().Text(d.UnidadMedida?.Nombre ?? "");
+                                table.Cell().Text(d.Cantidad.ToString("0.##"));
+                                table.Cell().Text($"Q{d.PrecioUnitario:F2}");
+                                table.Cell().Text($"Q{d.TotalLinea:F2}");
+                            }
+                        });
+
+                        // Totales
+                        col.Item().AlignRight().Text($"Subtotal: Q{compra.Subtotal:F2}");
+                        col.Item().AlignRight().Text($"Impuestos (IVA 12%): Q{compra.Impuestos:F2}");
+                        col.Item().AlignRight().Text($"Total: Q{compra.Total:F2}").Bold();
+                    });
+
+                    page.Footer().AlignCenter().Text($"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}");
+                });
+            });
+
+            // Generar PDF
+            var pdfBytes = document.GeneratePdf();
+            return File(pdfBytes, "application/pdf", $"Compra_{compra.NumeroFactura}.pdf");
         }
+
     }
 }
 

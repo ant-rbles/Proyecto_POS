@@ -508,8 +508,8 @@
                     <div id="tab-compras" class="management-tab">
                         <div class="tab-header">
                             <h3><i class="fas fa-shopping-cart"></i> Registro de Compras</h3>
-                            <button class="btn btn-primary" onclick="showCompraForm()">
-                                <i class="fas fa-plus"></i> Nueva Compra
+                            <button onclick="showCompraForm()" class="btn btn-primary">
+                            <i class="fas fa-cart-plus"></i> Nueva Compra
                             </button>
                         </div>
 
@@ -529,7 +529,7 @@
                                     <div class="form-column">
                                         <div class="form-group">
                                             <label for="compraFactura">N° Factura *</label>
-                                            <input type="text" id="compraFactura" required>
+                                            <input type="text" id="compraFactura" readonly placeholder="Se generará automáticamente">
                                         </div>
                                     </div>
                                 </div>
@@ -543,7 +543,7 @@
                                     <div class="form-column">
                                         <div class="form-group">
                                             <label for="compraImpuestos">Impuestos</label>
-                                            <input type="number" id="compraImpuestos" value="0" step="0.01">
+                                            <input type="number" id="compraImpuestos" value="0" step="0.01" readonly>
                                         </div>
                                     </div>
                                 </div>
@@ -559,7 +559,7 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="detalleProducto">Producto</label>
-                                                <select id="detalleProducto">
+                                                <select id="detalleProducto" onchange="actualizarDetalleCompra()">
                                                     <option value="">Seleccionar producto</option>
                                                 </select>
                                             </div>
@@ -567,7 +567,7 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="detalleUnidad">Unidad</label>
-                                                <select id="detalleUnidad">
+                                                <select id="detalleUnidad" onchange="actualizarDetalleCompra()">
                                                     <option value="">Seleccionar unidad</option>
                                                 </select>
                                             </div>
@@ -575,7 +575,7 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="detalleCantidad">Cantidad</label>
-                                                <input type="number" id="detalleCantidad" value="0" step="0.01">
+                                                <input id="detalleCantidad" oninput="actualizarDetalleCompra()">
                                             </div>
                                         </div>
                                     </div>
@@ -583,13 +583,13 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="detallePrecio">Precio Unitario</label>
-                                                <input type="number" id="detallePrecio" value="0" step="0.01">
+                                                <input id="detallePrecio" oninput="actualizarDetalleCompra()">
                                             </div>
                                         </div>
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="detalleTotal">Total Línea</label>
-                                                <input type="number" id="detalleTotal" readonly>
+                                                <input id="detalleTotal" readonly>
                                             </div>
                                         </div>
                                         <div class="form-column">

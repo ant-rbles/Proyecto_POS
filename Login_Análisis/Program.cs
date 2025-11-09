@@ -56,6 +56,12 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
+// Configuración JSON para evitar ciclos de referencia
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.WriteIndented = true;
+});
 // CORS
 builder.Services.AddCors(options =>
 {

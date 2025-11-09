@@ -18,6 +18,24 @@ namespace Login_Análisis.Services
 
         public ApplicationDbContext Context => _context;
 
+        // Métodos para Usuarios
+        public async Task<User> ObtenerUsuario(int idUsuario)
+        {
+            return await Context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
+        }
+
+        public async Task<Compra> ObtenerCompraPorId(int id)
+        {
+            return await Context.Compras
+                .Include(c => c.Proveedor)
+                .Include(c => c.UsuarioCreacionNavigation)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(c => c.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
         // Métodos para Proveedores
         public async Task<List<Proveedor>> ObtenerTodosProveedoresAsync()
         {
@@ -177,58 +195,59 @@ namespace Login_Análisis.Services
         // Métodos para Compras
         public async Task<(bool success, string message, Compra compra)> CrearCompra(Compra compra, List<DetalleCompra> detalles)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var transaction = await Context.Database.BeginTransactionAsync();
             try
             {
-                // Verificar si ya existe una compra con el mismo número de factura
-                if (await _context.Compras.AnyAsync(c => c.NumeroFactura == compra.NumeroFactura))
-                {
-                    return (false, "Ya existe una compra con este número de factura", null);
-                }
+                // Guardamos la compra (aún sin totales)
+                Context.Compras.Add(compra);
+                await Context.SaveChangesAsync();
 
-                compra.Subtotal = detalles.Sum(d => d.TotalLinea);
-                compra.Impuestos = compra.Subtotal * 0.12m; 
-                compra.Total = compra.Subtotal + compra.Impuestos;
+                decimal subtotal = 0;
 
-                var unidadBase = await _context.UnidadesMedida
-                .FirstOrDefaultAsync(u => u.EsUnidadBase && u.Estado);
-
-                // Guardar compra
-                _context.Compras.Add(compra);
-                await _context.SaveChangesAsync();
-
-                // Procesar cada detalle
                 foreach (var detalle in detalles)
                 {
+                    var producto = await Context.Productos.FindAsync(detalle.ProductoId);
+                    if (producto == null)
+                        return (false, "Producto no válido", null);
+
+                    // Calcular total de la línea
+                    detalle.TotalLinea = detalle.Cantidad * detalle.PrecioUnitario;
                     detalle.CompraId = compra.Id;
 
-                    var producto = await _context.Productos.FindAsync(detalle.ProductoId);
-                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalle.UnidadMedidaId);
+                    // Sumar al subtotal
+                    subtotal += detalle.TotalLinea;
 
-                    if (producto == null || unidadMedida == null)
-                    {
-                        throw new Exception("Producto o unidad de medida no encontrado");
-                    }
+                    Context.DetalleCompras.Add(detalle);
 
-                    // CONVERSIÓN AUTOMÁTICA A UNIDAD BASE
-                    detalle.CantidadBase = detalle.Cantidad * unidadMedida.FactorConversion;
+                    // Actualizar inventario
+                    var stockAnterior = producto.StockActual;
+                    producto.StockActual += detalle.Cantidad;
 
-                    // Guardar detalle
-                    _context.DetalleCompras.Add(detalle);
+                    // Recalcular costo promedio (promedio ponderado)
+                    var valorInventarioAnterior = stockAnterior * producto.PrecioCostoPromedio;
+                    var valorNuevaCompra = detalle.Cantidad * detalle.PrecioUnitario;
 
-                    // Actualizar inventario y precios del producto
-                    await ActualizarInventarioProducto(producto, detalle);
+                    producto.PrecioCostoPromedio = (valorInventarioAnterior + valorNuevaCompra) / producto.StockActual;
+
+                    // Recalcular precio de venta según margen
+                    producto.PrecioVenta = producto.PrecioCostoPromedio * (1 + (producto.MargenGanancia / 100m));
+
+                    producto.FechaActualizacion = DateTime.UtcNow;
                 }
 
-                await _context.SaveChangesAsync();
+                compra.Subtotal = subtotal;
+                compra.Impuestos = subtotal * 0.12m;
+                compra.Total = compra.Subtotal + compra.Impuestos;
+
+                await Context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return (true, "Compra registrada exitosamente", compra);
+                return (true, "Compra registrada correctamente", compra);
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return (false, $"Error: {ex.Message}", null);
+                return (false, $"Error al registrar la compra: {ex.Message}", null);
             }
         }
 
@@ -291,34 +310,36 @@ namespace Login_Análisis.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<List<Compra>> ObtenerCompras(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null)
+        public async Task<List<Compra>> ObtenerCompras()
         {
-            var query = _context.Compras
+            return await ObtenerCompras(null, null, null);
+        }
+
+        public async Task<List<Compra>> ObtenerCompras(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            return await ObtenerCompras(fechaInicio, fechaFin, null);
+        }
+
+        // ✅ Método principal (el que realmente ejecuta la consulta)
+        public async Task<List<Compra>> ObtenerCompras(DateTime? fechaInicio, DateTime? fechaFin, string? estado)
+        {
+            var query = Context.Compras
                 .Include(c => c.Proveedor)
-                .Include(c => c.Detalles)
-                    .ThenInclude(d => d.Producto)
-                .Include(c => c.Detalles)
-                    .ThenInclude(d => d.UnidadMedida)
+                .Include(c => c.Detalles).ThenInclude(d => d.Producto)
+                .Include(c => c.Detalles).ThenInclude(d => d.UnidadMedida)
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
-            {
                 query = query.Where(c => c.FechaCompra >= fechaInicio.Value);
-            }
 
             if (fechaFin.HasValue)
-            {
                 query = query.Where(c => c.FechaCompra <= fechaFin.Value);
-            }
 
             if (!string.IsNullOrEmpty(estado))
-            {
                 query = query.Where(c => c.Estado == estado);
-            }
 
             return await query.OrderByDescending(c => c.FechaCompra).ToListAsync();
         }
-
         public async Task<(bool success, string message)> CambiarEstadoCompra(int compraId, string estado)
         {
             try

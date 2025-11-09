@@ -100,6 +100,7 @@ function openManagementTab(tabName) {
                     break;
                 case 'compras':
                     loadCompras();
+                    cargarCompras();
                     updateProductosSelects();
                     break;
                 case 'inventario':

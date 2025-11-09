@@ -1,41 +1,61 @@
 ﻿// Función para mostrar formulario de compra
 function showCompraForm() {
     console.log('Mostrando formulario de compra');
+
     openManagementTab('compras');
+
     const form = document.getElementById('compraForm');
     if (form) {
         form.style.display = 'block';
 
-        // Establecer fecha actual
         document.getElementById('compraFecha').value = new Date().toISOString().split('T')[0];
-
-        // Generar número de factura automático (se generará en el backend)
         document.getElementById('compraFactura').value = '';
         document.getElementById('compraFactura').placeholder = 'Se generará automáticamente';
+        document.getElementById("compraForm").style.display = "block";
 
         // Reiniciar detalles
         detallesCompra = [];
         renderDetallesTable();
         calcularTotalesCompra();
 
-        // Cargar datos necesarios
+        // Cargar selects
         updateProveedoresSelect();
         updateProductosSelects();
-        cargarUnidadesParaCompra();
+        cargarUnidades();
+
     } else {
         console.error('No se encontró el formulario de compra');
     }
 }
 
-// Función para cargar unidades de medida en compras
-function cargarUnidadesParaCompra() {
-    const select = document.getElementById('detalleUnidad');
-    if (!select) return;
 
-    select.innerHTML = '<option value="">Seleccionar unidad</option>' +
-        unidadesMedida.map(u =>
-            `<option value="${u.id}" data-factor="${u.factorConversion}">${u.nombre} (${u.abreviatura})</option>`
-        ).join('');
+// Función para cargar unidades de medida en compras
+function cargarUnidades() {
+    fetch('/api/unidadesmedida')
+        .then(res => res.json())
+        .then(unidades => {
+            const select = document.getElementById("detalleUnidad");
+            select.innerHTML = '<option value="">Seleccionar unidad</option>';
+
+            unidades.forEach(u => {
+                select.innerHTML += `
+                    <option value="${u.id}" data-factor="${u.factorConversion}">
+                        ${u.nombre} (${u.factorConversion} u)
+                    </option>
+                `;
+            });
+        })
+        .catch(err => console.error('Error cargando unidades:', err));
+}
+
+function cargarCompras() {
+    fetch('/api/compras')
+        .then(res => res.json())
+        .then(data => {
+            mostrarComprasEnTabla(data);
+            console.log("Compras cargadas:", data);
+        })
+        .catch(error => console.error('Error al cargar compras:', error));
 }
 
 function hideCompraForm() {
@@ -71,7 +91,6 @@ function agregarDetalle() {
         return;
     }
 
-    // Obtener información del producto y unidad
     const producto = productos.find(p => p.id === productoId);
     const unidad = unidadesMedida.find(u => u.id === unidadId);
 
@@ -80,12 +99,18 @@ function agregarDetalle() {
         return;
     }
 
+    const factor = unidad.factorConversion; 
+
+    const cantidadBase = cantidad * factor;
+    const precioUnitarioBase = precio / factor;
+    const totalLinea = cantidadBase * precioUnitarioBase;
+
     const detalle = {
         productoId: productoId,
         unidadMedidaId: unidadId,
-        cantidad: cantidad,
-        precioUnitario: precio,
-        totalLinea: cantidad * precio,
+        cantidad: cantidadBase, 
+        precioUnitario: precioUnitarioBase, 
+        totalLinea: totalLinea,
         producto: producto,
         unidad: unidad
     };
@@ -94,11 +119,12 @@ function agregarDetalle() {
     renderDetallesTable();
     calcularTotalesCompra();
 
-    // Limpiar campos del detalle
+    // Limpiar campos
     document.getElementById('detalleCantidad').value = '1';
     document.getElementById('detallePrecio').value = '0';
     document.getElementById('detalleTotal').value = '0';
     document.getElementById('detalleProducto').selectedIndex = 0;
+    document.getElementById('detalleUnidad').selectedIndex = 0;
 }
 
 function eliminarDetalle(index) {
@@ -109,18 +135,15 @@ function eliminarDetalle(index) {
 
 function renderDetallesTable() {
     const tbody = document.getElementById('detallesTableBody');
-    if (!tbody) {
-        console.error('No se encontró detallesTableBody');
-        return;
-    }
+    if (!tbody) return;
 
     tbody.innerHTML = detallesCompra.map((detalle, index) => `
         <tr>
             <td>${detalle.producto.nombre}</td>
             <td>${detalle.unidad.nombre}</td>
-            <td>${detalle.cantidad}</td>
-            <td>$${detalle.precioUnitario.toFixed(2)}</td>
-            <td>$${detalle.totalLinea.toFixed(2)}</td>
+            <td>${(detalle.cantidad / detalle.unidad.factorConversion).toFixed(2)}</td>
+            <td>Q${(detalle.precioUnitario * detalle.unidad.factorConversion).toFixed(2)}</td>
+            <td>Q${detalle.totalLinea.toFixed(2)}</td>
             <td>
                 <button class="action-btn delete-btn" onclick="eliminarDetalle(${index})">
                     <i class="fas fa-trash"></i>
@@ -130,19 +153,30 @@ function renderDetallesTable() {
     `).join('');
 }
 
-function calcularTotalLinea() {
-    const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
-    const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
-    const total = cantidad * precio;
-    document.getElementById('detalleTotal').value = total.toFixed(2);
+function actualizarDetalleCompra() {
+    const cantidad = parseFloat(document.getElementById("detalleCantidad").value) || 0;
+    const precio = parseFloat(document.getElementById("detallePrecio").value) || 0;
+
+    // Obtenemos el factor desde la unidad seleccionada
+    const unidadSelect = document.getElementById("detalleUnidad");
+    const factor = parseFloat(unidadSelect.selectedOptions[0]?.dataset.factor || 1);
+
+    // Conversión para mantener inventario en unidad base
+    const cantidadBase = cantidad * factor;
+    const precioUnitarioBase = precio / factor;
+    const total = cantidadBase * precioUnitarioBase;
+
+    document.getElementById("detalleTotal").value = total.toFixed(2);
 }
 
 function calcularTotalesCompra() {
     const subtotal = detallesCompra.reduce((sum, detalle) => sum + detalle.totalLinea, 0);
-    const impuestos = parseFloat(document.getElementById('compraImpuestos')?.value) || 0;
+
+    const impuestos = subtotal * 0.12;
     const total = subtotal + impuestos;
 
     document.getElementById('compraSubtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('compraImpuestos').value = impuestos.toFixed(2);
     document.getElementById('compraImpuestosTotal').textContent = impuestos.toFixed(2);
     document.getElementById('compraTotal').textContent = total.toFixed(2);
 }
@@ -163,7 +197,7 @@ async function handleCompraSubmit(e) {
     }
 
     const compraData = {
-        numeroFactura: document.getElementById('compraFactura')?.value || '', // Vacío para generación automática
+        numeroFactura: document.getElementById('compraFactura')?.value || '', // Se genera automático si viene vacío
         proveedorId: proveedorId,
         fechaCompra: document.getElementById('compraFecha').value,
         impuestos: parseFloat(document.getElementById('compraImpuestos')?.value) || 0,
@@ -190,11 +224,27 @@ async function handleCompraSubmit(e) {
 
         if (response.ok) {
             const result = await response.json();
-            showMessage('Compra registrada exitosamente', 'success');
+            showMessage('✅ Compra registrada exitosamente', 'success');
+
+            // Ocultar formulario
             hideCompraForm();
-            await loadCompras();
-            await loadProductos(); // Recargar productos para ver stock actualizado
-            await loadInventario(); // Actualizar vista de inventario
+
+            // Mostrar tabla de compras
+            const lista = document.getElementById("compras-list-section");
+            const form = document.getElementById("compraForm");
+            if (lista) lista.style.display = "block";
+            if (form) form.style.display = "none";
+
+            // Recargar compras en pantalla (sin recargar toda la página)
+            if (typeof loadCompras === "function") {
+                await loadCompras();
+            } else if (typeof cargarCompras === "function") {
+                await cargarCompras();
+            }
+
+            // Actualizar productos e inventario al instante
+            if (typeof loadProductos === "function") await loadProductos();
+            if (typeof loadInventario === "function") await loadInventario();
         } else {
             const error = await response.json();
             showMessage(error.message || 'Error al registrar compra', 'error');
@@ -245,19 +295,21 @@ function renderComprasTable() {
             <td>${compra.numeroFactura}</td>
             <td>${compra.proveedor ? compra.proveedor.nombre : 'N/A'}</td>
             <td>${new Date(compra.fechaCompra).toLocaleDateString()}</td>
-            <td>${compra.detalles ? compra.detalles.length : 0}</td>
-            <td>$${compra.subtotal ? compra.subtotal.toFixed(2) : '0.00'}</td>
-            <td>$${compra.impuestos ? compra.impuestos.toFixed(2) : '0.00'}</td>
-            <td>$${compra.total ? compra.total.toFixed(2) : '0.00'}</td>
+            <td>Q${compra.subtotal.toFixed(2)}</td>
+            <td>Q${compra.impuestos.toFixed(2)}</td>
+            <td>Q${compra.total.toFixed(2)}</td>
             <td>
-                <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : compra.estado === 'ANULADA' ? 'badge-danger' : 'badge-warning'}">
-                    ${compra.estado}
-                </span>
+                <span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : 'badge-danger'}">${compra.estado}</span>
             </td>
             <td>
                 <button class="action-btn view-btn" onclick="verDetalleCompra(${compra.id})" title="Ver Detalle">
                     <i class="fas fa-eye"></i>
                 </button>
+
+                <button class="action-btn download-btn" onclick="descargarCompraPDF(${compra.id})" title="Descargar PDF">
+                    <i class="fas fa-file-pdf"></i>
+                </button>
+
                 ${compra.estado !== 'ANULADA' ? `
                     <button class="action-btn delete-btn" onclick="anularCompra(${compra.id})" title="Anular Compra">
                         <i class="fas fa-ban"></i>
@@ -266,6 +318,11 @@ function renderComprasTable() {
             </td>
         </tr>
     `).join('');
+}
+
+function descargarCompraPDF(id) {
+    const authToken = localStorage.getItem('authToken');
+    window.open(`https://localhost:7000/api/compras/${id}/pdf?Authorization=Bearer ${authToken}`, '_blank');
 }
 
 // Función para anular compra

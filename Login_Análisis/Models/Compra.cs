@@ -43,6 +43,8 @@ namespace Login_Análisis.Models
         public string Estado { get; set; } = "PENDIENTE";
 
         public int? UsuarioCreacion { get; set; }
+        public User UsuarioCreacionNavigation { get; set; }
+
 
         [Required]
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;

@@ -114,6 +114,11 @@ namespace Login_Análisis.Data
                       .WithMany()
                       .HasForeignKey(c => c.ProveedorId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(c => c.UsuarioCreacionNavigation)
+                        .WithMany()
+                        .HasForeignKey(c => c.UsuarioCreacion)
+                        .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configuración de DetalleCompra
