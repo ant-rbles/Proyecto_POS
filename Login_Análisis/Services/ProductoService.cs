@@ -846,6 +846,33 @@ namespace Login_Análisis.Services
             return reporte;
         }
 
+        public async Task<List<object>> ObtenerInventarioDetalladoAsync()
+        {
+            var productos = await _context.Productos
+                .Include(p => p.Categoria)
+                .Include(p => p.UnidadMedidaBase)
+                .Include(p => p.Proveedor)
+                .Where(p => p.Estado)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Codigo,
+                    p.Nombre,
+                    ProveedorId = p.ProveedorId,
+                    ProveedorNombre = p.Proveedor != null ? p.Proveedor.Nombre : "Sin proveedor",
+                    CategoriaNombre = p.Categoria != null ? p.Categoria.Nombre : "Sin categoría",
+                    Unidad = p.UnidadMedidaBase != null ? p.UnidadMedidaBase.Abreviatura : "UND",
+                    p.StockActual,
+                    p.StockMinimo,
+                    p.PrecioCostoPromedio,
+                    p.PrecioVenta
+                })
+                .ToListAsync();
+
+            return productos.Cast<object>().ToList();
+        }
+
+
         public async Task<object> GenerarReporteProductosMasVendidos(DateTime? fechaInicio, DateTime? fechaFin, int top)
         {
             var ventas = await ObtenerVentas(fechaInicio, fechaFin);

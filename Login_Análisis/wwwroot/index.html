@@ -1185,12 +1185,13 @@
                                 </div>
 
                                 <div class="filter-container">
-                                    <label for="inventarioProveedor">Filtrar por proveedor:</label>
-                                    <select id="inventarioProveedor" class="form-select">
-                                        <option value="">Todos los proveedores</option>
-                                    </select>
+                                    <div class="form-group" style="margin-right: 10px;">
+                                        <label for="inventarioProveedor" class="form-label" style="font-weight: 500;">Filtrar por proveedor:</label>
+                                        <select id="inventarioProveedor" class="form-select" style="width: 220px;">
+                                            <option value="">Todos los proveedores</option>
+                                        </select>
+                                    </div>
                                 </div>
-
                                 <div class="form-column">
                                     <label>Filtrar por estado:</label>
                                     <select id="filtroEstado" class="form-control" onchange="filtrarInventario()">

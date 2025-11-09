@@ -46,6 +46,21 @@ namespace Login_Análisis.Controllers
             }
         }
 
+        [HttpGet("inventario/detallado")]
+        public async Task<IActionResult> ReporteInventarioDetallado()
+        {
+            try
+            {
+                var productos = await _productoService.ObtenerInventarioDetalladoAsync();
+                return Ok(productos);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al obtener el inventario: {ex.Message}" });
+            }
+        }
+
+
         [HttpGet("productos-mas-vendidos")]
         public async Task<IActionResult> ReporteProductosMasVendidos(
             [FromQuery] DateTime? fechaInicio,

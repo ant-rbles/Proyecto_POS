@@ -18,7 +18,7 @@ async function loadInventario() {
             console.warn("No se pudieron cargar proveedores para el filtro.");
         }
 
-        const response = await fetch('https://localhost:7000/api/productos/todos', {
+        const response = await fetch('https://localhost:7000/api/reportes/inventario/detallado', {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${authToken}`,
@@ -65,18 +65,29 @@ function renderizarTablaInventario(datos = inventarioData) {
         return;
     }
 
-    // LOG para inspección rápida en consola
-    console.log('Renderizando inventario. Productos:', datos.length, 'Proveedores cargados:', proveedoresData.length);
+    // Ver qué llega realmente
+    console.log("Ejemplo de producto en inventario:", JSON.stringify(datos[0], null, 2));
 
     tbody.innerHTML = datos.map(producto => {
         const valorInventario = (producto.stockActual || 0) * (producto.precioCostoPromedio || 0);
         const estado = obtenerEstadoStock(producto);
 
-        // Resolución de nombre de proveedor tolerante
+        // 🟩 Aquí está la corrección clave: leer proveedorNombre exacto del JSON
         const proveedorNombre =
-            (producto.proveedor && (producto.proveedor.nombre || producto.proveedor.Nombre)) ||
-            (producto.Proveedor && (producto.Proveedor.nombre || producto.Proveedor.Nombre)) ||
-            obtenerNombreProveedorPorId(producto.proveedorId ?? producto.ProveedorId ?? producto.proveedorID);
+            producto.proveedorNombre || // el campo real del backend
+            producto.ProveedorNombre ||
+            producto.proveedor?.nombre ||
+            producto.proveedor?.Nombre ||
+            obtenerNombreProveedorPorId(producto.proveedorId ?? producto.ProveedorId ?? producto.proveedorID) ||
+            "Sin proveedor";
+
+        // También leemos la categoría con tolerancia
+        const categoriaNombre =
+            producto.categoriaNombre ||
+            producto.CategoriaNombre ||
+            producto.categoria?.nombre ||
+            producto.categoria?.Nombre ||
+            "Sin categoría";
 
         return `
             <tr>
@@ -85,9 +96,9 @@ function renderizarTablaInventario(datos = inventarioData) {
                     <div style="font-weight: 500;">${producto.nombre ?? ''}</div>
                     ${producto.descripcion ? `<small class="text-muted" style="display: block; margin-top: 4px;">${producto.descripcion}</small>` : ''}
                 </td>
-                <td>${producto.categoria ? (producto.categoria.nombre ?? producto.categoria.Nombre) : '-'}</td>
-                <td>${proveedorNombre || 'Sin proveedor'}</td>
-                <td class="text-center">${producto.unidadMedidaBase ? (producto.unidadMedidaBase.abreviatura ?? producto.unidadMedidaBase.Abreviatura) : 'N/A'}</td>
+                <td>${proveedorNombre}</td> 
+                <td>${categoriaNombre}</td>
+                <td class="text-center">${producto.unidad ?? producto.Unidad ?? 'N/A'}</td>
                 <td class="text-center">${(producto.stockActual ?? 0).toFixed(2)}</td>
                 <td class="text-center">${(producto.stockMinimo ?? 0).toFixed(2)}</td>
                 <td class="text-right">Q ${(producto.precioCostoPromedio ?? 0).toFixed(2)}</td>
@@ -142,10 +153,11 @@ function obtenerEstadoStock(producto) {
 function filtrarInventario() {
     const filtroTexto = document.getElementById('filtroInventario')?.value.toLowerCase() || '';
     const filtroEstado = document.getElementById('filtroEstado')?.value || '';
-    const filtroProveedor = document.getElementById('filtroProveedorInventario')?.value || '';
+    const filtroProveedor = document.getElementById('inventarioProveedor')?.value || ''; 
 
     let datosFiltrados = inventarioData;
 
+    // Filtrar por texto (nombre o código)
     if (filtroTexto) {
         datosFiltrados = datosFiltrados.filter(p =>
             (p.codigo ?? '').toString().toLowerCase().includes(filtroTexto) ||
@@ -153,20 +165,21 @@ function filtrarInventario() {
         );
     }
 
+    // Filtrar por estado del stock
     if (filtroEstado) {
         datosFiltrados = datosFiltrados.filter(p => {
-            if (filtroEstado === 'normal') return (p.stockActual ?? 0) > (p.stockMinimo ?? 0);
-            if (filtroEstado === 'bajo') return (p.stockActual ?? 0) <= (p.stockMinimo ?? 0) && (p.stockActual ?? 0) > 0;
-            if (filtroEstado === 'agotado') return (p.stockActual ?? 0) === 0;
+            if (filtroEstado === 'agotado') return p.stockActual === 0;
+            if (filtroEstado === 'bajo') return p.stockActual <= p.stockMinimo && p.stockActual > 0;
+            if (filtroEstado === 'normal') return p.stockActual > p.stockMinimo;
             return true;
         });
     }
 
+    // ✅ Filtrar por proveedor
     if (filtroProveedor) {
-        const provId = parseInt(filtroProveedor, 10);
         datosFiltrados = datosFiltrados.filter(p => {
-            const pid = p.proveedorId ?? p.ProveedorId ?? p.proveedor?.id ?? p.Proveedor?.id;
-            return Number(pid) === provId;
+            const provId = p.proveedorId ?? p.ProveedorId ?? p.proveedorID ?? null;
+            return String(provId) === String(filtroProveedor);
         });
     }
 
@@ -174,29 +187,19 @@ function filtrarInventario() {
 }
 
 function cargarProveedoresEnFiltro() {
-    const select = document.getElementById('filtroProveedorInventario');
-    if (!select) {
-        console.warn('No existe #filtroProveedorInventario en el DOM');
-        return;
-    }
+    const select = document.getElementById('inventarioProveedor');
+    if (!select) return;
 
     select.innerHTML = '<option value="">Todos los proveedores</option>';
 
-    if (!Array.isArray(proveedoresData) || proveedoresData.length === 0) {
-        console.warn('proveedoresData vacío al intentar llenar el filtro');
-        return;
-    }
-
     proveedoresData.forEach(p => {
         const option = document.createElement('option');
-        // normalizar id
-        const pid = p.id ?? p.Id ?? p.proveedorId ?? p.ProveedorId;
-        option.value = pid ?? '';
-        option.textContent = p.nombre ?? p.Nombre ?? `Proveedor ${pid}`;
+        option.value = p.id ?? p.Id ?? '';
+        option.textContent = p.nombre ?? p.Nombre ?? 'Proveedor sin nombre';
         select.appendChild(option);
     });
 
-    console.log(`✅ Filtro de proveedores cargado (${proveedoresData.length})`, proveedoresData);
+    select.addEventListener('change', filtrarInventario);
 }
 
 // Funciones de utilidad
