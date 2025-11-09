@@ -96,6 +96,12 @@ namespace Login_Análisis.Data
                       .WithMany()
                       .HasForeignKey(p => p.UnidadMedidaBaseId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.Proveedor)
+                      .WithMany(pr => pr.Productos)
+                      .HasForeignKey(p => p.ProveedorId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
             });
 
             // Configuración de Compra

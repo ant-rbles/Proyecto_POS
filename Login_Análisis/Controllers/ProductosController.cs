@@ -42,6 +42,20 @@ namespace Login_Análisis.Controllers
             }
         }
 
+        [HttpGet("por-proveedor/{proveedorId}")]
+        public async Task<IActionResult> ObtenerProductosPorProveedor(int proveedorId)
+        {
+            try
+            {
+                var productos = await _productoService.ObtenerProductosPorProveedorAsync(proveedorId);
+                return Ok(productos);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> ObtenerProducto(int id)
         {

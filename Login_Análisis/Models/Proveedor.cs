@@ -37,5 +37,7 @@
             public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
             public DateTime? FechaActualizacion { get; set; }
+
+            public ICollection<Producto>? Productos { get; set; }
         }
     }

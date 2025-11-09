@@ -86,13 +86,14 @@ async function handleProductoSubmit(e) {
             Codigo: document.getElementById('productoCodigo').value.trim(),
             Nombre: document.getElementById('productoNombre').value.trim(),
             Descripcion: document.getElementById('productoDescripcion').value.trim() || "",
+            ProveedorId: document.getElementById('productoProveedor').value ?
+                parseInt(document.getElementById('productoProveedor').value) : null, 
             CategoriaId: document.getElementById('productoCategoria').value ?
                 parseInt(document.getElementById('productoCategoria').value) : null,
             UnidadMedidaBaseId: parseInt(document.getElementById('productoUnidadBase').value),
             StockMinimo: parseFloat(document.getElementById('productoStockMinimo').value) || 0,
             MargenGanancia: parseFloat(document.getElementById('productoMargen').value) || 30
         };
-
         console.log('Datos para crear producto:', productData);
 
         let response;
@@ -301,6 +302,111 @@ async function loadProductos() {
     }
 }
 
+async function loadProveedoresEnProductos() {
+    try {
+        console.log('Cargando proveedores para formulario de productos...');
+        const authToken = localStorage.getItem('authToken');
+
+        if (!authToken) {
+            console.warn('No hay authToken en localStorage; los proveedores no se cargarán.');
+            // Si quieres permitirlo sin auth, intenta la llamada sin header
+        }
+
+        const response = await fetch('https://localhost:7000/api/proveedores', {
+            method: 'GET',
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+
+        if (!response.ok) {
+            console.error('Error al obtener proveedores. Status:', response.status);
+            // opcional: leer body de error
+            try {
+                const txt = await response.text();
+                console.error('Response body:', txt);
+            } catch (e) { }
+            showMessage('No se pudieron cargar los proveedores (ver consola).', 'error');
+            return;
+        }
+
+        const proveedores = await response.json();
+
+        const selectProveedor = document.getElementById('productoProveedor');
+        if (!selectProveedor) {
+            console.warn('No existe elemento #productoProveedor en el DOM');
+            return;
+        }
+
+        selectProveedor.innerHTML = '<option value="">Seleccionar proveedor</option>';
+
+        proveedores.forEach(p => {
+            // soportar Id/Id, id/id, Nombre/Nombre, nombre/nombre
+            const id = p.id ?? p.Id ?? null;
+            const nombre = p.nombre ?? p.Nombre ?? (p.NombreCompleto ?? 'Proveedor');
+
+            if (id == null) {
+                console.warn('Proveedor sin id:', p);
+                return;
+            }
+
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = nombre;
+            selectProveedor.appendChild(option);
+        });
+
+        console.log(`Proveedores cargados: ${selectProveedor.options.length - 1}`);
+    } catch (error) {
+        console.error('Error en loadProveedoresEnProductos():', error);
+        showMessage('Error de conexión al cargar proveedores', 'error');
+    }
+}
+
+
+// 🔹 Cargar productos según el proveedor seleccionado
+async function loadProductosPorProveedor(proveedorId) {
+    try {
+        console.log(`Cargando productos para proveedor ID: ${proveedorId}`);
+        const authToken = localStorage.getItem('authToken');
+
+        if (!authToken) {
+            console.error('No hay token de autenticación');
+            showMessage('No hay sesión activa', 'error');
+            return;
+        }
+
+        const response = await fetch(`https://localhost:7000/api/productos/por-proveedor/${proveedorId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const productosProveedor = await response.json();
+            console.log(`Productos recibidos para proveedor ${proveedorId}:`, productosProveedor);
+
+            // Actualizar el select de productos en la sección de Compras
+            const selectProducto = document.getElementById('detalleProducto');
+            selectProducto.innerHTML = '<option value="">Seleccionar producto</option>';
+
+            productosProveedor.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = `${p.nombre} (${p.codigo})`;
+                selectProducto.appendChild(option);
+            });
+
+        } else {
+            console.error('Error al cargar productos del proveedor:', response.status);
+            showMessage('No se pudieron cargar los productos del proveedor', 'error');
+        }
+    } catch (error) {
+        console.error('Error en loadProductosPorProveedor:', error);
+        showMessage('Error de conexión: ' + error.message, 'error');
+    }
+}
+
 // Función para renderizar tabla de productos - VERSIÓN MEJORADA
 function renderProductosTable() {
     const tbody = document.getElementById('productosTableBody');
@@ -343,6 +449,16 @@ function renderProductosTable() {
             console.warn(`Producto ${id} (${nombre}) no tiene estado definido. Se asume activo.`);
         }
 
+        // Proveedor
+        let proveedorNombre = 'Sin proveedor';
+        if (producto.proveedor) {
+            proveedorNombre = producto.proveedor.nombre || producto.proveedor.Nombre || 'Sin proveedor';
+        } else if (producto.Proveedor) {
+            proveedorNombre = producto.Proveedor.nombre || producto.Proveedor.Nombre || 'Sin proveedor';
+        } else if (producto.proveedorId) {
+            proveedorNombre = `Proveedor ID: ${producto.proveedorId}`;
+        }
+
         // Categoría
         let categoriaNombre = 'Sin categoría';
         if (producto.categoria) {
@@ -375,6 +491,7 @@ function renderProductosTable() {
         <tr data-producto-id="${id}" data-estado="${estado}">
             <td>${codigo}</td>
             <td>${nombre}</td>
+            <td>${proveedorNombre}</td>
             <td>${categoriaNombre}</td>
             <td>${unidadNombre}</td>
             <td class="text-center">
@@ -467,3 +584,14 @@ function toggleProductRegistrationForm() {
     const productForm = document.getElementById('productRegistrationForm');
     if (productForm) productForm.style.display = 'block';
 }
+
+document.getElementById('compraProveedor').addEventListener('change', (e) => {
+    const proveedorId = e.target.value;
+    if (proveedorId) {
+        loadProductosPorProveedor(proveedorId);
+    } else {
+        // Si se deselecciona, limpiar productos
+        const selectProducto = document.getElementById('detalleProducto');
+        selectProducto.innerHTML = '<option value="">Seleccionar producto</option>';
+    }
+});

@@ -54,5 +54,8 @@ namespace Login_Análisis.Models
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
         public DateTime? FechaActualizacion { get; set; }
+
+        public int? ProveedorId { get; set; }   
+        public Proveedor? Proveedor { get; set; }
     }
 }

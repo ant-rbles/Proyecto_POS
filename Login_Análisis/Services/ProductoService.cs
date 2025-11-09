@@ -134,6 +134,7 @@ namespace Login_Análisis.Services
         public async Task<List<Producto>> ObtenerTodosProductosAsync()
         {
             return await _context.Productos
+                .Include(p => p.Proveedor)
                 .Include(p => p.Categoria)
                 .Include(p => p.UnidadMedidaBase)
                 .ToListAsync();
@@ -143,6 +144,7 @@ namespace Login_Análisis.Services
         {
             return await _context.Productos
                 .Where(p => p.Estado)
+                .Include(p => p.Proveedor)
                 .Include(p => p.Categoria)
                 .Include(p => p.UnidadMedidaBase)
                 .ToListAsync();
@@ -151,6 +153,7 @@ namespace Login_Análisis.Services
         public async Task<Producto> ObtenerProducto(int id)
         {
             return await _context.Productos
+                .Include(p => p.Proveedor)
                 .Include(p => p.Categoria)
                 .Include(p => p.UnidadMedidaBase)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -161,6 +164,14 @@ namespace Login_Análisis.Services
             return await _context.Productos
                 .Include(p => p.UnidadMedidaBase)
                 .FirstOrDefaultAsync(p => p.Codigo == codigo && p.Estado);
+        }
+        public async Task<List<Producto>> ObtenerProductosPorProveedorAsync(int proveedorId)
+        {
+            return await _context.Productos
+                .Where(p => p.ProveedorId == proveedorId && p.Estado)
+                .Include(p => p.Categoria)
+                .Include(p => p.UnidadMedidaBase)
+                .ToListAsync();
         }
 
         //Metodo para convertir unidades de medida
