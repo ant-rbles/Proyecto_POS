@@ -101,7 +101,9 @@ function openManagementTab(tabName) {
                 case 'compras':
                     loadCompras();
                     cargarCompras();
-                    updateProductosSelects();
+                    loadProductos().then(() => {
+                        updateProductosSelects();
+                    });
                     break;
                 case 'inventario':
                     loadInventario();
@@ -109,9 +111,11 @@ function openManagementTab(tabName) {
                 case 'ventas':
                     cargarVentas();
                     cargarEstadisticasVentas();
-                    updateProductosSelects();
-                    updateProductosSelectsVentas();
-                    cargarUnidadesParaVenta();
+                    loadProductos().then(() => {
+                        updateProductosSelects();
+                        updateProductosSelectsVentas();
+                        cargarUnidadesParaVenta();
+                    });
                     break;
                 case 'categorias':
                     loadCategorias();

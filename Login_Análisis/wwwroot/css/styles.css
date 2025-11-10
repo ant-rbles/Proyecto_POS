@@ -1595,3 +1595,34 @@ body {
         background-color: #218838;
     }
 
+#comprasTable {
+    width: 100%;
+    table-layout: auto !important;
+}
+
+    #comprasTable td,
+    #comprasTable th {
+        padding: 10px;
+        white-space: nowrap;
+    }
+
+        #comprasTable td:last-child {
+            width: 180px !important;
+        }
+
+#tablaVentasRealizadas {
+    width: 100%;
+    table-layout: auto !important;
+}
+
+    #tablaVentasRealizadas td,
+    #tablaVentasRealizadas th {
+        padding: 10px;
+        white-space: nowrap;
+    }
+
+        #tablaVentasRealizadas td:last-child {
+            width: 200px !important;
+            text-align: center;
+        }
+

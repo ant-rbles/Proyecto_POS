@@ -1,7 +1,7 @@
 ﻿window.productos = window.productos || [];
 window.detallesVenta = window.detallesVenta || [];
 
-async function loadProductos() {
+async function loadProductosVentas() {
     try {
         const authToken = localStorage.getItem("authToken");
         const response = await fetch("https://localhost:7000/api/productos", {
@@ -26,7 +26,7 @@ async function showVentaForm() {
 
     // Cargar ventas y productos antes de mostrar el formulario
     await Promise.all([
-        loadProductos(),
+        loadProductosVentas(),
         cargarVentasRealizadas()
     ]);
 
@@ -434,7 +434,7 @@ async function handleVentaSubmit(e) {
         calcularTotalesVenta();
 
         // Recargar productos y ventas
-        await loadProductos();
+        await loadProductosVentas();
         await cargarVentasRealizadas();
 
     } catch (error) {
@@ -568,18 +568,17 @@ async function cargarVentasRealizadas() {
             }
         });
 
+        const tbody = document.querySelector('#tablaVentasRealizadas tbody');
+
         if (!response.ok) {
-            console.warn(`⚠️ API devolvió ${response.status}`);
-            document.querySelector('#tablaVentasRealizadas tbody').innerHTML =
-                '<tr><td colspan="7" class="no-data">Error al cargar ventas</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="no-data">Error al cargar ventas</td></tr>';
             return;
         }
 
         const ventas = await response.json();
-        const tbody = document.querySelector('#tablaVentasRealizadas tbody');
 
         if (!ventas || ventas.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay ventas registradas</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="no-data">No hay ventas registradas</td></tr>';
             return;
         }
 
@@ -590,15 +589,29 @@ async function cargarVentasRealizadas() {
                 <td>${v.nitCliente}</td>
                 <td>${new Date(v.fechaVenta).toLocaleString()}</td>
                 <td>Q ${parseFloat(v.total).toFixed(2)}</td>
-                <td>${v.usuarioCreacionNombre ?? v.usuario?.nombre ?? v.usuario?.Usuario ?? 'Desconocido'}</td>
+                <td>${v.usuarioCreacionNombre ?? v.usuario?.nombre ?? 'Desconocido'}</td>
                 <td>${v.metodoPago || 'Efectivo'}</td>
-                <td style="text-align:center;">
-                    <button class="btn btn-sm btn-info" onclick="verDetallesVenta(${v.id})">
+                <td>
+                    <span class="badge ${v.estado === 'ANULADA' ? 'badge-danger' : 'badge-success'}">
+                        ${v.estado || 'N/A'}
+                    </span>
+                </td>
+
+                <td>
+                    <button class="action-btn view-btn" onclick="verDetallesVenta(${v.id})">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-success" onclick="descargarFacturaPdf(${v.id})">
-                        <i class="fas fa-file-download"></i>
+
+                    <button class="action-btn download-btn" onclick="descargarFacturaPdf(${v.id})">
+                        <i class="fas fa-file-pdf"></i>
                     </button>
+
+                    ${v.estado !== "ANULADA" ? `
+                        <button class="action-btn delete-btn" onclick="anularVenta(${v.id})">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    ` : `
+                    `}
                 </td>
             </tr>
         `).join('');
@@ -649,5 +662,32 @@ async function verDetallesVenta(ventaId) {
     } catch (error) {
         console.error('Error al ver detalles:', error);
         showMessage('Error al obtener detalles', 'error');
+    }
+}
+
+function descargarFacturaPDF(id) {
+    const authToken = localStorage.getItem('authToken');
+    window.open(`https://localhost:7000/api/ventas/${id}/pdf?Authorization=Bearer ${authToken}`, '_blank');
+}
+
+async function anularVenta(id) {
+    if (!confirm("¿Desea ANULAR esta venta?")) return;
+
+    const authToken = localStorage.getItem('authToken');
+
+    const response = await fetch(`https://localhost:7000/api/ventas/${id}/estado`, {
+        method: "PUT",
+        headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ estado: "ANULADA" })
+    });
+
+    if (response.ok) {
+        showMessage("Venta anulada exitosamente", "success");
+        cargarVentas();
+    } else {
+        showMessage("Error al anular la venta", "error");
     }
 }

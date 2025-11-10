@@ -1,6 +1,7 @@
 ﻿using Login_Análisis.Data;
 using Login_Análisis.Models;
 using Microsoft.EntityFrameworkCore;
+using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -31,149 +32,165 @@ namespace Login_Análisis.Services
         public async Task<byte[]> GenerarFacturaVenta(int ventaId)
         {
             var venta = await _context.Venta
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.Producto)
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.UnidadMedida)
+                .Include(v => v.Detalles).ThenInclude(d => d.Producto)
+                .Include(v => v.Detalles).ThenInclude(d => d.UnidadMedida)
                 .FirstOrDefaultAsync(v => v.Id == ventaId);
 
             if (venta == null)
                 return null;
+
+            // ✅ Generar QR con QRCoder
+            using var qrGenerator = new QRCodeGenerator();
+            using var qrData = qrGenerator.CreateQrCode($"FACTURA:{venta.NumeroFactura}", QRCodeGenerator.ECCLevel.Q);
+            using var qr = new QRCode(qrData);
+            using var qrBitmap = qr.GetGraphic(6);
+            using var qrStream = new MemoryStream();
+            qrBitmap.Save(qrStream, System.Drawing.Imaging.ImageFormat.Png);
+            var qrBytes = qrStream.ToArray();
 
             var document = Document.Create(container =>
             {
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(2, Unit.Centimetre);
-                    page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(12));
+                    page.Margin(30);
+                    page.DefaultTextStyle(t => t.FontSize(11));
 
-                    page.Header()
-                        .Height(3, Unit.Centimetre)
-                        .Background(Colors.Blue.Medium)
-                        .AlignCenter()
-                        .AlignMiddle()
-                        .Text("CENTRO PLÁSTICO LEONOR")
-                        .Bold().FontSize(20).FontColor(Colors.White);
+                    // Encabezado
+                    page.Header().Column(col =>
+                    {
+                        col.Item().Text("Centro Plástico Leonor")
+                            .Bold().FontSize(20).FontColor("#003399");
 
-                    page.Content()
-                        .PaddingVertical(1, Unit.Centimetre)
-                        .Column(column =>
+                        col.Item().Text("Distribuidora y Ventas Generales")
+                            .FontSize(11);
+
+                        col.Item().Text("NIT: 548904-1")
+                            .FontSize(10);
+
+                        col.Item().Text("Tel: (502) 7872-2173 • 3ra. Avenida y 8a. Calle B Zona 1 Mazatenango, Suchitepéquez")
+                            .FontSize(9).FontColor(Colors.Grey.Darken2);
+                    });
+
+                    page.Content().PaddingTop(10).Column(col =>
+                    {
+                        col.Spacing(15);
+
+                        col.Item().Text("FACTURA DE VENTA")
+                            .FontSize(15).Bold().FontColor("#003399");
+
+                        col.Item().Border(1).Padding(10).Column(info =>
                         {
-                            column.Spacing(20);
-
-                            // Información de la empresa
-                            column.Item().Background(Colors.Grey.Lighten3).Padding(10).Column(infoColumn =>
+                            info.Item().Row(r =>
                             {
-                                infoColumn.Item().Text("Sistema POS - Centro Plástico Leonor").Bold();
-                                infoColumn.Item().Text("Tel: (123) 456-7890 | Email: info@centroplasticoleonor.com");
-                                infoColumn.Item().Text("Dirección: Av. Principal #123, Ciudad");
+                                r.RelativeItem().Text($"Número de Factura:").Bold();
+                                r.RelativeItem().Text(venta.NumeroFactura);
                             });
 
-                            // Información de la factura
-                            column.Item().Table(table =>
+                            info.Item().Row(r =>
                             {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.RelativeColumn();
-                                    columns.RelativeColumn();
-                                });
-
-                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("NÚMERO DE FACTURA").Bold();
-                                table.Cell().Border(1).Padding(5).Text(venta.NumeroFactura);
-
-                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("FECHA DE VENTA").Bold();
-                                table.Cell().Border(1).Padding(5).Text(venta.FechaVenta.ToString("dd/MM/yyyy HH:mm"));
-
-                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("CLIENTE").Bold();
-                                table.Cell().Border(1).Padding(5).Text(venta.NombreCliente ?? "CLIENTE GENERAL");
-
-                                table.Cell().Border(1).Padding(5).Background(Colors.Grey.Lighten3).Text("ESTADO").Bold();
-                                table.Cell().Border(1).Padding(5).Text(venta.Estado);
+                                r.RelativeItem().Text($"Fecha:").Bold();
+                                r.RelativeItem().Text(venta.FechaVenta.ToString("dd/MM/yyyy HH:mm"));
                             });
 
-                            // Detalles de la venta
-                            column.Item().Text("DETALLES DE LA VENTA").Bold().FontSize(16);
-                            column.Item().Table(detallesTable =>
+                            info.Item().Row(r =>
                             {
-                                detallesTable.ColumnsDefinition(columns =>
-                                {
-                                    columns.ConstantColumn(50);
-                                    columns.RelativeColumn(3);
-                                    columns.ConstantColumn(80);
-                                    columns.ConstantColumn(80);
-                                    columns.ConstantColumn(100);
-                                    columns.ConstantColumn(100);
-                                });
-
-                                // Encabezado
-                                detallesTable.Header(header =>
-                                {
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("#").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).Text("PRODUCTO").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("CANTIDAD").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignCenter().Text("UNIDAD").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignRight().Text("PRECIO UNIT.").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Blue.Medium).Padding(5).AlignRight().Text("TOTAL").FontColor(Colors.White).Bold();
-                                });
-
-                                // Detalles
-                                foreach (var (detalle, index) in venta.Detalles.Select((d, i) => (d, i + 1)))
-                                {
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(index.ToString());
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).Text(detalle.Producto?.Nombre ?? "N/A");
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(detalle.Cantidad.ToString("F2"));
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignCenter().Text(detalle.UnidadMedida?.Abreviatura ?? "N/A");
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(detalle.PrecioUnitario.ToString("C"));
-                                    detallesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(detalle.TotalLinea.ToString("C"));
-                                }
+                                r.RelativeItem().Text($"Cliente:").Bold();
+                                r.RelativeItem().Text(venta.NombreCliente ?? "Consumidor Final");
                             });
 
-                            // Totales
-                            column.Item().AlignRight().Width(300).Table(totalesTable =>
+                            info.Item().Row(r =>
                             {
-                                totalesTable.ColumnsDefinition(columns =>
-                                {
-                                    columns.RelativeColumn();
-                                    columns.ConstantColumn(150);
-                                });
-
-                                totalesTable.Cell().BorderBottom(1).Padding(5).Text("SUBTOTAL:").Bold();
-                                totalesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(venta.Subtotal.ToString("C")).Bold();
-
-                                totalesTable.Cell().BorderBottom(1).Padding(5).Text("IMPUESTOS:").Bold();
-                                totalesTable.Cell().BorderBottom(1).Padding(5).AlignRight().Text(venta.Impuestos.ToString("C")).Bold();
-
-                                totalesTable.Cell().BorderBottom(1).Padding(5).Background(Colors.Grey.Lighten3).Text("TOTAL:").Bold().FontSize(14);
-                                totalesTable.Cell().BorderBottom(1).Padding(5).Background(Colors.Grey.Lighten3).AlignRight().Text(venta.Total.ToString("C")).Bold().FontSize(14);
+                                r.RelativeItem().Text("NIT Cliente:").Bold();
+                                r.RelativeItem().Text(venta.NITCliente ?? "CF");
                             });
 
-                            // Observaciones
-                            if (!string.IsNullOrEmpty(venta.Observaciones))
+                            info.Item().Row(r =>
                             {
-                                column.Item().PaddingTop(10).Column(obsColumn =>
-                                {
-                                    obsColumn.Item().Text("OBSERVACIONES").Bold().FontSize(14);
-                                    obsColumn.Item().Padding(5).Background(Colors.Grey.Lighten3).Text(venta.Observaciones);
-                                });
+                                r.RelativeItem().Text("Estado:").Bold();
+                                r.RelativeItem().Text(venta.Estado);
+                            });
+                        });
+
+                        col.Item().PaddingTop(10).Element(e =>
+                        {
+                            e.Text(t => t.Span("DETALLES DE LA VENTA").FontSize(14).Bold().FontColor("#003399"));
+                        });
+
+                        col.Item().Border(1).Padding(10).Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30); // #
+                                columns.RelativeColumn(3);  // Producto
+                                columns.ConstantColumn(60); // Cantidad
+                                columns.ConstantColumn(60); // Unidad
+                                columns.ConstantColumn(80); // Precio
+                                columns.ConstantColumn(80); // Total
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Background("#003399").Padding(5).Text("#").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#003399").Padding(5).Text("PRODUCTO").FontColor(Colors.White).Bold();
+                                header.Cell().Background("#003399").Padding(5).Text("CANT.").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#003399").Padding(5).Text("UNIDAD").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#003399").Padding(5).Text("PRECIO").FontColor(Colors.White).Bold().AlignRight();
+                                header.Cell().Background("#003399").Padding(5).Text("TOTAL").FontColor(Colors.White).Bold().AlignRight();
+                            });
+
+                            int index = 1;
+                            foreach (var d in venta.Detalles)
+                            {
+                                table.Cell().BorderBottom(1).Padding(5).Text(index++.ToString()).AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.Producto?.Nombre ?? "N/A");
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.Cantidad.ToString("F2")).AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.UnidadMedida?.Abreviatura ?? "UND").AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.PrecioUnitario.ToString("C")).AlignRight();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.TotalLinea.ToString("C")).AlignRight();
                             }
-
-                            // Pie de página
-                            column.Item().PaddingTop(20).AlignCenter().Text("¡Gracias por su compra!").Italic().FontColor(Colors.Grey.Medium);
                         });
 
-                    page.Footer()
-                        .AlignCenter()
-                        .Text(text =>
+                        // totales 
+
+                        col.Item().AlignRight().Width(250).Border(1).Padding(10).Column(tot =>
                         {
-                            text.Span("Página ");
-                            text.CurrentPageNumber();
-                            text.Span(" de ");
-                            text.TotalPages();
-                            text.Span(" | Generado el ");
-                            text.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Subtotal:").Bold();
+                                r.RelativeItem().AlignRight().Text(venta.Subtotal.ToString("C"));
+                            });
+
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Impuestos:").Bold();
+                                r.RelativeItem().AlignRight().Text(venta.Impuestos.ToString("C"));
+                            });
+
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("TOTAL:").Bold().FontSize(13);
+                                r.RelativeItem().AlignRight().Text(venta.Total.ToString("C")).Bold().FontSize(13);
+                            });
                         });
+
+                        //QR
+
+                        col.Item().PaddingTop(30).AlignCenter().Column(q =>
+                        {
+                            q.Item().Text("VERIFICACIÓN").Bold().FontColor("#003399").FontSize(12).AlignCenter();
+                            q.Item().Width(120).Height(120).Image(qrBytes);
+                            q.Item().Text("Documento autenticado digitalmente").FontSize(9).FontColor(Colors.Grey.Darken2).AlignCenter();
+                        });
+                    });
+
+                    page.Footer().AlignCenter().Text(txt =>
+                    {
+                        txt.Span("Página ");
+                        txt.CurrentPageNumber();
+                        txt.Span(" de ");
+                        txt.TotalPages();
+                    });
                 });
             });
 
@@ -625,6 +642,16 @@ namespace Login_Análisis.Services
             var documento = new CompraPdfDocument(compra);
 
             return documento.GeneratePdf();
+        }
+
+        public static byte[] GenerarQrPngBytes(string texto)
+        {
+            using (var qrGenerator = new QRCodeGenerator())
+            {
+                var qrData = qrGenerator.CreateQrCode(texto, QRCodeGenerator.ECCLevel.Q);
+                var qrCode = new PngByteQRCode(qrData);
+                return qrCode.GetGraphic(20);
+            }
         }
     }
 }
