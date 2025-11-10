@@ -671,7 +671,7 @@
                         </div>
                     </div>
 
-                    <!-- Pestaña de Ventas  -->
+                    <!-- Pestaña de Ventas -->
                     <div id="tab-ventas" class="management-tab">
                         <div class="tab-header">
                             <h3><i class="fas fa-cash-register"></i> Registrar Venta</h3>
@@ -682,40 +682,42 @@
 
                         <!-- Formulario de Venta -->
                         <div id="ventaForm" class="content-section">
-                            <div class="section-title">Información de la Venta</div>
-                            <form id="ventaFormElement" onsubmit="handleVentaSubmit(event)">
+                            <div class="section-title">
+                                <i class="fas fa-chart-bar"></i> Resumen de Ventas
+                            </div>
 
-                                <!-- Estadísticas Rápidas -->
-                                <div class="inventory-stats">
-                                    <div class="stat-card primary">
-                                        <div class="stat-title">Ventas Hoy</div>
-                                        <div class="stat-value" id="ventasHoy">0</div>
-                                        <div class="stat-icon">
-                                            <i class="fas fa-shopping-cart"></i>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card success">
-                                        <div class="stat-title">Ingresos Hoy</div>
-                                        <div class="stat-value" id="ingresosHoy">$0.00</div>
-                                        <div class="stat-icon">
-                                            <i class="fas fa-dollar-sign"></i>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card warning">
-                                        <div class="stat-title">Ventas Mes</div>
-                                        <div class="stat-value" id="ventasMes">0</div>
-                                        <div class="stat-icon">
-                                            <i class="fas fa-chart-line"></i>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card info">
-                                        <div class="stat-title">Ingresos Mes</div>
-                                        <div class="stat-value" id="ingresosMes">$0.00</div>
-                                        <div class="stat-icon">
-                                            <i class="fas fa-money-bill-wave"></i>
-                                        </div>
-                                    </div>
+                            <div class="inventory-stats">
+                                <div class="stat-card primary">
+                                    <div class="stat-title">Ventas Hoy</div>
+                                    <div class="stat-value" id="ventasHoy">0</div>
+                                    <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
                                 </div>
+                                <div class="stat-card success">
+                                    <div class="stat-title">Ingresos Hoy</div>
+                                    <div class="stat-value" id="ingresosHoy">Q0.00</div>
+                                    <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                                </div>
+                                <div class="stat-card warning">
+                                    <div class="stat-title">Ventas Mes</div>
+                                    <div class="stat-value" id="ventasMes">0</div>
+                                    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                                </div>
+                                <div class="stat-card info">
+                                    <div class="stat-title">Ingresos Mes</div>
+                                    <div class="stat-value" id="ingresosMes">Q0.00</div>
+                                    <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                </div>
+                            </div>
+
+                            <hr style="margin: 20px 0; border-color: #ddd;">
+
+                            <!-- NUEVA VENTA -->
+                            <div class="section-title">
+                                <i class="fas fa-file-invoice-dollar"></i> Registrar Nueva Venta
+                            </div>
+
+                            <!-- ✅ SOLO ESTE FORMULARIO PRINCIPAL -->
+                            <form id="ventaFormElement" onsubmit="handleVentaSubmit(event)">
 
                                 <!-- Información del Cliente -->
                                 <div class="form-panel">
@@ -723,15 +725,18 @@
                                     <div class="form-row">
                                         <div class="form-column">
                                             <div class="form-group">
-                                                <label>Buscar por NIT</label>
-                                                <div style="display: flex; gap: 10px; align-items: flex-end;">
-                                                    <input type="text" id="ventaClienteNIT" class="form-control" placeholder="Ingrese NIT del cliente">
-                                                    <button type="button" class="btn btn-secondary" onclick="buscarClientePorNIT()" style="white-space: nowrap;">
-                                                        <i class="fas fa-search"></i> Buscar
-                                                    </button>
+                                                <label>NIT del Cliente</label>
+                                                <div style="position: relative;">
+                                                    <input type="text" id="ventaClienteNIT" class="form-control"
+                                                           placeholder="Ej: 1234567-8 o CF" autocomplete="off">
+                                                    <div id="clienteLoader" class="spinner-border text-primary" role="status"
+                                                         style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                                     width:1.2rem; height:1.2rem;"></div>
                                                 </div>
+                                                <small id="nitMensaje" class="text-muted"></small>
                                             </div>
                                         </div>
+
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="ventaClienteNombre">Nombre del Cliente *</label>
@@ -753,7 +758,8 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="ventaDescuentoGlobal">Descuento Global (Q)</label>
-                                                <input type="number" id="ventaDescuentoGlobal" class="form-control" value="0" min="0" step="0.01" onchange="calcularTotalesVenta()">
+                                                <input type="number" id="ventaDescuentoGlobal" class="form-control" value="0"
+                                                       min="0" step="0.01" onchange="calcularTotalesVenta()">
                                             </div>
                                         </div>
                                     </div>
@@ -817,9 +823,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="detallesVentaTableBody">
-                                                <tr>
-                                                    <td colspan="6" class="no-data">No hay productos agregados</td>
-                                                </tr>
+                                                <tr><td colspan="6" class="no-data">No hay productos agregados</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -829,30 +833,28 @@
                                 <div class="form-panel">
                                     <h5><i class="fas fa-calculator"></i> Totales</h5>
                                     <div class="totales-section">
-                                        <div class="total-row">
-                                            <span>Subtotal:</span>
-                                            <span id="ventaSubtotal">Q 0.00</span>
-                                        </div>
-                                        <div class="total-row">
-                                            <span>Descuento Global:</span>
-                                            <span id="ventaDescuentoGlobalTotal">Q 0.00</span>
-                                        </div>
-                                        <div class="total-row">
-                                            <span>IVA (12%):</span>
-                                            <span id="ventaImpuestos">Q 0.00</span>
-                                        </div>
-                                        <div class="total-row total-final">
-                                            <span><strong>Total:</strong></span>
-                                            <span><strong id="ventaTotal">Q 0.00</strong></span>
-                                        </div>
+                                        <div class="total-row"><span>Subtotal:</span> <span id="ventaSubtotal">Q 0.00</span></div>
+                                        <div class="total-row"><span>Descuento Global:</span> <span id="ventaDescuentoGlobalTotal">Q 0.00</span></div>
+                                        <div class="total-row"><span>IVA (12%):</span> <span id="ventaImpuestos">Q 0.00</span></div>
+                                        <div class="total-row total-final"><span><strong>Total:</strong></span> <span><strong id="ventaTotal">Q 0.00</strong></span></div>
                                     </div>
                                 </div>
 
                                 <!-- Observaciones -->
-                                <div class="form-panel">
-                                    <div class="form-group">
-                                        <label for="ventaObservaciones">Observaciones</label>
-                                        <textarea id="ventaObservaciones" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
+                                <div class="form-group">
+                                    <label for="ventaObservaciones">Observaciones</label>
+                                    <textarea id="ventaObservaciones" class="form-control" rows="2"
+                                              placeholder="Notas u observaciones de la venta..."></textarea>
+                                </div>
+
+                                <!-- Resumen de Venta -->
+                                <div id="ventaResumen" class="form-panel" style="display:none; margin-top:20px;">
+                                    <h5><i class="fas fa-file-invoice"></i> Resumen de la Venta</h5>
+                                    <div id="ventaResumenContent"></div>
+                                    <div style="margin-top: 15px;">
+                                        <button id="btnDescargarFactura" class="btn btn-success">
+                                            <i class="fas fa-download"></i> Descargar Factura (PDF)
+                                        </button>
                                     </div>
                                 </div>
 
@@ -864,6 +866,28 @@
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                        <div class="form-panel" style="margin-top: 30px;">
+                            <h5><i class="fas fa-clipboard-list"></i> Ventas Realizadas</h5>
+
+                            <div class="table-container">
+                                <table class="data-table" id="tablaVentasRealizadas">
+                                    <thead>
+                                        <tr>
+                                            <th>N° Factura</th>
+                                            <th>Cliente</th>
+                                            <th>NIT</th>
+                                            <th>Fecha</th>
+                                            <th>Total (Q)</th>
+                                            <th>Usuario</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="7" class="no-data">No hay ventas registradas</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

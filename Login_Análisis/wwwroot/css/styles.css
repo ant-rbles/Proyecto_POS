@@ -1558,3 +1558,39 @@ body {
     gap: 8px;
     margin-bottom: 12px;
 }
+
+#nitMensaje {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9rem;
+}
+
+#ventaResumen {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #ddd;
+}
+
+.resumen-box p {
+    margin: 5px 0;
+    font-size: 15px;
+}
+
+#ventaResumen table {
+    margin-top: 10px;
+}
+
+#btnDescargarFactura {
+    margin-top: 10px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+}
+
+    #btnDescargarFactura:hover {
+        background-color: #218838;
+    }

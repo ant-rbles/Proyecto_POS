@@ -439,9 +439,29 @@ namespace Login_Análisis.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Generar número de factura automático
+                // 🔹 Validación inicial
+                if (request.Detalles == null || !request.Detalles.Any())
+                {
+                    return (false, "Debe incluir al menos un producto en la venta", null);
+                }
+
+                foreach (var detalle in request.Detalles)
+                {
+                    if (detalle.ProductoId <= 0)
+                        return (false, "Producto no válido en el detalle de venta", null);
+
+                    // Evita errores si el frontend no manda unidad
+                    if (detalle.UnidadMedidaId <= 0)
+                        detalle.UnidadMedidaId = 1; // ⚙️ fallback a la unidad base por defecto (id=1)
+
+                    if (detalle.Cantidad <= 0)
+                        return (false, "La cantidad del producto debe ser mayor a 0", null);
+                }
+
+                // 🔹 Generar número de factura automático
                 var numeroFactura = GenerarNumeroFactura();
 
+                // 🔹 Crear entidad Venta
                 var venta = new Venta
                 {
                     NumeroFactura = numeroFactura,
@@ -457,33 +477,38 @@ namespace Login_Análisis.Services
                     Estado = "COMPLETADA"
                 };
 
-                // Calcular totales
+                // 🔹 Calcular totales
                 decimal subtotal = 0;
                 var detalles = new List<DetalleVenta>();
 
                 foreach (var detalleRequest in request.Detalles)
                 {
                     var producto = await _context.Productos.FindAsync(detalleRequest.ProductoId);
-                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalleRequest.UnidadMedidaId);
+                    if (producto == null)
+                        return (false, $"Producto con ID {detalleRequest.ProductoId} no encontrado", null);
 
-                    if (producto == null || unidadMedida == null)
-                        throw new Exception("Producto o unidad de medida no encontrado");
+                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalleRequest.UnidadMedidaId)
+                                        ?? await _context.UnidadesMedida.FirstOrDefaultAsync(u => u.Id == producto.UnidadMedidaBaseId)
+                                        ?? await _context.UnidadesMedida.FirstOrDefaultAsync();
 
-                    // Convertir cantidad a unidad base
+                    if (unidadMedida == null)
+                        return (false, "Unidad de medida no encontrada", null);
+
+                    // ⚙️ Conversión a unidad base
                     var cantidadBase = detalleRequest.Cantidad * unidadMedida.FactorConversion;
 
-                    // Usar precio de venta del producto (no editable)
+                    // ⚙️ Precio fijo (no editable)
                     var precioUnitario = producto.PrecioVenta;
 
-                    // Aplicar descuento si existe
-                    var precioConDescuento = precioUnitario * (1 - detalleRequest.DescuentoAplicado / 100);
+                    // ⚙️ Descuento (si aplica)
+                    var precioConDescuento = precioUnitario * (1 - (detalleRequest.DescuentoAplicado / 100));
                     var totalLinea = detalleRequest.Cantidad * precioConDescuento;
                     subtotal += totalLinea;
 
                     var detalle = new DetalleVenta
                     {
                         ProductoId = detalleRequest.ProductoId,
-                        UnidadMedidaId = detalleRequest.UnidadMedidaId,
+                        UnidadMedidaId = unidadMedida.Id,
                         Cantidad = detalleRequest.Cantidad,
                         CantidadBase = cantidadBase,
                         PrecioUnitario = precioConDescuento,
@@ -494,23 +519,24 @@ namespace Login_Análisis.Services
                     detalles.Add(detalle);
                 }
 
-                // Aplicar descuento global y calcular impuestos
+                // 🔹 Calcular descuentos e impuestos
                 venta.Subtotal = subtotal - request.DescuentoGlobal;
-                venta.Impuestos = request.AplicarIVA ? venta.Subtotal * 0.12m : 0; // 12% IVA Guatemala
+                venta.Impuestos = request.AplicarIVA ? venta.Subtotal * 0.12m : 0; // 12% IVA
                 venta.Total = venta.Subtotal + venta.Impuestos;
 
-                // Guardar venta
+                // 🔹 Guardar venta principal
                 _context.Ventas.Add(venta);
                 await _context.SaveChangesAsync();
 
-                // Guardar detalles y actualizar inventario
+                // 🔹 Guardar detalles y actualizar stock
                 foreach (var detalle in detalles)
                 {
                     detalle.VentaId = venta.Id;
                     _context.DetalleVentas.Add(detalle);
 
                     var producto = await _context.Productos.FindAsync(detalle.ProductoId);
-                    await ActualizarInventarioVenta(producto, detalle);
+                    if (producto != null)
+                        await ActualizarInventarioVenta(producto, detalle);
                 }
 
                 await _context.SaveChangesAsync();
@@ -521,7 +547,15 @@ namespace Login_Análisis.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return (false, $"Error: {ex.Message}", null);
+
+                // 🔹 Si es un error conocido de validación
+                if (ex.Message.Contains("no encontrado") || ex.Message.Contains("inexistente"))
+                {
+                    return (false, $"Datos inválidos: {ex.Message}", null);
+                }
+
+                // 🔹 Error inesperado (mantiene trazabilidad)
+                return (false, $"Error interno: {ex.Message}", null);
             }
         }
 
