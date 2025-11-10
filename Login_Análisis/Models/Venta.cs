@@ -28,6 +28,8 @@
         [Column(TypeName = "decimal(18,2)")]
         public decimal Total { get; set; }
 
+        public string MetodoPago { get; set; } = "Efectivo";
+
         [MaxLength(1000)]
         public string Observaciones { get; set; }
 
@@ -50,11 +52,14 @@
         [Required]
         public bool AplicarIVA { get; set; } = true;
 
-        public int? UsuarioCreacion { get; set; }
+        public int UsuarioCreacion { get; set; }
+
+        [ForeignKey(nameof(UsuarioCreacion))]
+        public User Usuario { get; set; }
 
         [Required]
-        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+        public DateTime FechaCreacion { get; set; }
 
-        public ICollection<DetalleVenta> Detalles { get; set; } = new List<DetalleVenta>();
+        public virtual ICollection<DetalleVenta> Detalles { get; set; }
     }
 }

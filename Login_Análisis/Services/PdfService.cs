@@ -30,7 +30,7 @@ namespace Login_Análisis.Services
 
         public async Task<byte[]> GenerarFacturaVenta(int ventaId)
         {
-            var venta = await _context.Ventas
+            var venta = await _context.Venta
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
                 .Include(v => v.Detalles)
@@ -182,7 +182,7 @@ namespace Login_Análisis.Services
 
         public async Task<byte[]> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin)
         {
-            var ventas = await _context.Ventas
+            var ventas = await _context.Venta
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
                 .Where(v => (!fechaInicio.HasValue || v.FechaVenta >= fechaInicio) &&

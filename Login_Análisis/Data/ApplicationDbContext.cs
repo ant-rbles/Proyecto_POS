@@ -19,8 +19,8 @@ namespace Login_Análisis.Data
         public DbSet<Compra> Compras { get; set; }
         public DbSet<DetalleCompra> DetalleCompras { get; set; }
         public DbSet<MovimientoInventario> MovimientosInventario { get; set; }
-        public DbSet<Venta> Ventas { get; set; }
-        public DbSet<DetalleVenta> DetalleVentas { get; set; }
+        public DbSet<Venta> Venta { get; set; }
+        public DbSet<DetalleVenta> DetalleVenta { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<DescuentoProducto> DescuentosProducto { get; set; }
 
@@ -172,6 +172,11 @@ namespace Login_Análisis.Data
                       .WithMany()
                       .HasForeignKey(v => v.ClienteId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(v => v.Usuario)
+                       .WithMany(u => u.VentasCreadas)
+                       .HasForeignKey(v => v.UsuarioCreacion)
+                       .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configuración de DetalleVenta

@@ -35,6 +35,8 @@ namespace Login_Análisis.Models
         [Required]
         public bool Estado { get; set; } = true;
 
+        public ICollection<Venta> VentasCreadas { get; set; }
+
         [Required]
         public int IntentosFallidos { get; set; } = 0;
 

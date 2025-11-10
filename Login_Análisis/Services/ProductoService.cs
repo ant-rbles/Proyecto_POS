@@ -473,6 +473,7 @@ namespace Login_Análisis.Services
                     AplicarIVA = request.AplicarIVA,
                     Observaciones = request.Observaciones,
                     UsuarioCreacion = request.UsuarioCreacion,
+                    MetodoPago = request.MetodoPago ?? "Efectivo",
                     FechaCreacion = DateTime.UtcNow,
                     Estado = "COMPLETADA"
                 };
@@ -525,14 +526,14 @@ namespace Login_Análisis.Services
                 venta.Total = venta.Subtotal + venta.Impuestos;
 
                 // 🔹 Guardar venta principal
-                _context.Ventas.Add(venta);
+                _context.Venta.Add(venta);
                 await _context.SaveChangesAsync();
 
                 // 🔹 Guardar detalles y actualizar stock
                 foreach (var detalle in detalles)
                 {
                     detalle.VentaId = venta.Id;
-                    _context.DetalleVentas.Add(detalle);
+                    _context.DetalleVenta.Add(detalle);
 
                     var producto = await _context.Productos.FindAsync(detalle.ProductoId);
                     if (producto != null)
@@ -605,12 +606,13 @@ namespace Login_Análisis.Services
 
         public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null)
         {
-            var query = _context.Ventas
+            var query = _context.Venta
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.UnidadMedida)
-                .Include(v => v.Cliente) 
+                .Include(v => v.Cliente)
+                .Include(v => v.Usuario)
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
@@ -635,7 +637,7 @@ namespace Login_Análisis.Services
         {
             try
             {
-                var venta = await _context.Ventas.FindAsync(ventaId);
+                var venta = await _context.Venta.FindAsync(ventaId);
                 if (venta == null)
                     return (false, "Venta no encontrada");
 
@@ -650,15 +652,46 @@ namespace Login_Análisis.Services
             }
         }
 
-        public async Task<Venta> ObtenerVenta(int id)
+        public async Task<object?> ObtenerVenta(int id)
         {
-            return await _context.Ventas
+            var venta = await _context.Venta
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.UnidadMedida)
-                .Include(v => v.Cliente) 
+                .Include(v => v.Usuario) 
                 .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (venta == null)
+                return null;
+
+            return new
+            {
+                venta.Id,
+                venta.NumeroFactura,
+                venta.FechaVenta,
+                venta.NombreCliente,
+                venta.NITCliente,
+                venta.DescuentoGlobal,
+                venta.AplicarIVA,
+                venta.MetodoPago,
+                venta.Subtotal,
+                venta.Impuestos,
+                venta.Total,
+
+                UsuarioCreacionNombre = venta.Usuario != null
+                 ? $"{venta.Usuario.Nombre} {venta.Usuario.Usuario}"
+                 : "Desconocido",
+
+                Detalles = venta.Detalles.Select(d => new
+                {
+                    d.Id,
+                    d.ProductoId,
+                    ProductoNombre = d.Producto.Nombre, 
+                    d.Cantidad,
+                    d.PrecioUnitario,
+                    d.DescuentoAplicado,
+                    TotalLinea = d.TotalLinea
+                }).ToList()
+            };
         }
 
         // Métodos para Categorías
@@ -737,7 +770,7 @@ namespace Login_Análisis.Services
         // MÉTODO PARA GENERAR NÚMERO DE FACTURA
         private string GenerarNumeroFactura()
         {
-            var ultimaVenta = _context.Ventas
+            var ultimaVenta = _context.Venta
                 .Where(v => v.NumeroFactura.StartsWith("FAC-"))
                 .OrderByDescending(v => v.Id)
                 .FirstOrDefault();

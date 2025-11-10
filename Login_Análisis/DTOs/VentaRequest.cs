@@ -15,8 +15,11 @@ namespace Login_Análisis.DTOs
         public decimal DescuentoGlobal { get; set; } = 0;
         public bool AplicarIVA { get; set; } = true;
 
+        public string MetodoPago { get; set; } = "Efectivo";
+
+        [MaxLength(2000)]
         public string Observaciones { get; set; }
-        public int? UsuarioCreacion { get; set; }
+        public int UsuarioCreacion { get; set; }
 
         [Required]
         public List<DetalleVentaRequest> Detalles { get; set; }
@@ -27,14 +30,13 @@ namespace Login_Análisis.DTOs
         [Required]
         public int ProductoId { get; set; }
 
-        [Required]
-        public int UnidadMedidaId { get; set; }
+        public int UnidadMedidaId { get; set; } = 1;
 
         [Required]
         public decimal Cantidad { get; set; }
 
-        public decimal PrecioUnitario { get; set; }
+        public decimal PrecioUnitario { get; set; } = 0m;
 
-        public decimal DescuentoAplicado { get; set; } = 0;
+        public decimal DescuentoAplicado { get; set; } = 0m;
     }
 }

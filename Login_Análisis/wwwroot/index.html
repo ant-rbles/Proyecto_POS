@@ -772,7 +772,7 @@
                                         <div class="form-column">
                                             <div class="form-group">
                                                 <label for="ventaProducto">Producto *</label>
-                                                <select id="ventaProducto" class="form-control" required onchange="onProductoSelectChange()">
+                                                <select id="ventaProducto" class="form-control" onchange="onProductoSelectChange()">
                                                     <option value="">Seleccionar producto...</option>
                                                 </select>
                                             </div>
@@ -819,6 +819,7 @@
                                                     <th>Precio Unitario</th>
                                                     <th>Descuento</th>
                                                     <th>Total</th>
+                                                    <th>Método de Pago</th>
                                                     <th>Acciones</th>
                                                 </tr>
                                             </thead>
@@ -859,8 +860,19 @@
                                 </div>
 
                                 <!-- Botones de Acción -->
+                                <div class="form-group">
+                                    <label for="ventaMetodoPago"><strong>Método de Pago</strong></label>
+                                    <select id="ventaMetodoPago" class="form-control" required>
+                                        <option value="Efectivo">Efectivo</option>
+                                        <option value="Tarjeta">Tarjeta</option>
+                                    </select>
+                                </div>
+
                                 <div class="form-actions">
-                                    <button type="button" class="btn btn-secondary" onclick="limpiarVentaForm()">Limpiar</button>
+                                    <button type="button" class="btn btn-danger" onclick="hideVentaForm()">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-receipt"></i> Registrar Venta y Generar Factura
                                     </button>
@@ -880,6 +892,7 @@
                                             <th>Fecha</th>
                                             <th>Total (Q)</th>
                                             <th>Usuario</th>
+                                            <th>Método de Pago</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
@@ -1357,6 +1370,7 @@
     <script src="js/proveedores.js"></script>
     <script src="js/categorias.js"></script>
     <script src="js/unidades.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="js/productos.js"></script>
     <script src="js/compras.js"></script>
     <script src="js/ventas.js"></script>

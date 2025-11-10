@@ -257,11 +257,22 @@ function agregarDetalleVenta() {
 
     renderDetallesVentaTable();
     calcularTotalesVenta();
+    actualizarStockEnTiempoReal(productoId, cantidad);
 
     // Reset campos
     productoSelect.selectedIndex = 0;
     document.getElementById('ventaCantidad').value = 1;
     document.getElementById('ventaPrecioUnitario').value = '';
+}
+
+function actualizarStockEnTiempoReal(productoId, cantidadVendida) {
+    const producto = productos.find(p => p.id === productoId);
+    if (producto) {
+        producto.stockActual -= cantidadVendida;
+        if (producto.stockActual < 0) producto.stockActual = 0;
+    }
+
+    updateProductosSelectVenta(); // refresca el dropdown
 }
 
 function renderDetallesVentaTable() {
@@ -314,12 +325,54 @@ function calcularTotalesVenta() {
     document.getElementById('ventaTotal').textContent = formatearQ(total);
 }
 
+function simularPagoTarjeta() {
+    return new Promise(resolve => {
+        Swal.fire({
+            title: 'Procesando Pago...',
+            html: `
+                <div style="font-size:18px; margin-top:10px;">Insertando o leyendo tarjeta...</div>
+                <div class="loader-tarjeta" style="
+                    margin:20px auto; 
+                    width:50px; 
+                    height:50px; 
+                    border:5px solid #ccc; 
+                    border-top:5px solid #4CAF50;
+                    border-radius:50%;
+                    animation: spin 1s linear infinite;
+                "></div>
+            `,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            backdrop: true
+        });
+
+        setTimeout(() => {
+            Swal.close();
+            Swal.fire({
+                icon: 'success',
+                title: 'Pago aprobado',
+                text: 'La transacción fue procesada correctamente.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            setTimeout(() => resolve(), 1600);
+        }, 2500);
+    });
+}
+
 async function handleVentaSubmit(e) {
     e.preventDefault();
 
     if (detallesVenta.length === 0) {
         showMessage('Debe agregar al menos un producto a la venta', 'error');
         return;
+    }
+
+    const metodoPagoSeleccionado = document.getElementById('ventaMetodoPago')?.value || "Efectivo";
+    if (metodoPagoSeleccionado === "Tarjeta") {
+        await simularPagoTarjeta();
     }
 
     const clienteId = document.getElementById('ventaClienteId')?.value || null;
@@ -340,6 +393,7 @@ async function handleVentaSubmit(e) {
         AplicarIVA: document.getElementById('ventaAplicarIVA').checked,
         Observaciones: document.getElementById('ventaObservaciones')?.value || '',
         UsuarioCreacion: JSON.parse(localStorage.getItem('user')).id || 1,
+        MetodoPago: metodoPagoSeleccionado,
         Detalles: detallesVenta.map(d => ({
             ProductoId: d.productoId,
             UnidadMedidaId: d.unidadMedidaId || 1,
@@ -418,9 +472,9 @@ async function cargarEstadisticasVentas() {
         if (response.ok) {
             const estadisticas = await response.json();
             document.getElementById('ventasHoy').textContent = estadisticas.ventasHoy || 0;
-            document.getElementById('ingresosHoy').textContent = `$${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
+            document.getElementById('ingresosHoy').textContent = `Q${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
             document.getElementById('ventasMes').textContent = estadisticas.ventasMes || 0;
-            document.getElementById('ingresosMes').textContent = `$${(estadisticas.ingresosMes || 0).toFixed(2)}`;
+            document.getElementById('ingresosMes').textContent = `Q${(estadisticas.ingresosMes || 0).toFixed(2)}`;
         }
     } catch (error) {
         console.error('Error al cargar estadísticas:', error);
@@ -456,6 +510,7 @@ function mostrarResumenVenta(venta) {
             <p><strong>Fecha:</strong> ${fecha}</p>
             <p><strong>Cliente:</strong> ${venta.nombreCliente}</p>
             <p><strong>NIT:</strong> ${venta.nitCliente}</p>
+             <p><strong>Método de Pago:</strong> ${venta.metodoPago || 'Efectivo'}</p>
             <p><strong>Total Venta:</strong> Q ${venta.total.toFixed(2)}</p>
         </div>
 
@@ -484,6 +539,8 @@ function mostrarResumenVenta(venta) {
             </table>
         </div>
     `;
+
+    document.getElementById('resMetodoPago').textContent = venta.metodoPago;
 
     // Mostrar el bloque de resumen
     contenedor.style.display = 'block';
@@ -533,7 +590,8 @@ async function cargarVentasRealizadas() {
                 <td>${v.nitCliente}</td>
                 <td>${new Date(v.fechaVenta).toLocaleString()}</td>
                 <td>Q ${parseFloat(v.total).toFixed(2)}</td>
-                <td>${v.usuarioCreacionNombre || 'Desconocido'}</td>
+                <td>${v.usuarioCreacionNombre ?? v.usuario?.nombre ?? v.usuario?.Usuario ?? 'Desconocido'}</td>
+                <td>${v.metodoPago || 'Efectivo'}</td>
                 <td style="text-align:center;">
                     <button class="btn btn-sm btn-info" onclick="verDetallesVenta(${v.id})">
                         <i class="fas fa-eye"></i>

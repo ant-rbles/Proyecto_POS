@@ -36,6 +36,7 @@ if (loginForm) {
                 showMessage(data.message, 'success');
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('usuarioId', data.user.id);
                 showDashboard(data.user);
             } else {
                 showMessage(data.message || 'Credenciales incorrectas', 'error');
