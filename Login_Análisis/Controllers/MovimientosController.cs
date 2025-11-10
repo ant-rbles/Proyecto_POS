@@ -1,5 +1,6 @@
 ﻿using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
+using Login_Análisis.DTOs;
 
 namespace Login_Análisis.Controllers
 {
@@ -16,14 +17,14 @@ namespace Login_Análisis.Controllers
 
         [HttpGet]
         public async Task<IActionResult> ObtenerMovimientos(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin,
-            [FromQuery] string? tipoMovimiento = null,
-            [FromQuery] int? productoId = null)
+        [FromQuery] DateTime? fechaInicio,
+        [FromQuery] DateTime? fechaFin,
+        [FromQuery] string? tipo,
+        [FromQuery] int? productoId)
         {
             try
             {
-                var movimientos = await _productoService.ObtenerMovimientosInventario(fechaInicio, fechaFin, tipoMovimiento, productoId);
+                var movimientos = await _productoService.ObtenerMovimientosInventario(fechaInicio, fechaFin, tipo, productoId);
                 return Ok(movimientos);
             }
             catch (Exception ex)
@@ -33,30 +34,17 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPost("ajuste")]
-        public async Task<IActionResult> CrearAjusteInventario([FromBody] AjusteInventarioRequest request)
+        public async Task<IActionResult> RegistrarAjuste([FromBody] AjusteDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { Message = "Datos del ajuste inválidos" });
-            }
+            var result = await _productoService.CrearAjusteInventario(
+                dto.ProductoId,
+                dto.Cantidad,
+                dto.Observaciones,
+                dto.UsuarioId,
+                dto.Tipo
+            );
 
-            try
-            {
-                var result = await _productoService.CrearAjusteInventario(
-                    request.ProductoId,
-                    request.Cantidad,
-                    request.Observaciones,
-                    request.UsuarioId);
-
-                if (!result.success)
-                    return BadRequest(new { Message = result.message });
-
-                return Ok(new { Message = result.message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = $"Error: {ex.Message}" });
-            }
+            return Ok(result);
         }
 
         [HttpGet("producto/{productoId}")]

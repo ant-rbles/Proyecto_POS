@@ -310,6 +310,10 @@ async function loadProductos() {
             updateProductosSelects();
             updateProductosSelectsVentas();
 
+            if (typeof cargarProductosParaAjuste === "function") {
+                cargarProductosParaAjuste();
+            }
+
         } else {
             console.error('Error al cargar productos. Status:', response.status);
             const errorText = await response.text();

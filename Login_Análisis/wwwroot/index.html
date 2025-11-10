@@ -974,36 +974,50 @@
                         </div>
 
                         <!-- Formulario de Ajuste -->
-                        <div id="ajusteForm" class="form-panel" style="display: none;">
-                            <h4>Ajuste de Inventario</h4>
-                            <form id="ajusteFormElement">
-                                <div class="form-row">
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="ajusteProducto">Producto *</label>
-                                            <select id="ajusteProducto" required>
-                                                <option value="">Seleccionar producto</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="ajusteCantidad">Cantidad *</label>
-                                            <input type="number" id="ajusteCantidad" required step="0.01" placeholder="Use negativo para reducir">
-                                            <small>Use valores negativos para reducir el stock</small>
-                                        </div>
+                        <div id="ajusteForm" class="content-section" style="display:none;">
+                            <div class="section-title">Ajuste de Inventario</div>
+
+                            <div class="form-row">
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="ajusteProductoId">Producto *</label>
+                                        <select id="ajusteProductoId" required>
+                                            <option value="">Seleccionar producto</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="ajusteObservaciones">Observaciones *</label>
-                                    <textarea id="ajusteObservaciones" required rows="3" placeholder="Motivo del ajuste..."></textarea>
+
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="ajusteCantidad">Cantidad *</label>
+                                        <input type="number" id="ajusteCantidad" required>
+                                    </div>
                                 </div>
-                                <div class="form-actions">
-                                    <button type="button" class="btn btn-secondary" onclick="hideAjusteForm()">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Aplicar Ajuste</button>
+
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="ajusteTipo">Tipo *</label>
+                                        <select id="ajusteTipo">
+                                            <option value="ENTRADA">Entrada</option>
+                                            <option value="SALIDA">Salida</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </form>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="ajusteObservaciones">Observaciones</label>
+                                        <input type="text" id="ajusteObservaciones" placeholder="Opcional">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary" onclick="guardarAjuste()">Guardar Ajuste</button>
+                            <button class="btn btn-secondary" onclick="hideAjusteForm()">Cancelar</button>
                         </div>
+
 
                         <!-- Filtros de Movimientos -->
                         <div class="form-panel">
@@ -1019,6 +1033,16 @@
                                         </select>
                                     </div>
                                 </div>
+
+                                <div class="form-column">
+                                    <div class="form-group">
+                                        <label for="movimientoProductoId">Producto</label>
+                                        <select id="movimientoProductoId" onchange="cargarMovimientos()">
+                                            <option value="">Todos</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="form-column">
                                     <div class="form-group">
                                         <label for="movimientoFechaInicio">Fecha Inicio</label>
@@ -1363,8 +1387,6 @@
     <script src="js/utils.js"></script>
     <script src="js/app.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/global-exports.js"></script>
     <script src="js/clientes.js"></script>
     <script src="js/users.js"></script>
     <script src="js/proveedores.js"></script>
@@ -1375,7 +1397,10 @@
     <script src="js/compras.js"></script>
     <script src="js/ventas.js"></script>
     <script src="js/inventario.js"></script>
+    <script src="js/movimientos.js"></script>
     <script src="js/reportes.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/global-exports.js"></script>
 
 </body>
 </html>

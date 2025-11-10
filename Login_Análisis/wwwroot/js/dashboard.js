@@ -135,8 +135,13 @@ function openManagementTab(tabName) {
                     document.getElementById('movimientoFechaFin').value = hoyMov.toISOString().split('T')[0];
                     const inicioSemana = new Date(hoyMov);
                     inicioSemana.setDate(hoyMov.getDate() - 7);
-                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];
-                    cargarMovimientos();
+                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];   
+
+                    loadProductos().then(() => {
+                        cargarProductosParaAjuste();
+                        cargarProductosFiltro();
+                        cargarMovimientos();
+                    });
                     break;
             }
         }

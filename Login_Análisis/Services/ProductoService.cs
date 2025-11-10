@@ -790,53 +790,59 @@ namespace Login_Análisis.Services
 
 
         // Métodos para Movimientos de Inventario
-        public async Task<List<MovimientoInventario>> ObtenerMovimientosInventario(
-            DateTime? fechaInicio = null,
-            DateTime? fechaFin = null,
-            string? tipoMovimiento = null,
-            int? productoId = null)
+        private async Task RegistrarMovimiento(int productoId, decimal cantidad, string tipo, string? observaciones, int? usuarioId, int? referenciaId = null, string? referenciaTipo = null)
+        {
+            var producto = await _context.Productos.FindAsync(productoId);
+            if (producto == null)
+                throw new Exception("Producto no encontrado");
+
+            var cantidadAnterior = producto.StockActual;
+            producto.StockActual += cantidad;
+            producto.FechaActualizacion = DateTime.UtcNow;
+
+            var movimiento = new MovimientoInventario
+            {
+                ProductoId = productoId,
+                TipoMovimiento = tipo,
+                Cantidad = Math.Abs(cantidad),
+                CantidadAnterior = cantidadAnterior,
+                CantidadNueva = producto.StockActual,
+                PrecioCosto = producto.PrecioCostoPromedio,
+                PrecioVenta = producto.PrecioVenta,
+                ReferenciaId = referenciaId,
+                ReferenciaTipo = referenciaTipo,
+                Observaciones = observaciones,
+                UsuarioId = usuarioId,
+                FechaMovimiento = DateTime.UtcNow 
+            };
+
+            _context.MovimientosInventario.Add(movimiento);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
         {
             var query = _context.MovimientosInventario
                 .Include(m => m.Producto)
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
-            {
                 query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value);
-            }
 
             if (fechaFin.HasValue)
-            {
                 query = query.Where(m => m.FechaMovimiento <= fechaFin.Value);
-            }
 
-            if (!string.IsNullOrEmpty(tipoMovimiento))
-            {
-                query = query.Where(m => m.TipoMovimiento == tipoMovimiento);
-            }
+            if (!string.IsNullOrEmpty(tipo))
+                query = query.Where(m => m.TipoMovimiento == tipo);
 
             if (productoId.HasValue)
-            {
                 query = query.Where(m => m.ProductoId == productoId.Value);
-            }
 
             return await query.OrderByDescending(m => m.FechaMovimiento).ToListAsync();
         }
 
-        public async Task<List<MovimientoInventario>> ObtenerMovimientosPorProducto(int productoId)
-        {
-            return await _context.MovimientosInventario
-                .Include(m => m.Producto)
-                .Where(m => m.ProductoId == productoId)
-                .OrderByDescending(m => m.FechaMovimiento)
-                .ToListAsync();
-        }
+        public async Task<(bool success, string message)> CrearAjusteInventario(int productoId, decimal cantidad, string observaciones, int? usuarioId, string tipo)
 
-        public async Task<(bool success, string message)> CrearAjusteInventario(
-            int productoId,
-            decimal cantidad,
-            string observaciones,
-            int? usuarioId)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -846,19 +852,21 @@ namespace Login_Análisis.Services
                     return (false, "Producto no encontrado");
 
                 var cantidadAnterior = producto.StockActual;
+
+                // ✅ si es SALIDA, convierte cantidad a negativa
+                if (tipo == "SALIDA")
+                    cantidad = cantidad * -1;
+
                 producto.StockActual += cantidad;
                 producto.FechaActualizacion = DateTime.UtcNow;
 
                 var movimiento = new MovimientoInventario
                 {
                     ProductoId = productoId,
-                    TipoMovimiento = cantidad > 0 ? "AJUSTE_POSITIVO" : "AJUSTE_NEGATIVO",
+                    TipoMovimiento = tipo, // ✅ ENTRADA o SALIDA
                     Cantidad = Math.Abs(cantidad),
                     CantidadAnterior = cantidadAnterior,
                     CantidadNueva = producto.StockActual,
-                    PrecioCosto = producto.PrecioCostoPromedio,
-                    PrecioVenta = producto.PrecioVenta,
-                    ReferenciaTipo = "AJUSTE_MANUAL",
                     Observaciones = observaciones,
                     UsuarioId = usuarioId,
                     FechaMovimiento = DateTime.UtcNow
@@ -876,8 +884,14 @@ namespace Login_Análisis.Services
                 return (false, $"Error: {ex.Message}");
             }
         }
+        public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosPorProducto(int productoId)
+        {
+            return await _context.MovimientosInventario
+                .Where(m => m.ProductoId == productoId)
+                .OrderByDescending(m => m.FechaMovimiento) 
+                .ToListAsync();
+        }
 
-        // Métodos para Reportes (JSON para pantalla)
         public async Task<object> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin, string tipoReporte)
         {
             var ventas = await ObtenerVentas(fechaInicio, fechaFin);
@@ -895,7 +909,6 @@ namespace Login_Análisis.Services
 
             return reporte;
         }
-
         public async Task<object> GenerarReporteInventario()
         {
             var productos = await ObtenerTodosProductosAsync();
@@ -907,7 +920,7 @@ namespace Login_Análisis.Services
                 ProductosStockBajo = productos.Count(p => p.StockActual <= p.StockMinimo && p.StockActual > 0),
                 ProductosStockCritico = productos.Count(p => p.StockActual == 0),
                 ProductosPorCategoria = productos.GroupBy(p => p.Categoria?.Nombre ?? "Sin Categoría")
-                                       .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
+                                     .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
             };
 
             return reporte;
@@ -939,7 +952,6 @@ namespace Login_Análisis.Services
             return productos.Cast<object>().ToList();
         }
 
-
         public async Task<object> GenerarReporteProductosMasVendidos(DateTime? fechaInicio, DateTime? fechaFin, int top)
         {
             var ventas = await ObtenerVentas(fechaInicio, fechaFin);
@@ -967,15 +979,16 @@ namespace Login_Análisis.Services
 
             var reporte = new
             {
-                TotalMovimientos = movimientos.Count,
+                TotalMovimientos = movimientos.Count(),
                 MovimientosPorTipo = movimientos.GroupBy(m => m.TipoMovimiento)
-                                      .Select(g => new { Tipo = g.Key, Cantidad = g.Count() }),
+                                    .Select(g => new { Tipo = g.Key, Cantidad = g.Count() }),
                 MovimientosPorProducto = movimientos.GroupBy(m => new { m.ProductoId, m.Producto.Nombre })
-                                          .Select(g => new { Producto = g.Key.Nombre, Cantidad = g.Count() })
+                                        .Select(g => new { Producto = g.Key.Nombre, Cantidad = g.Count() })
             };
 
             return reporte;
         }
+
 
         public async Task<object> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin)
         {
