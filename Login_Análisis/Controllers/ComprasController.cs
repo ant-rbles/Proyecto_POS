@@ -215,68 +215,11 @@ namespace Login_Análisis.Controllers
             if (compra == null)
                 return NotFound(new { Message = "Compra no encontrada" });
 
-            // Crear documento PDF
-            var document = Document.Create(container =>
-            {
-                container.Page(page =>
-                {
-                    page.Margin(40);
-                    page.Header().Text($"Detalle de Compra - Factura #{compra.NumeroFactura}")
-                        .FontSize(20).Bold().AlignCenter();
+            // ✅ Usa la clase profesional CompraPdfDocument
+            var documento = new CompraPdfDocument(compra);
+            var pdfBytes = documento.GeneratePdf();
 
-                    page.Content().Column(col =>
-                    {
-                        col.Spacing(10);
-
-                        // Información del proveedor
-                        col.Item().Text($"Proveedor: {compra.Proveedor?.Nombre ?? "N/A"}");
-                        col.Item().Text($"Fecha Compra: {compra.FechaCompra:dd/MM/yyyy}");
-                        col.Item().Text($"Observaciones: {compra.Observaciones ?? "Ninguna"}");
-
-                        // Tabla de productos
-                        col.Item().Table(table =>
-                        {
-                            table.ColumnsDefinition(c =>
-                            {
-                                c.ConstantColumn(180); // Producto
-                                c.ConstantColumn(80);  // Unidad
-                                c.ConstantColumn(70);  // Cantidad
-                                c.ConstantColumn(90);  // Precio Unitario
-                                c.ConstantColumn(90);  // Total Línea
-                            });
-
-                            // Encabezados
-                            table.Header(h =>
-                            {
-                                h.Cell().Text("Producto").Bold();
-                                h.Cell().Text("Unidad").Bold();
-                                h.Cell().Text("Cantidad").Bold();
-                                h.Cell().Text("Precio U.").Bold();
-                                h.Cell().Text("Total").Bold();
-                            });
-
-                            foreach (var d in compra.Detalles)
-                            {
-                                table.Cell().Text(d.Producto?.Nombre ?? "");
-                                table.Cell().Text(d.UnidadMedida?.Nombre ?? "");
-                                table.Cell().Text(d.Cantidad.ToString("0.##"));
-                                table.Cell().Text($"Q{d.PrecioUnitario:F2}");
-                                table.Cell().Text($"Q{d.TotalLinea:F2}");
-                            }
-                        });
-
-                        // Totales
-                        col.Item().AlignRight().Text($"Subtotal: Q{compra.Subtotal:F2}");
-                        col.Item().AlignRight().Text($"Impuestos (IVA 12%): Q{compra.Impuestos:F2}");
-                        col.Item().AlignRight().Text($"Total: Q{compra.Total:F2}").Bold();
-                    });
-
-                    page.Footer().AlignCenter().Text($"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}");
-                });
-            });
-
-            // Generar PDF
-            var pdfBytes = document.GeneratePdf();
+            // Devuelve el PDF como archivo descargable
             return File(pdfBytes, "application/pdf", $"Compra_{compra.NumeroFactura}.pdf");
         }
 

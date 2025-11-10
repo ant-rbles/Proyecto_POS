@@ -3,152 +3,207 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System;
-using System.Linq;
-using Login_Análisis.Models; 
 
-public class CompraPdfDocument : IDocument
+namespace Login_Análisis.Services
 {
-    private readonly Compra _compra;
-
-    public CompraPdfDocument(Compra compra)
+    public class CompraPdfDocument : IDocument
     {
-        _compra = compra;
-    }
+        private readonly Compra _compra;
 
-    public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
-
-    public void Compose(IDocumentContainer container)
-    {
-        container.Page(page =>
+        public CompraPdfDocument(Compra compra)
         {
-            page.Size(PageSizes.A4);
-            page.Margin(40);
-            page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Helvetica"));
+            _compra = compra;
+        }
 
-            // Encabezado azul moderno
-            page.Header().Background("#2E64FE").Padding(15).Row(row =>
+        public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
+
+        public void Compose(IDocumentContainer container)
+        {
+            container.Page(page =>
             {
-                row.RelativeColumn().Stack(stack =>
-                {
-                    stack.Item().Text("Centro Plástico Leonor")
-                        .FontSize(18)
-                        .Bold()
-                        .FontColor("#FFFFFF");
+                page.Margin(40);
+                page.Size(PageSizes.A4);
+                page.DefaultTextStyle(x => x.FontSize(11));
 
-                    stack.Item().Text("Factura de Compra")
-                        .FontSize(12)
-                        .FontColor("#E6E6E6");
+                // 🔷 Encabezado tipo SAT
+                page.Header().Element(Encabezado);
 
-                    stack.Item().Text($"Fecha de emisión: {DateTime.Now:dd/MM/yyyy}")
-                        .FontSize(10)
-                        .FontColor("#E6E6E6");
-                });
+                // 🔹 Contenido principal
+                page.Content().Element(ContenidoPrincipal);
 
-                row.ConstantColumn(150).AlignRight().Text($"#{_compra.NumeroFactura}")
-                    .FontSize(16)
-                    .Bold()
-                    .FontColor("#FFFFFF");
+                // 📅 Pie de página
+                page.Footer().AlignCenter().Text($"Documento generado automáticamente el {DateTime.Now:dd/MM/yyyy HH:mm}")
+                    .FontSize(9).FontColor(Colors.Grey.Medium);
             });
+        }
 
-            // Contenido principal
-            page.Content().PaddingVertical(20).Column(column =>
+        private void Encabezado(IContainer container)
+        {
+            container.Row(row =>
             {
-                column.Spacing(15);
-
-                // Datos del proveedor
-                column.Item().Border(1).BorderColor("#d1d3e2").Padding(10).Background("#f9f9f9")
-                    .Stack(stack =>
+                // 🟦 Logo y datos de la empresa
+                row.RelativeColumn(3).Column(col =>
+                {
+                    var logoPath = "wwwroot/images/logo.png";
+                    if (System.IO.File.Exists(logoPath))
                     {
-                        stack.Spacing(4);
-                        stack.Item().Text($"Proveedor: {_compra.Proveedor?.Nombre ?? "N/A"}")
-                            .Bold().FontSize(11);
-                        stack.Item().Text($"Teléfono: {_compra.Proveedor?.Telefono ?? "N/A"}");
-                        stack.Item().Text($"Dirección: {_compra.Proveedor?.Direccion ?? "N/A"}");
-                        stack.Item().Text($"Fecha de compra: {_compra.FechaCompra:dd/MM/yyyy}");
-                        stack.Item().Text($"Estado: {_compra.Estado}");
+                        col.Item().Height(45).Width(120).Image(logoPath).FitArea();
+                    }
+
+                    col.Item().Text("Centro Plástico Leonor")
+                        .Bold().FontSize(16).FontColor("#003399");
+                    col.Item().Text("Distribuidora y Ventas Generales")
+                        .FontSize(10).FontColor(Colors.Grey.Medium);
+                    col.Item().Text("NIT: 548904-1").FontSize(10);
+                    col.Item().Text("Tel: (502) 7872-2173 • 3ra. Avenida y 8a. Calle B Zona 1 Mazatenando, Suchitepéquez")
+                        .FontSize(9).FontColor(Colors.Grey.Medium);
+                });
+
+                // 📄 Bloque de datos fiscales
+                row.RelativeColumn(2)
+                    .Background("#EAF2FF")
+                    .Border(1)
+                    .BorderColor("#003399")
+                    .Padding(10)
+                    .Column(col =>
+                    {
+                        col.Item().Text("FACTURA DE COMPRA")
+                            .Bold().FontSize(13).AlignCenter().FontColor("#003399");
+                        col.Item().PaddingVertical(4);
+                        col.Item().Text($"No. {_compra.NumeroFactura}").FontSize(11).Bold();
+                        col.Item().Text($"Fecha: {_compra.FechaCompra:dd/MM/yyyy}").FontSize(10);
+                        col.Item().Text($"Estado: {_compra.Estado}").FontSize(10);
                     });
+            });
+        }
 
-                // Tabla de detalles de compra
-                column.Item().PaddingVertical(10).Element(DetallesTabla);
+        private void ContenidoPrincipal(IContainer container)
+        {
+            container.PaddingVertical(10).Column(column =>
+            {
+                // 📋 Datos del proveedor
+                column.Item().Element(DatosProveedor);
 
-                // Totales
-                var subtotal = _compra.Detalles.Sum(d => d.TotalLinea);
-                var impuestos = _compra.Impuestos;
-                var totalGeneral = subtotal + impuestos;
+                // 🧾 Tabla de productos
+                column.Item().PaddingTop(15).Element(TablaProductos);
 
-                column.Item().AlignRight().PaddingTop(10).Stack(stack =>
+                // 💰 Totales
+                column.Item().PaddingTop(10).Element(ResumenTotales);
+
+                // 🖋️ Observaciones
+                if (!string.IsNullOrWhiteSpace(_compra.Observaciones))
                 {
-                    stack.Spacing(3);
-                    stack.Item().Text($"Subtotal: Q{subtotal:N2}");
-                    stack.Item().Text($"Impuestos: Q{impuestos:N2}");
-                    stack.Item().Text($"Total General: Q{totalGeneral:N2}")
-                        .Bold().FontColor("#2E64FE").FontSize(12);
+                    column.Item().PaddingTop(10).Element(Observaciones);
+                }
+
+            });
+        }
+
+        private void DatosProveedor(IContainer container)
+        {
+            container.Table(table =>
+            {
+                table.ColumnsDefinition(cols =>
+                {
+                    cols.RelativeColumn(1);
+                    cols.RelativeColumn(3);
+                });
+
+                table.Cell().Text("Proveedor:").Bold();
+                table.Cell().Text(_compra.Proveedor?.Nombre ?? "N/A");
+
+                table.Cell().Text("NIT:").Bold();
+                table.Cell().Text(_compra.Proveedor?.RUC ?? "—");
+
+                table.Cell().Text("Dirección:").Bold();
+                table.Cell().Text(_compra.Proveedor?.Direccion ?? "—");
+
+                table.Cell().Text("Correo:").Bold();
+                table.Cell().Text(_compra.Proveedor?.Email ?? "—");
+            });
+        }
+
+        private void TablaProductos(IContainer container)
+        {
+            container.Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(3);
+                    columns.RelativeColumn(2);
+                    columns.RelativeColumn(2);
+                    columns.RelativeColumn(2);
+                    columns.RelativeColumn(2);
+                });
+
+                // Encabezado
+                table.Header(header =>
+                {
+                    header.Cell().Element(CellStyleHeader).Text("Producto");
+                    header.Cell().Element(CellStyleHeader).Text("Unidad");
+                    header.Cell().Element(CellStyleHeader).Text("Cantidad");
+                    header.Cell().Element(CellStyleHeader).Text("Precio Unit.");
+                    header.Cell().Element(CellStyleHeader).Text("Total");
+                });
+
+                // Detalles
+                foreach (var d in _compra.Detalles)
+                {
+                    table.Cell().Element(CellStyleBody).Text(d.Producto?.Nombre ?? "—");
+                    table.Cell().Element(CellStyleBody).Text(d.UnidadMedida?.Nombre ?? "—");
+                    table.Cell().Element(CellStyleBody).Text($"{d.Cantidad:N2}");
+                    table.Cell().Element(CellStyleBody).Text($"Q{d.PrecioUnitario:N2}");
+                    table.Cell().Element(CellStyleBody).Text($"Q{d.TotalLinea:N2}");
+                }
+
+                // Estilos internos
+                static IContainer CellStyleHeader(IContainer container) =>
+                    container.Background("#003399").PaddingVertical(4).PaddingHorizontal(6)
+                        .DefaultTextStyle(x => x.FontColor(Colors.White).Bold().FontSize(10));
+
+                static IContainer CellStyleBody(IContainer container) =>
+                    container.BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2)
+                        .PaddingVertical(3).PaddingHorizontal(4);
+            });
+        }
+
+        private void ResumenTotales(IContainer container)
+        {
+            container.AlignRight().Column(col =>
+            {
+                col.Spacing(4);
+
+                col.Item().Row(row =>
+                {
+                    row.RelativeItem().Text("Subtotal:").Bold();
+                    row.ConstantItem(90).AlignRight().Text($"Q{_compra.Subtotal:N2}");
+                });
+
+                col.Item().Row(row =>
+                {
+                    row.RelativeItem().Text("IVA (12%):").Bold();
+                    row.ConstantItem(90).AlignRight().Text($"Q{_compra.Impuestos:N2}");
+                });
+
+                col.Item().BorderBottom(1).BorderColor(Colors.Grey.Lighten2);
+
+                col.Item().Row(row =>
+                {
+                    row.RelativeItem().Text("TOTAL GENERAL:").Bold().FontSize(12).FontColor("#003399");
+                    row.ConstantItem(90).AlignRight().Text($"Q{_compra.Total:N2}").Bold().FontSize(12).FontColor("#003399");
                 });
             });
+        }
 
-            // Pie de página
-            page.Footer().AlignCenter().PaddingTop(5).Text(txt =>
-            {
-                txt.Span("Centro Plástico Leonor © ").FontSize(9);
-                txt.Span($"{DateTime.Now.Year} - Documento generado automáticamente").Italic();
-            });
-        });
-    }
-
-    // 🧾 Tabla de detalles
-    private void DetallesTabla(IContainer container)
-    {
-        container.Table(table =>
+        private void Observaciones(IContainer container)
         {
-            table.ColumnsDefinition(columns =>
+            container.Background(Colors.Grey.Lighten4).Padding(8).Border(1).BorderColor(Colors.Grey.Lighten1).Column(col =>
             {
-                columns.RelativeColumn(3); // Producto
-                columns.RelativeColumn(1.5f); // Unidad
-                columns.RelativeColumn(1); // Cantidad
-                columns.RelativeColumn(1); // Precio
-                columns.RelativeColumn(1); // Total
+                col.Item().Text("Observaciones:").Bold().FontColor("#003399");
+                col.Item().Text(_compra.Observaciones ?? "");
             });
+        }
 
-            // Encabezado con color corporativo
-            table.Header(header =>
-            {
-                header.Cell().Element(CellHeader).Text("Producto");
-                header.Cell().Element(CellHeader).Text("Unidad");
-                header.Cell().Element(CellHeader).AlignRight().Text("Cantidad");
-                header.Cell().Element(CellHeader).AlignRight().Text("Precio (Q)");
-                header.Cell().Element(CellHeader).AlignRight().Text("Total (Q)");
-            });
-
-            // Filas del detalle
-            foreach (var d in _compra.Detalles)
-            {
-                table.Cell().Element(CellBody).Text(d.Producto?.Nombre ?? "-");
-                table.Cell().Element(CellBody).Text(d.UnidadMedida?.Nombre ?? "-");
-                table.Cell().Element(CellBody).AlignRight().Text($"{d.Cantidad:N2}");
-                table.Cell().Element(CellBody).AlignRight().Text($"{d.PrecioUnitario:N2}");
-                table.Cell().Element(CellBody).AlignRight().Text($"{d.TotalLinea:N2}");
-            }
-        });
-    }
-
-    // 🎨 Estilos de las celdas
-    private static IContainer CellHeader(IContainer container)
-    {
-        return container
-            .Background("#2E64FE")
-            .PaddingVertical(6)
-            .PaddingHorizontal(4)
-            .BorderBottom(1)
-            .BorderColor("#2E64FE")
-            .DefaultTextStyle(x => x.SemiBold().FontColor("#FFFFFF"));
-    }
-
-    private static IContainer CellBody(IContainer container)
-    {
-        return container
-            .PaddingVertical(5)
-            .PaddingHorizontal(4)
-            .BorderBottom(0.5f)
-            .BorderColor("#d9d9d9");
     }
 }
+
