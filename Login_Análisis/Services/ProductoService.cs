@@ -813,7 +813,7 @@ namespace Login_Análisis.Services
                 ReferenciaTipo = referenciaTipo,
                 Observaciones = observaciones,
                 UsuarioId = usuarioId,
-                FechaMovimiento = DateTime.UtcNow 
+                FechaMovimiento = DateTime.UtcNow
             };
 
             _context.MovimientosInventario.Add(movimiento);
@@ -888,7 +888,7 @@ namespace Login_Análisis.Services
         {
             return await _context.MovimientosInventario
                 .Where(m => m.ProductoId == productoId)
-                .OrderByDescending(m => m.FechaMovimiento) 
+                .OrderByDescending(m => m.FechaMovimiento)
                 .ToListAsync();
         }
 

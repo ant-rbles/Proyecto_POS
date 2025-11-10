@@ -97,3 +97,4 @@ window.hideAjusteForm = hideAjusteForm;
 window.guardarAjuste = guardarAjuste;
 window.cargarProductosParaAjuste = cargarProductosParaAjuste;
 window.cargarProductosFiltroMovimientos = cargarProductosFiltroMovimientos;
+window.inicializarSeccionMovimientos = inicializarSeccionMovimientos;

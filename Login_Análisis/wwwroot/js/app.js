@@ -130,6 +130,19 @@ function setupManagementEventListeners() {
         ventaForm.addEventListener('submit', handleVentaSubmit);
     }
 
+    // Formulario de movimientos (ajustes de inventario)
+    const movimientoForm = document.getElementById('formAjusteInventario');
+    if (movimientoForm) {
+        movimientoForm.addEventListener('submit', registrarAjusteInventario);
+    }
+
+    // Botón de filtrar movimientos
+    const btnFiltrarMovimientos = document.getElementById('btnFiltrarMovimientos');
+    if (btnFiltrarMovimientos) {
+        btnFiltrarMovimientos.addEventListener('click', filtrarMovimientos);
+    }
+
+
     // Eventos para detalles de compra
     const detalleCantidad = document.getElementById('detalleCantidad');
     const detallePrecio = document.getElementById('detallePrecio');

@@ -1,4 +1,6 @@
-﻿namespace Login_Análisis.DTOs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Login_Análisis.DTOs
 {
     public class AjusteDto
     {
@@ -9,3 +11,4 @@
         public string Tipo { get; set; }
     }
 }
+
