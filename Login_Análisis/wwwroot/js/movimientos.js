@@ -2,18 +2,30 @@
     console.log("cargarMovimientos() ejecutado");
 
     const tipo = document.getElementById("movimientoTipo").value;
-    const fechaInicio = document.getElementById("movimientoFechaInicio").value;
-    const fechaFin = document.getElementById("movimientoFechaFin").value;
+    const fechaInicio = document.getElementById("movimientoFechaInicio").value || null;
+    const fechaFin = document.getElementById("movimientoFechaFin").value || null;
+    const productoId = document.getElementById("movimientoProductoId")?.value || null;
 
-    const productoId = document.getElementById("ajusteProductoId")?.value || "";
+    const params = new URLSearchParams();
 
-    const url = `/api/movimientos?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&tipo=${tipo}&productoId=${productoId}`;
+    if (fechaInicio) params.append("fechaInicio", fechaInicio);
+    if (fechaFin) params.append("fechaFin", fechaFin);
+    if (tipo && tipo !== "TODOS") params.append("tipo", tipo);
+    if (productoId) params.append("productoId", productoId);
+
+    const url = params.toString()
+        ? `/api/movimientos?${params.toString()}`
+        : `/api/movimientos`;
 
     const response = await fetch(url);
     const data = await response.json();
 
+    console.log("📌 Movimientos recibidos:", data);
+
     renderMovimientos(data);
 }
+
+
 
 // Renderizar la tabla
 function renderMovimientos(movimientos) {
@@ -35,6 +47,7 @@ function renderMovimientos(movimientos) {
         tbody.appendChild(tr);
     });
 }
+
 
 // Mostrar formulario de ajuste
 function showAjusteForm() {
@@ -62,10 +75,14 @@ async function guardarAjuste() {
         return;
     }
 
+    const usuario = JSON.parse(localStorage.getItem("user"));
+
     const body = {
-        productoId,
+        productoId: Number(productoId),
         cantidad: tipo === "SALIDA" ? Number(cantidad) * -1 : Number(cantidad),
-        observaciones: "Ajuste manual"
+        observaciones: "Ajuste manual",
+        usuarioId: usuario?.id || 1,
+        tipo: "AJUSTE" 
     };
 
     const response = await fetch("/api/movimientos/ajuste", {
@@ -116,3 +133,18 @@ function cargarProductosFiltro() {
             .map(p => `<option value="${p.id}">${p.nombre}</option>`)
             .join('');
 }
+
+// ✅ Cargar productos desde la API
+async function cargarProductos() {
+    console.log("📦 Cargando productos...");
+    const response = await fetch("/api/productos");
+    window.productos = await response.json();
+    console.log("✅ Productos cargados:", window.productos.length);
+
+    // Llenar selects ahora que ya están cargados
+    cargarProductosParaAjuste();
+    cargarProductosFiltro();
+}
+
+// ✅ Llamar la carga cuando se abra la pantalla
+document.addEventListener("DOMContentLoaded", cargarProductos);
