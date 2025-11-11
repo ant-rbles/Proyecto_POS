@@ -14,17 +14,19 @@ namespace Login_Análisis.Controllers
         {
             _productoService = productoService;
         }
-
         [HttpGet]
         public async Task<IActionResult> ObtenerMovimientos(
-        [FromQuery] DateTime? fechaInicio,
-        [FromQuery] DateTime? fechaFin,
-        [FromQuery] string? tipo,
-        [FromQuery] int? productoId)
+            [FromQuery] string? fechaInicio,
+            [FromQuery] string? fechaFin,
+            [FromQuery] string? tipo,
+            [FromQuery] int? productoId)
         {
             try
             {
-                var movimientos = await _productoService.ObtenerMovimientosInventario(fechaInicio, fechaFin, tipo, productoId);
+                DateTime? fInicio = string.IsNullOrEmpty(fechaInicio) ? null : DateTime.Parse(fechaInicio);
+                DateTime? fFin = string.IsNullOrEmpty(fechaFin) ? null : DateTime.Parse(fechaFin);
+
+                var movimientos = await _productoService.ObtenerMovimientosInventario(fInicio, fFin, tipo, productoId);
                 return Ok(movimientos);
             }
             catch (Exception ex)

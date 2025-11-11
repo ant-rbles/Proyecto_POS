@@ -838,7 +838,21 @@ namespace Login_Análisis.Services
             if (productoId.HasValue)
                 query = query.Where(m => m.ProductoId == productoId.Value);
 
-            return await query.OrderByDescending(m => m.FechaMovimiento).ToListAsync();
+            return await query
+             .Select(m => new MovimientoInventario
+             {
+                 Id = m.Id,
+                 ProductoId = m.ProductoId,
+                 Producto = m.Producto,
+                 TipoMovimiento = m.TipoMovimiento,
+                 FechaMovimiento = m.FechaMovimiento ?? DateTime.Now, 
+                 Cantidad = m.Cantidad,
+                 CantidadAnterior = m.CantidadAnterior ?? 0, 
+                 CantidadNueva = m.CantidadNueva ?? 0,       
+                 Observaciones = m.Observaciones ?? ""
+             })
+             .OrderByDescending(m => m.FechaMovimiento)
+             .ToListAsync();
         }
 
         public async Task<(bool success, string message)> CrearAjusteInventario(int productoId, decimal cantidad, string observaciones, int? usuarioId, string tipo)
@@ -887,6 +901,7 @@ namespace Login_Análisis.Services
         public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosPorProducto(int productoId)
         {
             return await _context.MovimientosInventario
+                .Include(m => m.Producto)
                 .Where(m => m.ProductoId == productoId)
                 .OrderByDescending(m => m.FechaMovimiento)
                 .ToListAsync();

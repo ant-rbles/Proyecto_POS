@@ -23,11 +23,11 @@ namespace Login_Análisis.Models
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        public decimal CantidadAnterior { get; set; }
+        public decimal? CantidadAnterior { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        public decimal CantidadNueva { get; set; }
+        public decimal? CantidadNueva { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal? PrecioCosto { get; set; }
@@ -41,11 +41,11 @@ namespace Login_Análisis.Models
         public string ReferenciaTipo { get; set; }
 
         [MaxLength(500)]
-        public string Observaciones { get; set; }
+        public string? Observaciones { get; set; }
 
         public int? UsuarioId { get; set; }
 
         [Required]
-        public DateTime FechaMovimiento { get; set; } = DateTime.UtcNow;
+        public DateTime? FechaMovimiento { get; set; } = DateTime.UtcNow;
     }
 }

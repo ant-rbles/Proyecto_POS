@@ -1,48 +1,115 @@
 ﻿async function cargarMovimientos() {
     console.log("cargarMovimientos() ejecutado");
 
-    const tipo = document.getElementById("movimientoTipo").value;
-    const fechaInicio = document.getElementById("movimientoFechaInicio").value || null;
-    const fechaFin = document.getElementById("movimientoFechaFin").value || null;
-    const productoId = document.getElementById("movimientoProductoId")?.value || null;
+    try {
+        const tipo = document.getElementById("movimientoTipo")?.value;
+        const fechaInicio = document.getElementById("movimientoFechaInicio")?.value || null;
+        const fechaFin = document.getElementById("movimientoFechaFin")?.value || null;
+        const productoId = document.getElementById("movimientoProductoId")?.value || null;
 
-    const params = new URLSearchParams();
+        const params = new URLSearchParams();
 
-    if (fechaInicio) params.append("fechaInicio", fechaInicio);
-    if (fechaFin) params.append("fechaFin", fechaFin);
-    if (tipo && tipo !== "TODOS") params.append("tipo", tipo);
-    if (productoId) params.append("productoId", productoId);
+        if (fechaInicio) params.append("fechaInicio", fechaInicio);
+        if (fechaFin) params.append("fechaFin", fechaFin);
+        if (tipo && tipo !== "TODOS") params.append("tipo", tipo);
+        if (productoId) params.append("productoId", productoId);
 
-    const url = params.toString()
-        ? `/api/movimientos?${params.toString()}`
-        : `/api/movimientos`;
+        const url = params.toString() ? `/api/movimientos?${params.toString()}` : `/api/movimientos`;
+        console.log("🔗 Fetch URL:", url);
 
-    const response = await fetch(url);
-    const data = await response.json();
+        const response = await fetch(url);
 
-    console.log("📌 Movimientos recibidos:", data);
+        // Si la API devolvió error (400/500/etc) -> loguear y mostrar tabla vacía
+        if (!response.ok) {
+            // Intentar leer texto/JSON con tolerancia para mostrar mensaje del servidor
+            let text;
+            try {
+                // Algunos servidores devuelven JSON { Message: "..." }
+                text = await response.text();
+                try {
+                    const maybeJson = JSON.parse(text);
+                    console.warn("⚠️ API MOVIMIENTOS returned error JSON:", maybeJson);
+                    // Si viene { Message: "..."} mostramos alerta opcional
+                    if (maybeJson && (maybeJson.Message || maybeJson.message)) {
+                        console.error("Error API:", maybeJson.Message || maybeJson.message);
+                    }
+                } catch (e) {
+                    console.warn("⚠️ API MOVIMIENTOS returned non-JSON error:", text);
+                }
+            } catch (errText) {
+                console.warn("No se pudo leer body de la respuesta de error:", errText);
+            }
 
-    renderMovimientos(data);
+            // Mostrar tabla vacía para no romper UI
+            renderMovimientos([]);
+            return;
+        }
+
+        // Si response.ok -> parsear JSON
+        const data = await response.json();
+        console.log("📌 Movimientos recibidos (raw):", data);
+
+        // Normalizar: puede venir directamente un array o un objeto que contiene la colección
+        let movimientos;
+        if (Array.isArray(data)) {
+            movimientos = data;
+        } else if (data && Array.isArray(data.data)) {
+            movimientos = data.data;
+        } else if (data && Array.isArray(data.movimientos)) {
+            // por si el backend usa una propiedad distinta
+            movimientos = data.movimientos;
+        } else {
+            // Si llegó un objeto simple (p.ej. { Message: "..." }) -> avisar y vaciar
+            console.warn("La respuesta no es un array. Se mostrará tabla vacía. Respuesta:", data);
+            movimientos = [];
+        }
+
+        renderMovimientos(movimientos);
+    } catch (err) {
+        console.error("Error en cargarMovimientos:", err);
+        renderMovimientos([]); // fallback para no romper la UI
+    }
 }
 
-
-
-// Renderizar la tabla
 function renderMovimientos(movimientos) {
+    // defensivo: asegurar que movimientos sea array
+    if (!Array.isArray(movimientos)) {
+        console.warn("renderMovimientos recibió un valor no iterable, convirtiendo a array vacío.", movimientos);
+        movimientos = [];
+    }
+
     const tbody = document.getElementById("movimientosTableBody");
+    if (!tbody) {
+        console.error("No se encontró #movimientosTableBody en el DOM.");
+        return;
+    }
     tbody.innerHTML = "";
+
+    if (movimientos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="no-data">No hay movimientos para mostrar</td></tr>`;
+        return;
+    }
 
     movimientos.forEach(m => {
         const tr = document.createElement("tr");
 
+        // defensiva: si propiedades faltan, usar valores seguros
+        const fecha = m?.fechaMovimiento ? new Date(m.fechaMovimiento).toLocaleString() : "N/A";
+        const productoNombre = m?.producto?.nombre ?? (m?.productoNombre ?? "N/A");
+        const tipo = m?.tipoMovimiento ?? (m?.TipoMovimiento ?? "N/A");
+        const cantidad = m?.cantidad ?? 0;
+        const cantidadAnterior = m?.cantidadAnterior ?? (m?.CantidadAnterior ?? 0);
+        const cantidadNueva = m?.cantidadNueva ?? (m?.CantidadNueva ?? 0);
+        const observaciones = m?.observaciones ?? "";
+
         tr.innerHTML = `
-            <td>${new Date(m.fechaMovimiento).toLocaleString()}</td>
-            <td>${m.producto?.nombre ?? "N/A"}</td>
-            <td>${m.tipoMovimiento}</td>
-            <td>${m.cantidad}</td>
-            <td>${m.cantidadAnterior}</td>
-            <td>${m.cantidadNueva}</td>
-            <td>${m.observaciones ?? ""}</td>
+            <td>${fecha}</td>
+            <td>${productoNombre}</td>
+            <td>${tipo}</td>
+            <td>${cantidad}</td>
+            <td>${cantidadAnterior}</td>
+            <td>${cantidadNueva}</td>
+            <td>${observaciones}</td>
         `;
         tbody.appendChild(tr);
     });
