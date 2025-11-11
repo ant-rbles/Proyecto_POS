@@ -88,6 +88,7 @@ window.descargarReporteComprasPdf = descargarReporteComprasPdf;
 window.actualizarBotonesReporte = actualizarBotonesReporte;
 window.resetFiltrosReporte = resetFiltrosReporte;
 window.inicializarSeccionReportes = inicializarSeccionReportes;
+window.ReportesManager = ReportesManager;
 
 // Movimientos 
 window.cargarMovimientos = cargarMovimientos;

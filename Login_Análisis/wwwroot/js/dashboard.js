@@ -125,13 +125,12 @@ function openManagementTab(tabName) {
                     break;
                 case 'reportes':
                     console.log('Inicializando sección de Reportes...');
-                    if (typeof reportesManager === 'undefined') {
-                        console.log('Creando nuevo ReportesManager');
-                        reportesManager = new ReportesManager();
+
+                    if (typeof window.ReportesManager !== 'undefined') {
+                        this.inicializarReportesManager();
                     } else {
-                        console.log('ReportesManager ya existe, recargando métricas...');
-                        reportesManager.loadMetricasRapidas();
-                        reportesManager.cargarReporteVentas();
+                        console.log('ReportesManager no encontrado, cargando script...');
+                        this.cargarYInicializarReportes();
                     }
                     break;
                 case 'movimientos':

@@ -1,5 +1,4 @@
-﻿// reportes.js - Gestión completa de la sección de Reportes
-class ReportesManager {
+﻿class ReportesManager {
     constructor() {
         this.currentReportType = 'ventas';
         this.currentFilters = {
@@ -630,10 +629,3 @@ class ReportesManager {
         this.mostrarError('La exportación a Excel estará disponible próximamente');
     }
 }
-
-// Inicializar el manager de reportes cuando se carga la página
-let reportesManager;
-
-document.addEventListener('DOMContentLoaded', function () {
-    reportesManager = new ReportesManager();
-});
