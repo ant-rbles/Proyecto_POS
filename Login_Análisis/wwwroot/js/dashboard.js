@@ -134,16 +134,14 @@ function openManagementTab(tabName) {
                     }
                     break;
                 case 'movimientos':
-                    const hoyMov = new Date();
-                    document.getElementById('movimientoFechaFin').value = hoyMov.toISOString().split('T')[0];
-                    const inicioSemana = new Date(hoyMov);
-                    inicioSemana.setDate(hoyMov.getDate() - 7);
-                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];
+                    // Dejamos las fechas vacías para que se muestren todos
+                    document.getElementById('movimientoFechaInicio').value = "";
+                    document.getElementById('movimientoFechaFin').value = "";
 
                     loadProductos().then(() => {
                         cargarProductosParaAjuste();
                         cargarProductosFiltro();
-                        cargarMovimientos();
+                        cargarMovimientos(); // Esto ahora traerá TODOS
                     });
                     break;
             }

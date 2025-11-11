@@ -1,39 +1,38 @@
-﻿// ✅ CARGAR MOVIMIENTOS DESDE LA API
-async function cargarMovimientos() {
+﻿async function cargarMovimientos() {
     console.log("cargarMovimientos() ejecutado");
 
+    const fechaInicio = document.getElementById("movimientoFechaInicio")?.value || "";
+    const fechaFin = document.getElementById("movimientoFechaFin")?.value || "";
+    let tipo = document.getElementById("movimientoTipo")?.value || "";
+    let productoId = document.getElementById("movimientoProductoId").value.trim();
+
+    console.log("Filtros actuales:", { fechaInicio, fechaFin, tipo, productoId });
+
+    // ✅ Si el usuario selecciona “Todos”, no enviamos ese filtro
+    if (tipo === "TODOS" || tipo === "" || tipo === null) {
+        tipo = null;
+    }
+
+    // ✅ PRODUCTO VACÍO = TODOS
+    if (productoId === "" || productoId === null) {
+        productoId = null;
+    }
+
+    const params = new URLSearchParams();
+
+    if (fechaInicio) params.append("fechaInicio", fechaInicio);
+    if (fechaFin) params.append("fechaFin", fechaFin);
+    if (tipo) params.append("tipo", tipo);
+    if (productoId) params.append("productoId", productoId);
+
+    const url = "/api/movimientos" + (params.toString() ? "?" + params.toString() : "");
+    console.log("🔗 Fetch URL:", url);
+
     try {
-        const tipo = document.getElementById("movimientoTipo")?.value;
-        const fechaInicio = document.getElementById("movimientoFechaInicio")?.value || null;
-        const fechaFin = document.getElementById("movimientoFechaFin")?.value || null;
-        const productoId = document.getElementById("movimientoProductoId")?.value || null;
-
-        const params = new URLSearchParams();
-
-        // ✅ Fechas (solo si son válidas)
-        if (fechaInicio && fechaFin && fechaInicio <= fechaFin) {
-            params.append("fechaInicio", fechaInicio);
-            params.append("fechaFin", fechaFin);
-        }
-
-        // ✅ Tipo de movimiento (solo si no es TODOS)
-        if (tipo && tipo !== "TODOS") {
-            params.append("tipo", tipo);
-        }
-
-        // ✅ Producto
-        if (productoId) params.append("productoId", productoId);
-
-        const url = params.toString()
-            ? `/api/movimientos?${params.toString()}`
-            : `/api/movimientos`;
-
-        console.log("🔗 Fetch URL:", url);
-
-        const response = await fetch(url);
+        const response = await fetch(url, { cache: "no-store" });
 
         if (!response.ok) {
-            console.error("❌ Error en la API de Movimientos");
+            console.error("❌ Error en API Movimientos");
             renderMovimientos([]);
             return;
         }
@@ -41,20 +40,21 @@ async function cargarMovimientos() {
         const movimientos = await response.json();
         console.log("📌 Movimientos recibidos:", movimientos);
 
-        renderMovimientos(movimientos);
+        renderMovimientos(Array.isArray(movimientos) ? movimientos : []);
 
-    } catch (err) {
-        console.error("Error en cargarMovimientos:", err);
+    } catch (error) {
+        console.error("Error al cargar Movimientos", error);
         renderMovimientos([]);
     }
 }
+
 
 // ✅ MOSTRAR MOVIMIENTOS EN LA TABLA
 function renderMovimientos(movimientos) {
     // Validación
     if (!Array.isArray(movimientos)) movimientos = [];
 
-    const tbody = document.getElementById("movimientosTableBody"); // ✅ ESTE ID SÍ EXISTE EN TU INDEX
+    const tbody = document.getElementById("movimientosTableBody"); 
     tbody.innerHTML = "";
 
     if (movimientos.length === 0) {
@@ -84,9 +84,6 @@ function renderMovimientos(movimientos) {
         tbody.appendChild(tr);
     });
 }
-
-
-
 // ✅ FORMULARIO DE AJUSTE
 
 function showAjusteForm() {
@@ -125,7 +122,6 @@ async function guardarAjuste() {
 
     hideAjusteForm();
 
-    await cargarProductos();
     await cargarMovimientos();
 }
 
@@ -152,13 +148,26 @@ function cargarProductosFiltro() {
     const select = document.getElementById("movimientoProductoId");
     if (!select || !window.productos) return;
 
-    select.innerHTML =
-        '<option value="">Todos</option>' +
-        window.productos
-            .filter(p => p.estado === true)
-            .map(p => `<option value="${p.id}">${p.nombre}</option>`)
-            .join('');
+    // ✅ Si ya tiene productos cargados, NO volver a llenarlo
+    if (select.options.length > 1) {
+        console.log("✅ Productos ya cargados en el filtro. No se vuelve a llenar.");
+        return;
+    }
+
+    // ✅ La primera vez sí lo llenamos
+    console.log("🔄 Llenando select de productos por primera vez...");
+
+    let opciones = '<option value="">Todos</option>';
+
+    window.productos
+        .filter(p => p.estado === true)
+        .forEach(p => {
+            opciones += `<option value="${p.id}">${p.nombre}</option>`;
+        });
+
+    select.innerHTML = opciones;
 }
+
 
 
 // ✅ CARGAR PRODUCTOS
@@ -170,13 +179,14 @@ async function cargarProductos() {
 
     console.log("✅ Productos cargados:", window.productos.length);
 
-    cargarProductosParaAjuste();
-    cargarProductosFiltro();
 }
 
 
 document.addEventListener("DOMContentLoaded", async () => {
     await cargarProductos();
+
+    cargarProductosParaAjuste();   
+    cargarProductosFiltro();      
 
     document.getElementById("movimientoProductoId").addEventListener("change", () => {
         cargarMovimientos();

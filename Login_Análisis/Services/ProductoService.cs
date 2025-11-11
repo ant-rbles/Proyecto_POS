@@ -820,17 +820,27 @@ namespace Login_Análisis.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
+        public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(
+    DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
         {
             var query = _context.MovimientosInventario
                 .Include(m => m.Producto)
                 .AsQueryable();
 
-            if (fechaInicio.HasValue)
+            if (fechaInicio.HasValue && fechaFin.HasValue)
+            {
+                query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value &&
+                                         m.FechaMovimiento <= fechaFin.Value);
+            }
+            else if (fechaInicio.HasValue)
+            {
                 query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value);
-
-            if (fechaFin.HasValue)
-                query = query.Where(m => m.FechaMovimiento <= fechaFin.Value);
+            }
+            else if (fechaFin.HasValue)
+            {
+                var finDia = fechaFin.Value.Date.AddDays(1).AddSeconds(-1);
+                query = query.Where(m => m.FechaMovimiento <= finDia);
+            }
 
             if (!string.IsNullOrEmpty(tipo))
                 query = query.Where(m => m.TipoMovimiento == tipo);
@@ -842,7 +852,6 @@ namespace Login_Análisis.Services
                 .OrderByDescending(m => m.FechaMovimiento)
                 .ToListAsync();
         }
-
 
         public async Task<List<MovimientoInventario>> GetAllMovsDebug()
         {
