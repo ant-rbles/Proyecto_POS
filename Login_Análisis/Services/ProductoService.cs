@@ -823,7 +823,7 @@ namespace Login_Análisis.Services
         public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
         {
             var query = _context.MovimientosInventario
-                .Include(m => m.Producto)
+                .Include(m => m.Producto) 
                 .AsQueryable();
 
             if (fechaInicio.HasValue)
@@ -839,21 +839,18 @@ namespace Login_Análisis.Services
                 query = query.Where(m => m.ProductoId == productoId.Value);
 
             return await query
-             .Select(m => new MovimientoInventario
-             {
-                 Id = m.Id,
-                 ProductoId = m.ProductoId,
-                 Producto = m.Producto,
-                 TipoMovimiento = m.TipoMovimiento,
-                 FechaMovimiento = m.FechaMovimiento ?? DateTime.Now, 
-                 Cantidad = m.Cantidad,
-                 CantidadAnterior = m.CantidadAnterior ?? 0, 
-                 CantidadNueva = m.CantidadNueva ?? 0,       
-                 Observaciones = m.Observaciones ?? ""
-             })
-             .OrderByDescending(m => m.FechaMovimiento)
-             .ToListAsync();
+                .OrderByDescending(m => m.FechaMovimiento)
+                .ToListAsync();
         }
+
+
+        public async Task<List<MovimientoInventario>> GetAllMovsDebug()
+        {
+            return await _context.MovimientosInventario
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
 
         public async Task<(bool success, string message)> CrearAjusteInventario(int productoId, decimal cantidad, string observaciones, int? usuarioId, string tipo)
 

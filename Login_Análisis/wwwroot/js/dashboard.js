@@ -140,7 +140,7 @@ function openManagementTab(tabName) {
                     loadProductos().then(() => {
                         cargarProductosParaAjuste();
                         cargarProductosFiltro();
-                        cargarMovimientos();
+                        cargarMovimientos();   
                     });
                     break;
             }

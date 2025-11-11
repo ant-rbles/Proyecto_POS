@@ -49,6 +49,14 @@ namespace Login_Análisis.Controllers
             return Ok(result);
         }
 
+        [HttpGet("debug")]
+        public async Task<IActionResult> DebugMovimientos()
+        {
+            var data = await _productoService.GetAllMovsDebug();
+            return Ok(data);
+        }
+
+
         [HttpGet("producto/{productoId}")]
         public async Task<IActionResult> ObtenerMovimientosProducto(int productoId)
         {
