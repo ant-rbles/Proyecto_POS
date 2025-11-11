@@ -124,26 +124,32 @@ function openManagementTab(tabName) {
                     loadUnidadesMedida();
                     break;
                 case 'reportes':
-                    const hoy = new Date();
-                    document.getElementById('reporteFechaFin').value = hoy.toISOString().split('T')[0];
-                    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-                    document.getElementById('reporteFechaInicio').value = inicioMes.toISOString().split('T')[0];
-                    actualizarBotonesReporte();
+                    console.log('Inicializando sección de Reportes...');
+                    if (typeof reportesManager === 'undefined') {
+                        console.log('Creando nuevo ReportesManager');
+                        reportesManager = new ReportesManager();
+                    } else {
+                        console.log('ReportesManager ya existe, recargando métricas...');
+                        reportesManager.loadMetricasRapidas();
+                        reportesManager.cargarReporteVentas();
+                    }
                     break;
                 case 'movimientos':
                     const hoyMov = new Date();
                     document.getElementById('movimientoFechaFin').value = hoyMov.toISOString().split('T')[0];
                     const inicioSemana = new Date(hoyMov);
                     inicioSemana.setDate(hoyMov.getDate() - 7);
-                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];   
+                    document.getElementById('movimientoFechaInicio').value = inicioSemana.toISOString().split('T')[0];
 
                     loadProductos().then(() => {
                         cargarProductosParaAjuste();
                         cargarProductosFiltro();
-                        cargarMovimientos();   
+                        cargarMovimientos();
                     });
                     break;
             }
+        } else {
+            console.error('No se encontró la pestaña:', `${tabName}Section`);
         }
     }
 }

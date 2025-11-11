@@ -86,6 +86,8 @@ window.generarReporteVentas = generarReporteVentas;
 window.descargarReporteInventarioPdf = descargarReporteInventarioPdf;
 window.descargarReporteComprasPdf = descargarReporteComprasPdf;
 window.actualizarBotonesReporte = actualizarBotonesReporte;
+window.resetFiltrosReporte = resetFiltrosReporte;
+window.inicializarSeccionReportes = inicializarSeccionReportes;
 
 // Movimientos 
 window.cargarMovimientos = cargarMovimientos;

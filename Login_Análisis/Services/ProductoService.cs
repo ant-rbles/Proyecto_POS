@@ -657,7 +657,7 @@ namespace Login_Análisis.Services
             var venta = await _context.Venta
                 .Include(v => v.Detalles)
                     .ThenInclude(d => d.Producto)
-                .Include(v => v.Usuario) 
+                .Include(v => v.Usuario)
                 .FirstOrDefaultAsync(v => v.Id == id);
 
             if (venta == null)
@@ -685,7 +685,7 @@ namespace Login_Análisis.Services
                 {
                     d.Id,
                     d.ProductoId,
-                    ProductoNombre = d.Producto.Nombre, 
+                    ProductoNombre = d.Producto.Nombre,
                     d.Cantidad,
                     d.PrecioUnitario,
                     d.DescuentoAplicado,
@@ -823,7 +823,7 @@ namespace Login_Análisis.Services
         public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
         {
             var query = _context.MovimientosInventario
-                .Include(m => m.Producto) 
+                .Include(m => m.Producto)
                 .AsQueryable();
 
             if (fechaInicio.HasValue)

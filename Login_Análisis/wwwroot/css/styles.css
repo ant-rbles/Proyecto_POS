@@ -1626,3 +1626,454 @@ body {
             text-align: center;
         }
 
+/* Reportes */
+
+/* ===== ESTILOS PARA LA SECCIÓN DE REPORTES ===== */
+
+/* Contenedor principal de reportes */
+.reportes-container {
+    padding: 20px;
+    background: #f8f9fc;
+    min-height: calc(100vh - 70px);
+}
+
+/* Panel de filtros */
+.filtros-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #4e73df;
+}
+
+.filtros-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filtros-title {
+    color: #4e73df;
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filtros-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+}
+
+    .filtro-group label {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .filtro-group select,
+    .filtro-group input {
+        padding: 10px 12px;
+        border: 1px solid #d1d3e2;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+
+        .filtro-group select:focus,
+        .filtro-group input:focus {
+            border-color: #4e73df;
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+        }
+
+/* Tarjetas de métricas rápidas */
+.metricas-rapidas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.metrica-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border-top: 4px solid;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+    .metrica-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .metrica-card.ventas {
+        border-top-color: #4e73df;
+    }
+
+    .metrica-card.inventario {
+        border-top-color: #1cc88a;
+    }
+
+    .metrica-card.compras {
+        border-top-color: #f6c23e;
+    }
+
+    .metrica-card.productos {
+        border-top-color: #e74a3b;
+    }
+
+.metrica-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.metrica-card.ventas .metrica-icon {
+    color: #4e73df;
+}
+
+.metrica-card.inventario .metrica-icon {
+    color: #1cc88a;
+}
+
+.metrica-card.compras .metrica-icon {
+    color: #f6c23e;
+}
+
+.metrica-card.productos .metrica-icon {
+    color: #e74a3b;
+}
+
+.metrica-valor {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.metrica-label {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metrica-trend {
+    font-size: 12px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.trend-positive {
+    color: #1cc88a;
+}
+
+.trend-negative {
+    color: #e74a3b;
+}
+
+/* Tipos de reportes */
+.tipos-reporte {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.tipo-reporte-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+}
+
+    .tipo-reporte-card:hover {
+        border-color: #4e73df;
+        transform: translateY(-3px);
+    }
+
+    .tipo-reporte-card.active {
+        border-color: #4e73df;
+        background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+    }
+
+.tipo-reporte-icon {
+    font-size: 48px;
+    color: #4e73df;
+    margin-bottom: 15px;
+}
+
+.tipo-reporte-card h4 {
+    color: #4e73df;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.tipo-reporte-card p {
+    color: #6c757d;
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Contenedor de resultados */
+.resultados-container {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    margin-bottom: 25px;
+}
+
+.resultados-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eaecf4;
+}
+
+.resultados-title {
+    color: #4e73df;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.acciones-reporte {
+    display: flex;
+    gap: 10px;
+}
+
+/* Gráficos y tablas */
+.grafico-container {
+    margin-bottom: 25px;
+    padding: 20px;
+    border: 1px solid #eaecf4;
+    border-radius: 8px;
+    background: #f8f9fc;
+}
+
+.grafico-placeholder {
+    height: 300px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Tablas de reportes */
+.tabla-reporte {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+    .tabla-reporte th {
+        background-color: #4e73df;
+        color: white;
+        font-weight: 600;
+        padding: 12px 15px;
+        text-align: left;
+        position: sticky;
+        top: 0;
+    }
+
+    .tabla-reporte td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eaecf4;
+        vertical-align: top;
+    }
+
+    .tabla-reporte tr:hover {
+        background-color: #f8f9fc;
+    }
+
+    .tabla-reporte .text-right {
+        text-align: right;
+    }
+
+    .tabla-reporte .text-center {
+        text-align: center;
+    }
+
+/* Resumen de totales */
+.resumen-totales {
+    background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    border-left: 4px solid #4e73df;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 16px;
+}
+
+.total-final {
+    border-top: 2px solid #4e73df;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 10px;
+    padding-top: 15px;
+    color: #4e73df;
+}
+
+/* Estados de carga */
+.loading-reporte {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.spinner-reporte {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4e73df;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+/* Estados vacíos */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.empty-icon {
+    font-size: 64px;
+    color: #d1d3e2;
+    margin-bottom: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-row {
+        grid-template-columns: 1fr;
+    }
+
+    .metricas-rapidas {
+        grid-template-columns: 1fr;
+    }
+
+    .tipos-reporte {
+        grid-template-columns: 1fr;
+    }
+
+    .resultados-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .acciones-reporte {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .tabla-reporte {
+        font-size: 14px;
+    }
+
+        .tabla-reporte th,
+        .tabla-reporte td {
+            padding: 8px 10px;
+        }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.reporte-content {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Badges para estados de inventario */
+.stock-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stock-normal {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stock-bajo {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.stock-critico {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Colores para tipos de movimiento */
+.movimiento-entrada {
+    color: #1cc88a;
+    font-weight: 600;
+}
+
+.movimiento-salida {
+    color: #e74a3b;
+    font-weight: 600;
+}
+
+.movimiento-ajuste {
+    color: #f6c23e;
+    font-weight: 600;
+}

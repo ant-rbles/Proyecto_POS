@@ -1,310 +1,639 @@
-﻿// Funciones para Reportes
-function cambiarTipoReporte() {
-    actualizarBotonesReporte();
-    // Limpiar resultados al cambiar tipo
-    const tableHead = document.getElementById('reporteTableHead');
-    const tableBody = document.getElementById('reporteTableBody');
-    if (tableHead) tableHead.innerHTML = '';
-    if (tableBody) tableBody.innerHTML = '';
-}
-
-async function cargarReporte() {
-    const tipo = document.getElementById('reporteTipo').value;
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
-
-    try {
-        let url = `/api/reportes/${tipo}`;
-        const params = new URLSearchParams();
-
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
-
-        if (tipo === 'productos-mas-vendidos') {
-            params.append('top', '10');
-        }
-
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        const response = await fetch(url);
-        if (response.ok) {
-            const reporte = await response.json();
-            renderReporte(tipo, reporte);
-        } else {
-            showMessage('Error al cargar el reporte', 'error');
-        }
-    } catch (error) {
-        showMessage('Error de conexión', 'error');
+﻿// reportes.js - Gestión completa de la sección de Reportes
+class ReportesManager {
+    constructor() {
+        this.currentReportType = 'ventas';
+        this.currentFilters = {
+            fechaInicio: this.getFirstDayOfMonth(),
+            fechaFin: new Date().toISOString().split('T')[0],
+            tipoReporte: 'diario',
+            top: 10,
+            tipoMovimiento: ''
+        };
+        this.reportData = null;
+        this.init();
     }
-}
 
-function renderReporte(tipo, datos) {
-    const thead = document.getElementById('reporteTableHead');
-    const tbody = document.getElementById('reporteTableBody');
-
-    if (!thead || !tbody) return;
-
-    switch (tipo) {
-        case 'ventas':
-            renderReporteVentas(thead, tbody, datos);
-            break;
-        case 'inventario':
-            renderReporteInventario(thead, tbody, datos);
-            break;
-        case 'productos-mas-vendidos':
-            renderReporteProductosMasVendidos(thead, tbody, datos);
-            break;
-        case 'movimientos':
-            renderReporteMovimientos(thead, tbody, datos);
-            break;
-        case 'compras':
-            renderReporteCompras(thead, tbody, datos);
-            break;
+    init() {
+        this.setupEventListeners();
+        this.loadMetricasRapidas();
+        this.cargarReporteVentas();
     }
-}
 
-function renderReporteVentas(thead, tbody, datos) {
-    thead.innerHTML = `
-        <tr>
-            <th>Período</th>
-            <th>Total Ventas</th>
-            <th>Total Ingresos</th>
-            <th>Promedio por Venta</th>
-        </tr>
-    `;
+    setupEventListeners() {
+        // Filtros
+        document.getElementById('fechaInicio').addEventListener('change', (e) => {
+            this.currentFilters.fechaInicio = e.target.value;
+            this.actualizarReporte();
+        });
 
-    tbody.innerHTML = `
-        <tr>
-            <td>Reporte General</td>
-            <td>${datos.totalVentas || 0}</td>
-            <td>$${(datos.totalIngresos || 0).toFixed(2)}</td>
-            <td>$${(datos.promedioVenta || 0).toFixed(2)}</td>
-        </tr>
-    `;
-}
+        document.getElementById('fechaFin').addEventListener('change', (e) => {
+            this.currentFilters.fechaFin = e.target.value;
+            this.actualizarReporte();
+        });
 
-function renderReporteInventario(thead, tbody, datos) {
-    thead.innerHTML = `
-        <tr>
-            <th>Métrica</th>
-            <th>Valor</th>
-        </tr>
-    `;
+        document.getElementById('tipoReporte').addEventListener('change', (e) => {
+            this.currentFilters.tipoReporte = e.target.value;
+            this.actualizarReporte();
+        });
 
-    tbody.innerHTML = `
-        <tr>
-            <td>Total Productos</td>
-            <td>${datos.totalProductos || 0}</td>
-        </tr>
-        <tr>
-            <td>Valor Total Inventario</td>
-            <td>$${(datos.valorTotalInventario || 0).toFixed(2)}</td>
-        </tr>
-        <tr>
-            <td>Productos con Stock Bajo</td>
-            <td>${datos.productosStockBajo || 0}</td>
-        </tr>
-        <tr>
-            <td>Productos sin Stock</td>
-            <td>${datos.productosStockCritico || 0}</td>
-        </tr>
-    `;
-}
+        document.getElementById('topProductos').addEventListener('change', (e) => {
+            this.currentFilters.top = parseInt(e.target.value);
+            this.actualizarReporte();
+        });
 
-function renderReporteProductosMasVendidos(thead, tbody, datos) {
-    thead.innerHTML = `
-        <tr>
-            <th>Producto</th>
-            <th>Cantidad Vendida</th>
-            <th>Total Vendido</th>
-        </tr>
-    `;
+        document.getElementById('tipoMovimiento').addEventListener('change', (e) => {
+            this.currentFilters.tipoMovimiento = e.target.value;
+            this.actualizarReporte();
+        });
 
-    tbody.innerHTML = datos.map(item => `
-        <tr>
-            <td>${item.productoNombre || 'N/A'}</td>
-            <td>${item.cantidadVendida || 0}</td>
-            <td>$${(item.totalVendido || 0).toFixed(2)}</td>
-        </tr>
-    `).join('');
-}
+        // Tipos de reporte
+        document.querySelectorAll('.tipo-reporte-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const tipo = e.currentTarget.dataset.tipo;
+                this.cambiarTipoReporte(tipo);
+            });
+        });
 
-function renderReporteMovimientos(thead, tbody, datos) {
-    thead.innerHTML = `
-        <tr>
-            <th>Fecha</th>
-            <th>Producto</th>
-            <th>Tipo</th>
-            <th>Cantidad</th>
-            <th>Observaciones</th>
-        </tr>
-    `;
+        // Acciones
+        document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
+            this.actualizarReporte();
+        });
 
-    tbody.innerHTML = datos.map(mov => `
-        <tr>
-            <td>${new Date(mov.fechaMovimiento).toLocaleDateString()}</td>
-            <td>${mov.producto?.nombre || 'N/A'}</td>
-            <td>${mov.tipoMovimiento || 'N/A'}</td>
-            <td>${mov.cantidad || 0}</td>
-            <td>${mov.observaciones || '-'}</td>
-        </tr>
-    `).join('');
-}
+        document.getElementById('btnDescargarPDF').addEventListener('click', () => {
+            this.descargarPDF();
+        });
 
-function renderReporteCompras(thead, tbody, datos) {
-    thead.innerHTML = `
-        <tr>
-            <th>Factura</th>
-            <th>Proveedor</th>
-            <th>Fecha</th>
-            <th>Total</th>
-            <th>Estado</th>
-        </tr>
-    `;
-
-    tbody.innerHTML = datos.map(compra => `
-        <tr>
-            <td>${compra.numeroFactura || 'N/A'}</td>
-            <td>${compra.proveedor?.nombre || 'N/A'}</td>
-            <td>${new Date(compra.fechaCompra).toLocaleDateString()}</td>
-            <td>$${(compra.total || 0).toFixed(2)}</td>
-            <td>${compra.estado || 'N/A'}</td>
-        </tr>
-    `).join('');
-}
-
-async function generarReporteVentas() {
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
-
-    try {
-        let url = '/api/reportes/pdf/ventas';
-        const params = new URLSearchParams();
-
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
-
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        const response = await fetch(url);
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlPdf = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = urlPdf;
-            a.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(urlPdf);
-            showMessage('Reporte descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al generar el reporte', 'error');
+        document.getElementById('btnExportarExcel').addEventListener('click', () => {
+            this.exportarExcel();
+        });
     }
-}
 
-// Funciones para descargar reportes adicionales
-async function descargarReporteInventarioPdf() {
-    try {
-        const response = await fetch('/api/reportes/pdf/inventario');
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `reporte_inventario_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            showMessage('Reporte de inventario descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al descargar el reporte', 'error');
+    getFirstDayOfMonth() {
+        const date = new Date();
+        return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
     }
-}
 
-async function descargarReporteComprasPdf() {
-    const fechaInicio = document.getElementById('reporteFechaInicio').value;
-    const fechaFin = document.getElementById('reporteFechaFin').value;
+    cambiarTipoReporte(tipo) {
+        // Actualizar UI
+        document.querySelectorAll('.tipo-reporte-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        document.querySelector(`[data-tipo="${tipo}"]`).classList.add('active');
 
-    try {
-        let url = '/api/reportes/pdf/compras';
-        const params = new URLSearchParams();
+        // Actualizar filtros según el tipo
+        this.actualizarFiltrosPorTipo(tipo);
 
-        if (fechaInicio) params.append('fechaInicio', fechaInicio);
-        if (fechaFin) params.append('fechaFin', fechaFin);
-
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        const response = await fetch(url);
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlPdf = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = urlPdf;
-            a.download = `reporte_compras_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(urlPdf);
-            showMessage('Reporte de compras descargado exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
-        }
-    } catch (error) {
-        showMessage('Error al generar el reporte', 'error');
+        this.currentReportType = tipo;
+        this.actualizarReporte();
     }
-}
 
-// Actualizar la interfaz para incluir botones adicionales
-function actualizarBotonesReporte() {
-    const tipoReporte = document.getElementById('reporteTipo').value;
-    const botonesContainer = document.getElementById('botonesReporteContainer');
+    actualizarFiltrosPorTipo(tipo) {
+        const filtrosMovimiento = document.getElementById('filtroMovimiento');
+        const filtroTopProductos = document.getElementById('filtroTopProductos');
+        const filtroTipoReporte = document.getElementById('filtroTipoReporte');
 
-    if (!botonesContainer) return;
+        // Ocultar todos primero
+        filtrosMovimiento.style.display = 'none';
+        filtroTopProductos.style.display = 'none';
+        filtroTipoReporte.style.display = 'none';
 
-    let botonesHTML = '';
+        switch (tipo) {
+            case 'ventas':
+                filtroTipoReporte.style.display = 'block';
+                break;
+            case 'productos-mas-vendidos':
+                filtroTopProductos.style.display = 'block';
+                break;
+            case 'movimientos':
+                filtrosMovimiento.style.display = 'block';
+                break;
+        }
+    }
 
-    if (tipoReporte === 'ventas') {
-        botonesHTML = `
-            <button class="btn btn-primary" onclick="generarReporteVentas()">
-                <i class="fas fa-download"></i> Descargar PDF
-            </button>
+    async actualizarReporte() {
+        this.mostrarLoading();
+
+        try {
+            switch (this.currentReportType) {
+                case 'ventas':
+                    await this.cargarReporteVentas();
+                    break;
+                case 'inventario':
+                    await this.cargarReporteInventario();
+                    break;
+                case 'compras':
+                    await this.cargarReporteCompras();
+                    break;
+                case 'productos-mas-vendidos':
+                    await this.cargarProductosMasVendidos();
+                    break;
+                case 'movimientos':
+                    await this.cargarMovimientosInventario();
+                    break;
+            }
+        } catch (error) {
+            this.mostrarError('Error al cargar el reporte: ' + error.message);
+        }
+    }
+
+    async cargarReporteVentas() {
+        const params = new URLSearchParams({
+            fechaInicio: this.currentFilters.fechaInicio,
+            fechaFin: this.currentFilters.fechaFin,
+            tipoReporte: this.currentFilters.tipoReporte
+        });
+
+        const response = await fetch(`/api/reportes/ventas?${params}`);
+        const data = await response.json();
+
+        this.mostrarResultadosVentas(data);
+    }
+
+    async cargarReporteInventario() {
+        const response = await fetch('/api/reportes/inventario/detallado');
+        const data = await response.json();
+
+        this.mostrarResultadosInventario(data);
+    }
+
+    async cargarReporteCompras() {
+        const params = new URLSearchParams({
+            fechaInicio: this.currentFilters.fechaInicio,
+            fechaFin: this.currentFilters.fechaFin
+        });
+
+        const response = await fetch(`/api/reportes/compras?${params}`);
+        const data = await response.json();
+
+        this.mostrarResultadosCompras(data);
+    }
+
+    async cargarProductosMasVendidos() {
+        const params = new URLSearchParams({
+            fechaInicio: this.currentFilters.fechaInicio,
+            fechaFin: this.currentFilters.fechaFin,
+            top: this.currentFilters.top
+        });
+
+        const response = await fetch(`/api/reportes/productos-mas-vendidos?${params}`);
+        const data = await response.json();
+
+        this.mostrarProductosMasVendidos(data);
+    }
+
+    async cargarMovimientosInventario() {
+        const params = new URLSearchParams({
+            fechaInicio: this.currentFilters.fechaInicio,
+            fechaFin: this.currentFilters.fechaFin,
+            tipoMovimiento: this.currentFilters.tipoMovimiento
+        });
+
+        const response = await fetch(`/api/reportes/movimientos-inventario?${params}`);
+        const data = await response.json();
+
+        this.mostrarMovimientosInventario(data);
+    }
+
+    async loadMetricasRapidas() {
+        try {
+            // Cargar estadísticas de ventas para las métricas
+            const params = new URLSearchParams({
+                fechaInicio: this.getFirstDayOfMonth(),
+                fechaFin: new Date().toISOString().split('T')[0]
+            });
+
+            const [ventasResponse, inventarioResponse] = await Promise.all([
+                fetch(`/api/ventas/estadisticas?${params}`),
+                fetch('/api/reportes/inventario')
+            ]);
+
+            const ventasData = await ventasResponse.json();
+            const inventarioData = await inventarioResponse.json();
+
+            this.actualizarMetricasRapidas(ventasData, inventarioData);
+        } catch (error) {
+            console.error('Error cargando métricas rápidas:', error);
+        }
+    }
+
+    actualizarMetricasRapidas(ventasData, inventarioData) {
+        // Actualizar tarjeta de ventas
+        document.getElementById('metricasVentas').textContent = ventasData.ventasMes || 0;
+        document.getElementById('metricasIngresos').textContent = this.formatearMoneda(ventasData.ingresosMes || 0);
+
+        // Actualizar tarjeta de inventario
+        document.getElementById('metricasTotalProductos').textContent = inventarioData.totalProductos || 0;
+        document.getElementById('metricasStockBajo').textContent = inventarioData.productosStockBajo || 0;
+
+        // Actualizar tarjeta de compras (simuladas por ahora)
+        document.getElementById('metricasTotalCompras').textContent = '--';
+        document.getElementById('metricasInversion').textContent = '--';
+
+        // Actualizar tarjeta de productos más vendidos
+        document.getElementById('metricasProductosTop').textContent = '--';
+    }
+
+    // Métodos para mostrar resultados de cada tipo de reporte
+    mostrarResultadosVentas(data) {
+        const container = document.getElementById('resultadosReporte');
+
+        let html = `
+            <div class="resultados-header">
+                <h3 class="resultados-title">
+                    <i class="fas fa-chart-line"></i>
+                    Reporte de Ventas
+                </h3>
+                <div class="acciones-reporte">
+                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="resumen-totales">
+                <div class="total-row">
+                    <span>Total Ventas:</span>
+                    <span><strong>${data.totalVentas || 0}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Total Ingresos:</span>
+                    <span><strong>${this.formatearMoneda(data.totalIngresos || 0)}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Promedio por Venta:</span>
+                    <span><strong>${this.formatearMoneda(data.promedioVenta || 0)}</strong></span>
+                </div>
+            </div>
         `;
-    } else if (tipoReporte === 'inventario') {
-        botonesHTML = `
-            <button class="btn btn-primary" onclick="descargarReporteInventarioPdf()">
-                <i class="fas fa-download"></i> Descargar PDF
-            </button>
+
+        // Gráfico placeholder
+        html += `
+            <div class="grafico-container">
+                <div class="grafico-placeholder">
+                    <i class="fas fa-chart-bar"></i> Gráfico de Ventas por Día
+                </div>
+            </div>
         `;
-    } else if (tipoReporte === 'compras') {
-        botonesHTML = `
-            <button class="btn btn-primary" onclick="descargarReporteComprasPdf()">
-                <i class="fas fa-download"></i> Descargar PDF
-            </button>
+
+        // Ventas por estado
+        if (data.ventasPorEstado) {
+            html += `<h4>Ventas por Estado</h4>`;
+            html += this.generarTablaVentasPorEstado(data.ventasPorEstado);
+        }
+
+        // Ventas por día
+        if (data.ventasPorDia) {
+            html += `<h4>Ventas por Día</h4>`;
+            html += this.generarTablaVentasPorDia(data.ventasPorDia);
+        }
+
+        container.innerHTML = html;
+        this.ocultarLoading();
+    }
+
+    mostrarResultadosInventario(data) {
+        const container = document.getElementById('resultadosReporte');
+
+        let html = `
+            <div class="resultados-header">
+                <h3 class="resultados-title">
+                    <i class="fas fa-boxes"></i>
+                    Reporte de Inventario
+                </h3>
+                <div class="acciones-reporte">
+                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="resumen-totales">
+                <div class="total-row">
+                    <span>Total Productos:</span>
+                    <span><strong>${data.totalProductos || 0}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Valor Total Inventario:</span>
+                    <span><strong>${this.formatearMoneda(data.valorTotalInventario || 0)}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Productos con Stock Bajo:</span>
+                    <span><strong class="text-warning">${data.productosStockBajo || 0}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Productos sin Stock:</span>
+                    <span><strong class="text-danger">${data.productosStockCritico || 0}</strong></span>
+                </div>
+            </div>
         `;
-    } else {
-        botonesHTML = `
-            <button class="btn btn-primary" onclick="showMessage('Descarga de PDF no disponible para este reporte', 'info')">
-                <i class="fas fa-download"></i> Descargar PDF
-            </button>
+
+        // Tabla de inventario detallado
+        if (Array.isArray(data)) {
+            html += `<h4>Inventario Detallado</h4>`;
+            html += this.generarTablaInventario(data);
+        }
+
+        container.innerHTML = html;
+        this.ocultarLoading();
+    }
+
+    mostrarResultadosCompras(data) {
+        const container = document.getElementById('resultadosReporte');
+
+        let html = `
+            <div class="resultados-header">
+                <h3 class="resultados-title">
+                    <i class="fas fa-shopping-cart"></i>
+                    Reporte de Compras
+                </h3>
+                <div class="acciones-reporte">
+                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="resumen-totales">
+                <div class="total-row">
+                    <span>Total Compras:</span>
+                    <span><strong>${data.totalCompras || 0}</strong></span>
+                </div>
+                <div class="total-row">
+                    <span>Total Invertido:</span>
+                    <span><strong>${this.formatearMoneda(data.totalInvertido || 0)}</strong></span>
+                </div>
+            </div>
+        `;
+
+        // Compras por proveedor
+        if (data.comprasPorProveedor) {
+            html += `<h4>Compras por Proveedor</h4>`;
+            html += this.generarTablaComprasPorProveedor(data.comprasPorProveedor);
+        }
+
+        container.innerHTML = html;
+        this.ocultarLoading();
+    }
+
+    mostrarProductosMasVendidos(data) {
+        const container = document.getElementById('resultadosReporte');
+
+        let html = `
+            <div class="resultados-header">
+                <h3 class="resultados-title">
+                    <i class="fas fa-star"></i>
+                    Productos Más Vendidos
+                </h3>
+                <div class="acciones-reporte">
+                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+        `;
+
+        if (Array.isArray(data) && data.length > 0) {
+            html += this.generarTablaProductosMasVendidos(data);
+        } else {
+            html += `<div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h4>No hay datos de productos vendidos</h4>
+                <p>No se encontraron ventas en el período seleccionado.</p>
+            </div>`;
+        }
+
+        container.innerHTML = html;
+        this.ocultarLoading();
+    }
+
+    mostrarMovimientosInventario(data) {
+        const container = document.getElementById('resultadosReporte');
+
+        let html = `
+            <div class="resultados-header">
+                <h3 class="resultados-title">
+                    <i class="fas fa-exchange-alt"></i>
+                    Movimientos de Inventario
+                </h3>
+                <div class="acciones-reporte">
+                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="resumen-totales">
+                <div class="total-row">
+                    <span>Total Movimientos:</span>
+                    <span><strong>${data.totalMovimientos || 0}</strong></span>
+                </div>
+            </div>
+        `;
+
+        // Movimientos por tipo
+        if (data.movimientosPorTipo) {
+            html += `<h4>Movimientos por Tipo</h4>`;
+            html += this.generarTablaMovimientosPorTipo(data.movimientosPorTipo);
+        }
+
+        container.innerHTML = html;
+        this.ocultarLoading();
+    }
+
+    // Métodos para generar tablas específicas
+    generarTablaInventario(productos) {
+        let html = `
+            <div class="table-responsive">
+                <table class="tabla-reporte">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Stock Actual</th>
+                            <th>Stock Mínimo</th>
+                            <th>Precio Costo</th>
+                            <th>Precio Venta</th>
+                            <th>Valor Stock</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        productos.forEach(producto => {
+            const valorStock = (producto.stockActual || 0) * (producto.precioCostoPromedio || 0);
+            const estadoStock = this.getEstadoStock(producto.stockActual, producto.stockMinimo);
+
+            html += `
+                <tr>
+                    <td>${producto.codigo || 'N/A'}</td>
+                    <td>${producto.nombre || 'N/A'}</td>
+                    <td>${producto.categoriaNombre || 'Sin categoría'}</td>
+                    <td class="text-right">${this.formatearNumero(producto.stockActual)}</td>
+                    <td class="text-right">${this.formatearNumero(producto.stockMinimo)}</td>
+                    <td class="text-right">${this.formatearMoneda(producto.precioCostoPromedio)}</td>
+                    <td class="text-right">${this.formatearMoneda(producto.precioVenta)}</td>
+                    <td class="text-right"><strong>${this.formatearMoneda(valorStock)}</strong></td>
+                    <td><span class="stock-badge ${estadoStock.clase}">${estadoStock.texto}</span></td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    generarTablaProductosMasVendidos(productos) {
+        let html = `
+            <div class="table-responsive">
+                <table class="tabla-reporte">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Producto</th>
+                            <th>Cantidad Vendida</th>
+                            <th>Total Vendido</th>
+                            <th>Promedio por Unidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        productos.forEach((producto, index) => {
+            const promedio = producto.totalVendido / producto.cantidadVendida;
+
+            html += `
+                <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td>${producto.productoNombre}</td>
+                    <td class="text-right">${this.formatearNumero(producto.cantidadVendida)}</td>
+                    <td class="text-right"><strong>${this.formatearMoneda(producto.totalVendido)}</strong></td>
+                    <td class="text-right">${this.formatearMoneda(promedio)}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    generarTablaVentasPorEstado(ventasPorEstado) {
+        let html = `
+            <div class="table-responsive">
+                <table class="tabla-reporte">
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Cantidad</th>
+                            <th>Porcentaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        ventasPorEstado.forEach(item => {
+            html += `
+                <tr>
+                    <td><span class="badge badge-success">${item.estado}</span></td>
+                    <td class="text-right">${item.cantidad}</td>
+                    <td class="text-right">${this.calcularPorcentaje(item.cantidad, ventasPorEstado)}%</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    // Métodos utilitarios
+    getEstadoStock(stockActual, stockMinimo) {
+        if (stockActual === 0) {
+            return { clase: 'stock-critico', texto: 'SIN STOCK' };
+        } else if (stockActual <= stockMinimo) {
+            return { clase: 'stock-bajo', texto: 'BAJO' };
+        } else {
+            return { clase: 'stock-normal', texto: 'NORMAL' };
+        }
+    }
+
+    formatearMoneda(valor) {
+        return new Intl.NumberFormat('es-GT', {
+            style: 'currency',
+            currency: 'GTQ'
+        }).format(valor);
+    }
+
+    formatearNumero(valor) {
+        return new Intl.NumberFormat('es-GT').format(valor);
+    }
+
+    calcularPorcentaje(valor, array) {
+        const total = array.reduce((sum, item) => sum + item.cantidad, 0);
+        return ((valor / total) * 100).toFixed(1);
+    }
+
+    mostrarLoading() {
+        const container = document.getElementById('resultadosReporte');
+        container.innerHTML = `
+            <div class="loading-reporte">
+                <div class="spinner-reporte"></div>
+                <p>Cargando reporte...</p>
+            </div>
         `;
     }
 
-    botonesContainer.innerHTML = botonesHTML;
+    ocultarLoading() {
+        // El loading se oculta automáticamente cuando se carga el contenido
+    }
+
+    mostrarError(mensaje) {
+        const container = document.getElementById('resultadosReporte');
+        container.innerHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                ${mensaje}
+            </div>
+        `;
+    }
+
+    async descargarPDF() {
+        try {
+            let url = '';
+
+            switch (this.currentReportType) {
+                case 'ventas':
+                    url = `/api/reportes/pdf/ventas?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
+                    break;
+                default:
+                    this.mostrarError('Descarga PDF no disponible para este tipo de reporte');
+                    return;
+            }
+
+            // Crear enlace temporal para descarga
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `reporte_${this.currentReportType}_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            this.mostrarError('Error al descargar PDF: ' + error.message);
+        }
+    }
+
+    exportarExcel() {
+        // Implementación básica de exportación a Excel
+        this.mostrarError('La exportación a Excel estará disponible próximamente');
+    }
 }
+
+// Inicializar el manager de reportes cuando se carga la página
+let reportesManager;
+
+document.addEventListener('DOMContentLoaded', function () {
+    reportesManager = new ReportesManager();
+});
