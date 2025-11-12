@@ -163,6 +163,7 @@ namespace Login_Análisis.Controllers
                 return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
             }
         }
+
         [HttpGet("pdf/inventario")]
         public async Task<IActionResult> DescargarReporteInventarioPdf()
         {

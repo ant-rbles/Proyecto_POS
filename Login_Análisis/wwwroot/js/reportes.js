@@ -58,9 +58,13 @@
             this.actualizarReporte();
         });
 
-        document.getElementById('btnDescargarPDF').addEventListener('click', () => {
+
+        document.getElementById('btnDescargarPDF').addEventListener('click', (e) => {
+            const tipo = e.currentTarget.getAttribute('data-tipo') || this.currentReportType;
+            this.currentReportType = tipo;
             this.descargarPDF();
         });
+
 
         document.getElementById('btnExportarExcel').addEventListener('click', () => {
             this.exportarExcel();
@@ -705,6 +709,12 @@
             switch (this.currentReportType) {
                 case 'ventas':
                     url = `/api/reportes/pdf/ventas?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
+                    break;
+                case 'compras':
+                    url = `/api/reportes/pdf/compras?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
+                    break;
+                case 'inventario':
+                    url = `/api/reportes/pdf/inventario`;
                     break;
                 default:
                     this.mostrarError('Descarga PDF no disponible para este tipo de reporte');
