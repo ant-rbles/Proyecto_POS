@@ -567,36 +567,151 @@
 
     mostrarMovimientosInventario(data) {
         const container = document.getElementById('resultadosReporte');
+        if (!container) return;
 
-        let html = `
-            <div class="resultados-header">
-                <h3 class="resultados-title">
-                    <i class="fas fa-exchange-alt"></i>
-                    Movimientos de Inventario
-                </h3>
-                <div class="acciones-reporte">
-                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
-                        <i class="fas fa-download"></i> Descargar PDF
-                    </button>
-                </div>
-            </div>
-
-            <div class="resumen-totales">
-                <div class="total-row">
-                    <span>Total Movimientos:</span>
-                    <span><strong>${data.totalMovimientos || 0}</strong></span>
-                </div>
+        // Si no hay datos
+        if (!data) {
+            container.innerHTML = `
+            <div class="alert alert-warning">
+                ⚠️ No se encontraron movimientos de inventario en el rango seleccionado.
             </div>
         `;
+            return;
+        }
 
-        // Movimientos por tipo
-        if (data.movimientosPorTipo) {
-            html += `<h4>Movimientos por Tipo</h4>`;
-            html += this.generarTablaMovimientosPorTipo(data.movimientosPorTipo);
+        let html = `
+        <div class="resultados-header">
+            <h3 class="resultados-title">
+                <i class="fas fa-exchange-alt"></i>
+                Movimientos de Inventario
+            </h3>
+            <div class="acciones-reporte">
+                <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                    <i class="fas fa-download"></i> Descargar PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="descripcion-reporte">
+            <p>Resumen de todas las entradas, salidas y ajustes registrados en el inventario.</p>
+        </div>
+
+        <div class="resumen-totales">
+            <div class="total-row">
+                <span>Total de Movimientos:</span>
+                <span><strong>${data.totalMovimientos || 0}</strong></span>
+            </div>
+        </div>
+    `;
+
+        // 🟦 Movimientos por tipo
+        if (data.movimientosPorTipo && data.movimientosPorTipo.length > 0) {
+            html += `
+            <h4>📊 Movimientos por Tipo</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tipo de Movimiento</th>
+                        <th>Cantidad Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+            data.movimientosPorTipo.forEach(item => {
+                html += `
+                <tr>
+                    <td>${item.tipo || item.Tipo || 'N/A'}</td>
+                    <td>${item.cantidad || item.Cantidad || 0}</td>
+                </tr>
+            `;
+            });
+            html += `
+                </tbody>
+            </table>
+        `;
+        }
+
+        // 🟨 Movimientos por producto
+        if (data.movimientosPorProducto && data.movimientosPorProducto.length > 0) {
+            html += `
+            <h4>📦 Movimientos por Producto</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad Total Movida</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+            data.movimientosPorProducto.forEach(item => {
+                html += `
+                <tr>
+                    <td>${item.producto || item.Producto || 'N/A'}</td>
+                    <td>${item.cantidad || item.Cantidad || 0}</td>
+                </tr>
+            `;
+            });
+            html += `
+                </tbody>
+            </table>
+        `;
+        }
+
+        // 💰 Resumen valorado (si tu backend lo envía)
+        if (data.resumenValorado) {
+            html += `
+            <h4>💰 Resumen Valorado</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Valor Total (Q)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Entradas</td><td>Q${(data.resumenValorado.entradas || 0).toFixed(2)}</td></tr>
+                    <tr><td>Salidas</td><td>Q${(data.resumenValorado.salidas || 0).toFixed(2)}</td></tr>
+                    <tr><td><strong>Total Movido</strong></td><td><strong>Q${(data.resumenValorado.total || 0).toFixed(2)}</strong></td></tr>
+                </tbody>
+            </table>
+        `;
         }
 
         container.innerHTML = html;
-        this.ocultarLoading();
+        this.ocultarLoading?.();
+    }
+
+    generarTablaMovimientosPorTipo(data) {
+        if (!Array.isArray(data) || data.length === 0)
+            return `<p class="no-data">No hay movimientos registrados.</p>`;
+
+        let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tipo de Movimiento</th>
+                    <th>Cantidad</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+        data.forEach(item => {
+            html += `
+            <tr>
+                <td>${item.tipo || item.Tipo || "N/A"}</td>
+                <td>${item.cantidad || item.Cantidad || 0}</td>
+            </tr>
+        `;
+        });
+
+        html += `
+            </tbody>
+        </table>
+    `;
+
+        return html;
     }
 
     // Métodos para generar tablas específicas

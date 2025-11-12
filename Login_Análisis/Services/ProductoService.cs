@@ -819,32 +819,29 @@ namespace Login_Análisis.Services
             _context.MovimientosInventario.Add(movimiento);
             await _context.SaveChangesAsync();
         }
-
         public async Task<IEnumerable<MovimientoInventario>> ObtenerMovimientosInventario(
-    DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
+            DateTime? fechaInicio, DateTime? fechaFin, string? tipo, int? productoId = null)
         {
             var query = _context.MovimientosInventario
                 .Include(m => m.Producto)
+                .ThenInclude(p => p.Categoria)
                 .AsQueryable();
 
-            if (fechaInicio.HasValue && fechaFin.HasValue)
-            {
-                query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value &&
-                                         m.FechaMovimiento <= fechaFin.Value);
-            }
-            else if (fechaInicio.HasValue)
-            {
+            // 🔹 Filtros por fecha
+            if (fechaInicio.HasValue)
                 query = query.Where(m => m.FechaMovimiento >= fechaInicio.Value);
-            }
-            else if (fechaFin.HasValue)
+
+            if (fechaFin.HasValue)
             {
                 var finDia = fechaFin.Value.Date.AddDays(1).AddSeconds(-1);
                 query = query.Where(m => m.FechaMovimiento <= finDia);
             }
 
-            if (!string.IsNullOrEmpty(tipo))
+            // 🔹 Filtro por tipo — solo aplica si se especifica algo diferente de "TODOS"
+            if (!string.IsNullOrWhiteSpace(tipo) && tipo.ToUpper() != "TODOS")
                 query = query.Where(m => m.TipoMovimiento == tipo);
 
+            // 🔹 Filtro por producto si se envía
             if (productoId.HasValue)
                 query = query.Where(m => m.ProductoId == productoId.Value);
 
@@ -1022,20 +1019,71 @@ namespace Login_Análisis.Services
 
         public async Task<object> GenerarReporteMovimientosInventario(DateTime? fechaInicio, DateTime? fechaFin, string? tipoMovimiento)
         {
+            // 🔹 Obtener los movimientos desde tu método existente
             var movimientos = await ObtenerMovimientosInventario(fechaInicio, fechaFin, tipoMovimiento);
 
+            if (movimientos == null || !movimientos.Any())
+            {
+                return new
+                {
+                    TotalMovimientos = 0,
+                    MovimientosPorTipo = new List<object>(),
+                    MovimientosPorProducto = new List<object>(),
+                    ResumenValorado = new { Entradas = 0m, Salidas = 0m, Ajustes = 0m, Total = 0m }
+                };
+            }
+
+            // 🔹 Totales por tipo (incluye todos: Entrada, Salida, Ajuste, etc.)
+            var movimientosPorTipo = movimientos
+                .GroupBy(m => m.TipoMovimiento)
+                .Select(g => new
+                {
+                    Tipo = g.Key,
+                    Cantidad = g.Sum(x => x.Cantidad) // sumamos las cantidades reales
+                })
+                .OrderBy(g => g.Tipo)
+                .ToList();
+
+            // 🔹 Totales por producto (suma cantidades por producto)
+            var movimientosPorProducto = movimientos
+                .GroupBy(m => new { m.ProductoId, m.Producto.Nombre })
+                .Select(g => new
+                {
+                    Producto = g.Key.Nombre,
+                    Cantidad = g.Sum(x => x.Cantidad)
+                })
+                .OrderBy(g => g.Producto)
+                .ToList();
+
+            // 🔹 Resumen valorado (usando PrecioCompra si existe)
+            var resumenValorado = new
+            {
+                Entradas = movimientos
+           .Where(m => m.TipoMovimiento == "ENTRADA")
+           .Sum(m => m.Cantidad * (m.Producto?.PrecioCostoPromedio ?? 0)),
+
+                Salidas = movimientos
+           .Where(m => m.TipoMovimiento == "SALIDA")
+           .Sum(m => m.Cantidad * (m.Producto?.PrecioCostoPromedio ?? 0)),
+
+                Ajustes = movimientos
+           .Where(m => m.TipoMovimiento == "AJUSTE")
+           .Sum(m => m.Cantidad * (m.Producto?.PrecioCostoPromedio ?? 0)),
+
+                Total = movimientos.Sum(m => m.Cantidad * (m.Producto?.PrecioCostoPromedio ?? 0))
+            };
+
+            // 🔹 Respuesta para el frontend
             var reporte = new
             {
                 TotalMovimientos = movimientos.Count(),
-                MovimientosPorTipo = movimientos.GroupBy(m => m.TipoMovimiento)
-                                    .Select(g => new { Tipo = g.Key, Cantidad = g.Count() }),
-                MovimientosPorProducto = movimientos.GroupBy(m => new { m.ProductoId, m.Producto.Nombre })
-                                        .Select(g => new { Producto = g.Key.Nombre, Cantidad = g.Count() })
+                MovimientosPorTipo = movimientosPorTipo,
+                MovimientosPorProducto = movimientosPorProducto,
+                ResumenValorado = resumenValorado
             };
 
             return reporte;
         }
-
 
         public async Task<object> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin)
         {

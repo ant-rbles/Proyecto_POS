@@ -2077,3 +2077,30 @@ body {
     color: #f6c23e;
     font-weight: 600;
 }
+
+.descripcion-reporte {
+    color: #5a5c69;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+    .data-table th, .data-table td {
+        border: 1px solid #dee2e6;
+        padding: 8px 10px;
+        text-align: left;
+    }
+
+    .data-table th {
+        background-color: #e9ecef;
+        font-weight: 600;
+    }
+
+    .data-table tbody tr:nth-child(even) {
+        background-color: #f8f9fc;
+    }
