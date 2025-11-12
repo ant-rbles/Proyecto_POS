@@ -124,14 +124,7 @@ function openManagementTab(tabName) {
                     loadUnidadesMedida();
                     break;
                 case 'reportes':
-                    console.log('Inicializando sección de Reportes...');
-
-                    if (typeof window.ReportesManager !== 'undefined') {
-                        this.inicializarReportesManager();
-                    } else {
-                        console.log('ReportesManager no encontrado, cargando script...');
-                        this.cargarYInicializarReportes();
-                    }
+                    inicializarSeccionReportes();
                     break;
                 case 'movimientos':
                     // Dejamos las fechas vacías para que se muestren todos

@@ -237,42 +237,37 @@
         const container = document.getElementById('resultadosReporte');
 
         let html = `
-            <div class="resultados-header">
-                <h3 class="resultados-title">
-                    <i class="fas fa-chart-line"></i>
-                    Reporte de Ventas
-                </h3>
-                <div class="acciones-reporte">
-                    <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
-                        <i class="fas fa-download"></i> Descargar PDF
-                    </button>
-                </div>
+        <div class="resultados-header">
+            <h3 class="resultados-title">
+                <i class="fas fa-chart-line"></i>
+                Reporte de Ventas
+            </h3>
+            <div class="acciones-reporte">
+                <button class="btn btn-primary" onclick="reportesManager.descargarPDF()">
+                    <i class="fas fa-download"></i> Descargar PDF
+                </button>
             </div>
+        </div>
 
-            <div class="resumen-totales">
-                <div class="total-row">
-                    <span>Total Ventas:</span>
-                    <span><strong>${data.totalVentas || 0}</strong></span>
-                </div>
-                <div class="total-row">
-                    <span>Total Ingresos:</span>
-                    <span><strong>${this.formatearMoneda(data.totalIngresos || 0)}</strong></span>
-                </div>
-                <div class="total-row">
-                    <span>Promedio por Venta:</span>
-                    <span><strong>${this.formatearMoneda(data.promedioVenta || 0)}</strong></span>
-                </div>
+        <div class="resumen-totales">
+            <div class="total-row">
+                <span>Total Ventas:</span>
+                <span><strong>${data.totalVentas || 0}</strong></span>
             </div>
-        `;
+            <div class="total-row">
+                <span>Total Ingresos:</span>
+                <span><strong>${this.formatearMoneda(data.totalIngresos || 0)}</strong></span>
+            </div>
+            <div class="total-row">
+                <span>Promedio por Venta:</span>
+                <span><strong>${this.formatearMoneda(data.promedioVenta || 0)}</strong></span>
+            </div>
+        </div>
 
-        // Gráfico placeholder
-        html += `
-            <div class="grafico-container">
-                <div class="grafico-placeholder">
-                    <i class="fas fa-chart-bar"></i> Gráfico de Ventas por Día
-                </div>
-            </div>
-        `;
+        <div class="grafico-container">
+            <canvas id="graficoVentasDia"></canvas>
+        </div>
+    `;
 
         // Ventas por estado
         if (data.ventasPorEstado) {
@@ -286,8 +281,104 @@
             html += this.generarTablaVentasPorDia(data.ventasPorDia);
         }
 
+        // INSERTAR TODO EL HTML AQUÍ
         container.innerHTML = html;
         this.ocultarLoading();
+
+        // ✅ AHORA QUE EL DOM EXISTE, GENERAR EL GRÁFICO
+        if (data.ventasPorDia) {
+            setTimeout(() => {
+                this.renderGraficoVentasPorDia(data.ventasPorDia);
+            }, 50);
+        }
+    }
+
+
+    renderGraficoVentasPorDia(datos) {
+        const ctx = document.getElementById('graficoVentasDia');
+
+        if (!ctx) return; // seguridad
+
+        const labels = datos.map(d => d.fecha);
+        const values = datos.map(d => d.totalVendido);
+
+        // Crear degradado bonito
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(86, 76, 250, 0.6)');
+        gradient.addColorStop(1, 'rgba(134, 70, 255, 0)');
+
+        // Destruir gráfico previo si existe
+        if (this.chartVentasDia) {
+            this.chartVentasDia.destroy();
+        }
+
+        this.chartVentasDia = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Vendido (Q)',
+                    data: values,
+                    borderColor: '#564CFA',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#564CFA',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#555' }
+                    },
+                    x: {
+                        ticks: { color: '#555' }
+                    }
+                }
+            }
+        });
+    }
+
+    generarTablaVentasPorDia(ventasPorDia) {
+        let html = `
+        <div class="table-responsive">
+            <table class="tabla-reporte">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cantidad de Ventas</th>
+                        <th>Total Vendido</th>
+                        <th>Promedio por Venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+        ventasPorDia.forEach(item => {
+            const promedio = item.totalVendido > 0 && item.cantidad > 0
+                ? item.totalVendido / item.cantidad
+                : 0;
+
+            html += `
+            <tr>
+                <td>${item.fecha || '-'}</td>
+                <td class="text-right">${item.cantidad || 0}</td>
+                <td class="text-right">${this.formatearMoneda(item.totalVendido || 0)}</td>
+                <td class="text-right">${this.formatearMoneda(promedio)}</td>
+            </tr>
+        `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+        return html;
     }
 
     mostrarResultadosInventario(data) {
@@ -629,3 +720,28 @@
         this.mostrarError('La exportación a Excel estará disponible próximamente');
     }
 }
+
+window.inicializarSeccionReportes = function () {
+    try {
+        const required = [
+            "fechaInicio", "fechaFin", "tipoReporte",
+            "topProductos", "tipoMovimiento", "btnAplicarFiltros"
+        ];
+
+        const check = () => {
+            const ok = required.every(id => document.getElementById(id));
+            if (!ok) return setTimeout(check, 100);
+
+            if (!window.reportesManager) {
+                window.reportesManager = new ReportesManager();
+                console.log("✅ ReportesManager inicializado");
+            } else {
+                window.reportesManager.actualizarReporte();
+            }
+        };
+
+        check();
+    } catch (e) {
+        console.error("Error al inicializar reportes:", e);
+    }
+};

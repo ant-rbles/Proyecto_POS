@@ -126,5 +126,18 @@ namespace Login_Análisis.Controllers
                 return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
             }
         }
+        [HttpGet("pdf/inventario")]
+        public async Task<IActionResult> DescargarReporteInventarioPdf()
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarReporteInventarioPdf();
+                return File(pdfBytes, "application/pdf", $"reporte_inventario_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF de inventario: {ex.Message}" });
+            }
+        }
     }
 }

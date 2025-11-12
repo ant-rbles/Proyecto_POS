@@ -853,14 +853,6 @@ namespace Login_Análisis.Services
                 .ToListAsync();
         }
 
-        public async Task<List<MovimientoInventario>> GetAllMovsDebug()
-        {
-            return await _context.MovimientosInventario
-                .AsNoTracking()
-                .ToListAsync();
-        }
-
-
         public async Task<(bool success, string message)> CrearAjusteInventario(int productoId, decimal cantidad, string observaciones, int? usuarioId, string tipo)
 
         {
@@ -924,8 +916,16 @@ namespace Login_Análisis.Services
                 PromedioVenta = ventas.Any() ? ventas.Average(v => v.Total) : 0,
                 VentasPorEstado = ventas.GroupBy(v => v.Estado)
                                .Select(g => new { Estado = g.Key, Cantidad = g.Count() }),
-                VentasPorDia = ventas.GroupBy(v => v.FechaVenta.Date)
-                            .Select(g => new { Fecha = g.Key, Total = g.Sum(v => v.Total), Cantidad = g.Count() })
+                VentasPorDia = ventas
+                    .GroupBy(v => v.FechaVenta.Date)
+                    .Select(g => new
+                    {
+                        Fecha = g.Key.ToString("yyyy-MM-dd"),
+                        TotalVendido = g.Sum(v => v.Total),
+                        Cantidad = g.Count()
+                    })
+                    .OrderBy(v => v.Fecha)
+
             };
 
             return reporte;
