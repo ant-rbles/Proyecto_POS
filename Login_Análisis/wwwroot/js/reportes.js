@@ -152,7 +152,17 @@
         const response = await fetch('/api/reportes/inventario/detallado');
         const data = await response.json();
 
-        this.mostrarResultadosInventario(data);
+        const productos = data.productos || [];
+
+        const resultado = {
+            totalProductos: data.totalProductos || productos.length,
+            valorTotalInventario: data.valorTotalInventario || 0,
+            productosStockBajo: data.productosStockBajo || 0,
+            productosStockCritico: data.productosStockCritico || 0,
+            productos
+        };
+
+        this.mostrarResultadosInventario(resultado);
     }
 
     async cargarReporteCompras() {
@@ -418,11 +428,10 @@
         `;
 
         // Tabla de inventario detallado
-        if (Array.isArray(data)) {
+        if (Array.isArray(data.productos)) {
             html += `<h4>Inventario Detallado</h4>`;
-            html += this.generarTablaInventario(data);
+            html += this.generarTablaInventario(data.productos);
         }
-
         container.innerHTML = html;
         this.ocultarLoading();
     }

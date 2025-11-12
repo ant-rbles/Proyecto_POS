@@ -932,20 +932,46 @@ namespace Login_Análisis.Services
         }
         public async Task<object> GenerarReporteInventario()
         {
-            var productos = await ObtenerTodosProductosAsync();
+            var productos = await _context.Productos
+                .Include(p => p.Categoria)
+                .Include(p => p.Proveedor)
+                .Include(p => p.UnidadMedidaBase)
+                .Where(p => p.Estado)
+                .ToListAsync();
 
-            var reporte = new
+            var totalProductos = productos.Count;
+            var valorTotalInventario = productos.Sum(p => p.StockActual * p.PrecioCostoPromedio);
+            var productosStockBajo = productos.Count(p => p.StockActual <= p.StockMinimo && p.StockActual > 0);
+            var productosSinStock = productos.Count(p => p.StockActual == 0);
+
+            var inventarioDetallado = productos.Select(p => new
             {
-                TotalProductos = productos.Count,
-                ValorTotalInventario = productos.Sum(p => p.StockActual * p.PrecioCostoPromedio),
-                ProductosStockBajo = productos.Count(p => p.StockActual <= p.StockMinimo && p.StockActual > 0),
-                ProductosStockCritico = productos.Count(p => p.StockActual == 0),
-                ProductosPorCategoria = productos.GroupBy(p => p.Categoria?.Nombre ?? "Sin Categoría")
-                                     .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
-            };
+                p.Id,
+                p.Codigo,
+                Producto = p.Nombre,
+                Categoria = p.Categoria != null ? p.Categoria.Nombre : "Sin categoría",
+                ProveedorNombre = p.Proveedor != null ? p.Proveedor.Nombre : "Sin proveedor",
+                Unidad = p.UnidadMedidaBase != null ? p.UnidadMedidaBase.Abreviatura : "N/A",
+                StockActual = p.StockActual,
+                StockMinimo = p.StockMinimo,
+                PrecioCosto = p.PrecioCostoPromedio,
+                PrecioVenta = p.PrecioVenta,
+                ValorStock = p.StockActual * p.PrecioCostoPromedio,
+                Estado = p.StockActual == 0
+                    ? "SIN STOCK"
+                    : (p.StockActual <= p.StockMinimo ? "BAJO" : "NORMAL")
+            }).ToList();
 
-            return reporte;
+            return new
+            {
+                TotalProductos = totalProductos,
+                ValorTotalInventario = valorTotalInventario,
+                ProductosStockBajo = productosStockBajo,
+                ProductosSinStock = productosSinStock,
+                Productos = inventarioDetallado
+            };
         }
+
 
         public async Task<List<object>> ObtenerInventarioDetalladoAsync()
         {

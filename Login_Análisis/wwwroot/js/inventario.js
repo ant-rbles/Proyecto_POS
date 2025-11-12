@@ -2,12 +2,14 @@
 let totalValorInventario = 0;
 let proveedoresData = [];
 
+// 🔹 Cargar inventario y proveedores
 async function loadInventario() {
     try {
         mostrarCargando();
 
         const authToken = localStorage.getItem('authToken');
 
+        // 🔹 Cargar proveedores
         const responseProv = await fetch('https://localhost:7000/api/proveedores', {
             headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
         });
@@ -15,47 +17,99 @@ async function loadInventario() {
             proveedoresData = await responseProv.json();
             cargarProveedoresEnFiltro();
         } else {
-            console.warn("No se pudieron cargar proveedores para el filtro.");
+            console.warn("⚠️ No se pudieron cargar proveedores para el filtro.");
         }
 
+        // 🔹 Cargar inventario detallado
         const response = await fetch('https://localhost:7000/api/reportes/inventario/detallado', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${authToken}`,
+                'Authorization': authToken ? `Bearer ${authToken}` : '',
                 'Content-Type': 'application/json'
             }
         });
 
-        if (response.ok) {
-            inventarioData = await response.json();
-            calcularEstadisticasInventario();
-            renderizarTablaInventario();
-            actualizarResumenInventario();
-        } else {
+        if (!response.ok) {
             mostrarMensaje('Error al cargar el inventario', 'error');
+            return;
         }
+
+        // ✅ Aquí sí definimos result correctamente
+        const result = await response.json();
+        console.log("📦 Respuesta del backend (inventario):", result);
+
+        // ✅ Tomar correctamente la lista de productos del JSON del backend
+        inventarioData = Array.isArray(result.productos)
+            ? result.productos
+            : (Array.isArray(result.inventarioDetallado)
+                ? result.inventarioDetallado
+                : (Array.isArray(result) ? result : [])
+            );
+
+        // ✅ Si no hay productos, salir sin error
+        if (!Array.isArray(inventarioData) || inventarioData.length === 0) {
+            console.warn("Inventario vacío o sin datos válidos.");
+            renderizarTablaInventario([]);
+            calcularEstadisticasInventario([]);
+            actualizarResumenInventario();
+            return;
+        }
+
+        // ✅ Calcular totales
+        totalValorInventario = inventarioData.reduce(
+            (sum, p) => sum + ((parseFloat(p.precioCostoPromedio) || 0) * (parseFloat(p.stockActual) || 0)),
+            0
+        );
+
+        // ✅ Renderizar y mostrar
+        calcularEstadisticasInventario(inventarioData);
+        renderizarTablaInventario(inventarioData);
+        actualizarResumenInventario();
+
     } catch (error) {
-        console.error('Error:', error);
-        mostrarMensaje('Error de conexión', 'error');
+        console.error('❌ Error al cargar inventario:', error);
+        mostrarMensaje('Error de conexión al cargar el inventario', 'error');
     }
 }
 
-function calcularEstadisticasInventario() {
-    totalValorInventario = inventarioData.reduce((total, producto) => {
-        return total + (producto.stockActual * producto.precioCostoPromedio);
-    }, 0);
+// 🔹 Calcular totales y estadísticas
+function calcularEstadisticasInventario(productos) {
+    // productos debe ser siempre un array (ver loadInventario)
+    const totalProductos = Array.isArray(productos) ? productos.length : 0;
+    const valorTotal = Array.isArray(productos)
+        ? productos.reduce(
+            (sum, p) => sum + ((parseFloat(p.precioCostoPromedio) || 0) * (parseFloat(p.stockActual) || 0)),
+            0
+        )
+        : 0;
+
+    // Actualiza elementos DOM que existan (asegúrate que los IDs coincidan)
+    const elTotal = document.getElementById('totalProductos');
+    if (elTotal) elTotal.textContent = totalProductos;
+
+    const elValor = document.getElementById('valorTotalInventario') || document.getElementById('valorTotal'); // tolerancia
+    if (elValor) elValor.textContent = `Q ${valorTotal.toFixed(2)}`;
 }
 
+// 🔹 Actualizar resumen superior (cards)
 function actualizarResumenInventario() {
-    const productosConStockBajo = inventarioData.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
-    const productosSinStock = inventarioData.filter(p => p.stockActual === 0).length;
+    const productosConStockBajo = inventarioData.filter(p => (parseFloat(p.stockActual) || 0) > 0 && (parseFloat(p.stockActual) || 0) <= (parseFloat(p.stockMinimo) || 0)).length;
+    const productosSinStock = inventarioData.filter(p => (parseFloat(p.stockActual) || 0) === 0).length;
 
-    document.getElementById('totalProductos').textContent = inventarioData.length;
-    document.getElementById('valorTotalInventario').textContent = `Q ${totalValorInventario.toFixed(2)}`;
-    document.getElementById('productosStockBajo').textContent = productosConStockBajo;
-    document.getElementById('productosSinStock').textContent = productosSinStock;
+    const totalEl = document.getElementById('totalProductos');
+    if (totalEl) totalEl.textContent = inventarioData.length;
+
+    const valorEl = document.getElementById('valorTotalInventario');
+    if (valorEl) valorEl.textContent = `Q ${totalValorInventario.toFixed(2)}`;
+
+    const bajoEl = document.getElementById('productosStockBajo');
+    if (bajoEl) bajoEl.textContent = productosConStockBajo;
+
+    const sinEl = document.getElementById('productosSinStock');
+    if (sinEl) sinEl.textContent = productosSinStock;
 }
 
+// 🔹 Renderizar tabla
 function renderizarTablaInventario(datos = inventarioData) {
     const tbody = document.getElementById('inventarioTableBody');
     if (!tbody) return;
@@ -65,50 +119,59 @@ function renderizarTablaInventario(datos = inventarioData) {
         return;
     }
 
-    // Ver qué llega realmente
     console.log("Ejemplo de producto en inventario:", JSON.stringify(datos[0], null, 2));
 
     tbody.innerHTML = datos.map(producto => {
-        const valorInventario = (producto.stockActual || 0) * (producto.precioCostoPromedio || 0);
-        const estado = obtenerEstadoStock(producto);
+        // normalizar campos (tolerancia a diferentes nombres)
+        const id = producto.id ?? producto.Id ?? producto.productoId ?? producto.ProductoId ?? 0;
+        const codigo = producto.codigo ?? producto.Codigo ?? '';
+        const nombre = producto.nombre ?? producto.Nombre ?? '';
+        const descripcion = producto.descripcion ?? producto.Descripcion ?? '';
+        const stockActual = parseFloat(producto.stockActual ?? producto.StockActual ?? 0);
+        const stockMinimo = parseFloat(producto.stockMinimo ?? producto.StockMinimo ?? 0);
+        const precioCosto = parseFloat(producto.precioCostoPromedio ?? producto.PrecioCostoPromedio ?? producto.precioCosto ?? producto.PrecioCosto ?? 0);
+        const precioVenta = parseFloat(producto.precioVenta ?? producto.PrecioVenta ?? 0);
 
-        // 🟩 Aquí está la corrección clave: leer proveedorNombre exacto del JSON
-        const proveedorNombre =
-            producto.proveedorNombre || // el campo real del backend
-            producto.ProveedorNombre ||
-            producto.proveedor?.nombre ||
-            producto.proveedor?.Nombre ||
-            obtenerNombreProveedorPorId(producto.proveedorId ?? producto.ProveedorId ?? producto.proveedorID) ||
-            "Sin proveedor";
+        // proveedor: si backend ya incluye nombre directo, úsalo; si no, buscar por id en proveedoresData
+        const proveedorNombreFromObj = producto.proveedorNombre ?? producto.ProveedorNombre ?? producto.proveedor?.nombre ?? producto.proveedor?.Nombre;
+        const proveedorIdFromObj = producto.proveedorId ?? producto.ProveedorId ?? producto.proveedor?.id ?? producto.proveedor?.Id;
+        const proveedorNombre = proveedorNombreFromObj
+            || obtenerNombreProveedorPorId(proveedorIdFromObj)
+            || 'Sin proveedor';
 
-        // También leemos la categoría con tolerancia
-        const categoriaNombre =
-            producto.categoriaNombre ||
-            producto.CategoriaNombre ||
-            producto.categoria?.nombre ||
-            producto.categoria?.Nombre ||
-            "Sin categoría";
+        // categoría (tolerancia)
+        const categoriaNombre = producto.categoriaNombre ?? producto.CategoriaNombre ?? producto.categoria?.nombre ?? producto.categoria?.Nombre ?? 'Sin categoría';
+
+        // unidad de medida: intentar varios campos (unidadMedidaBase, unidad, unidadMedida)
+        const unidadNombre = producto.unidadMedidaBase?.nombre
+            ?? producto.unidadMedidaBase?.Nombre
+            ?? producto.unidad?.nombre
+            ?? producto.unidad?.Nombre
+            ?? producto.unidadMedida?.nombre
+            ?? producto.unidadMedida?.Nombre
+            ?? producto.unidad ?? producto.Unidad ?? 'N/A';
+
+        const valorInventario = (stockActual || 0) * (precioCosto || 0);
+        const estado = obtenerEstadoStock({ stockActual, stockMinimo });
 
         return `
             <tr>
-                <td><strong>${producto.codigo ?? ''}</strong></td>
+                <td><strong>${codigo}</strong></td>
                 <td>
-                    <div style="font-weight: 500;">${producto.nombre ?? ''}</div>
-                    ${producto.descripcion ? `<small class="text-muted" style="display: block; margin-top: 4px;">${producto.descripcion}</small>` : ''}
+                    <div style="font-weight: 500;">${nombre}</div>
+                    ${descripcion ? `<small class="text-muted" style="display:block;margin-top:4px;">${descripcion}</small>` : ''}
                 </td>
-                <td>${proveedorNombre}</td> 
+                <td>${proveedorNombre}</td>
                 <td>${categoriaNombre}</td>
-                <td class="text-center">${producto.unidad ?? producto.Unidad ?? 'N/A'}</td>
-                <td class="text-center">${(producto.stockActual ?? 0).toFixed(2)}</td>
-                <td class="text-center">${(producto.stockMinimo ?? 0).toFixed(2)}</td>
-                <td class="text-right">Q ${(producto.precioCostoPromedio ?? 0).toFixed(2)}</td>
-                <td class="text-right">Q ${(producto.precioVenta ?? 0).toFixed(2)}</td>
+                <td class="text-center">${unidadNombre}</td>
+                <td class="text-center">${stockActual.toFixed(2)}</td>
+                <td class="text-center">${stockMinimo.toFixed(2)}</td>
+                <td class="text-right">Q ${precioCosto.toFixed(2)}</td>
+                <td class="text-right">Q ${precioVenta.toFixed(2)}</td>
                 <td class="text-right"><strong>Q ${valorInventario.toFixed(2)}</strong></td>
+                <td class="text-center"><span class="badge ${estado.clase}">${estado.texto}</span></td>
                 <td class="text-center">
-                    <span class="badge ${estado.clase}">${estado.texto}</span>
-                </td>
-                <td class="text-center">
-                    <button class="action-btn view-btn" onclick="verDetalleProducto(${producto.id})" title="Ver detalle">
+                    <button class="action-btn view-btn" onclick="verDetalleProducto(${id})" title="Ver detalle">
                         <i class="fas fa-eye"></i>
                     </button>
                 </td>
@@ -229,10 +292,11 @@ function mostrarMensaje(mensaje, tipo) {
 async function verDetalleProducto(productoId) {
     try {
         const authToken = localStorage.getItem('authToken');
+        // usar endpoint que ya tienes: /api/productos/{id}
         const response = await fetch(`https://localhost:7000/api/productos/${productoId}`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': authToken ? `Bearer ${authToken}` : ''
             }
         });
 
@@ -249,39 +313,50 @@ async function verDetalleProducto(productoId) {
 }
 
 function abrirModalDetalle(producto) {
-    const valorInventario = producto.stockActual * producto.precioCostoPromedio;
-    const estado = obtenerEstadoStock(producto);
+    // normalizar campos del producto
+    const codigo = producto.codigo ?? producto.Codigo ?? '';
+    const nombre = producto.nombre ?? producto.Nombre ?? '';
+    const descripcion = producto.descripcion ?? producto.Descripcion ?? 'N/A';
+    const categoria = producto.categoria?.nombre ?? producto.categoria?.Nombre ?? producto.categoriaNombre ?? producto.CategoriaNombre ?? 'N/A';
+    const unidad = producto.unidadMedidaBase?.nombre ?? producto.unidad?.nombre ?? producto.unidad ?? 'N/A';
+    const stockActual = parseFloat(producto.stockActual ?? producto.StockActual ?? 0);
+    const stockMinimo = parseFloat(producto.stockMinimo ?? producto.StockMinimo ?? 0);
+    const precioCosto = parseFloat(producto.precioCostoPromedio ?? producto.PrecioCostoPromedio ?? producto.precioCosto ?? 0);
+    const precioVenta = parseFloat(producto.precioVenta ?? producto.PrecioVenta ?? 0);
+
+    const valorInventario = (stockActual || 0) * (precioCosto || 0);
+    const estado = obtenerEstadoStock({ stockActual, stockMinimo });
 
     const modalHTML = `
-        <div class="modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-            <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: #4e73df;">Detalle del Producto</h3>
-                    <button onclick="cerrarModal()" style="background: none; border: none; font-size: 20px; cursor: pointer;">×</button>
+        <div class="modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
+            <div style="background:white; padding:20px; border-radius:8px; width:600px; max-width:95%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0; color:#4e73df;">Detalle del Producto</h3>
+                    <button onclick="cerrarModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">×</button>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                     <div>
-                        <p><strong>Código:</strong> ${producto.codigo}</p>
-                        <p><strong>Nombre:</strong> ${producto.nombre}</p>
-                        <p><strong>Descripción:</strong> ${producto.descripcion || 'N/A'}</p>
-                        <p><strong>Categoría:</strong> ${producto.categoria?.nombre || 'N/A'}</p>
+                        <p><strong>Código:</strong> ${codigo}</p>
+                        <p><strong>Nombre:</strong> ${nombre}</p>
+                        <p><strong>Descripción:</strong> ${descripcion}</p>
+                        <p><strong>Categoría:</strong> ${categoria}</p>
                     </div>
                     <div>
-                        <p><strong>Unidad:</strong> ${producto.unidadMedidaBase?.nombre || 'N/A'}</p>
-                        <p><strong>Stock Actual:</strong> ${producto.stockActual.toFixed(2)}</p>
-                        <p><strong>Stock Mínimo:</strong> ${producto.stockMinimo.toFixed(2)}</p>
+                        <p><strong>Unidad:</strong> ${unidad}</p>
+                        <p><strong>Stock Actual:</strong> ${stockActual.toFixed(2)}</p>
+                        <p><strong>Stock Mínimo:</strong> ${stockMinimo.toFixed(2)}</p>
                         <p><strong>Estado:</strong> <span class="badge ${estado.clase}">${estado.texto}</span></p>
                     </div>
                 </div>
-                
-                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
-                    <p><strong>Precio Costo:</strong> Q ${producto.precioCostoPromedio.toFixed(2)}</p>
-                    <p><strong>Precio Venta:</strong> Q ${producto.precioVenta.toFixed(2)}</p>
+
+                <div style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:5px;">
+                    <p><strong>Precio Costo:</strong> Q ${precioCosto.toFixed(2)}</p>
+                    <p><strong>Precio Venta:</strong> Q ${precioVenta.toFixed(2)}</p>
                     <p><strong>Valor en Inventario:</strong> <strong>Q ${valorInventario.toFixed(2)}</strong></p>
                 </div>
-                
-                <div style="margin-top: 20px; text-align: right;">
+
+                <div style="margin-top:20px; text-align:right;">
                     <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
                 </div>
             </div>
@@ -289,9 +364,7 @@ function abrirModalDetalle(producto) {
     `;
 
     const modalExistente = document.getElementById('modalDetalleProducto');
-    if (modalExistente) {
-        modalExistente.remove();
-    }
+    if (modalExistente) modalExistente.remove();
 
     const modalDiv = document.createElement('div');
     modalDiv.id = 'modalDetalleProducto';

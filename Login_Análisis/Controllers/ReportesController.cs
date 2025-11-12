@@ -1,5 +1,7 @@
-﻿using Login_Análisis.Services;
+﻿using Login_Análisis.Data;
+using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Login_Análisis.Controllers
@@ -9,10 +11,12 @@ namespace Login_Análisis.Controllers
     public class ReportesController : ControllerBase
     {
         private readonly ProductoService _productoService;
+        private readonly ApplicationDbContext _context;
 
-        public ReportesController(ProductoService productoService)
+        public ReportesController(ProductoService productoService, ApplicationDbContext context)
         {
             _productoService = productoService;
+            _context = context;
         }
 
         [HttpGet("ventas")]
@@ -51,12 +55,45 @@ namespace Login_Análisis.Controllers
         {
             try
             {
-                var productos = await _productoService.ObtenerInventarioDetalladoAsync();
-                return Ok(productos);
+                var productos = await _context.Productos
+                    .Include(p => p.Categoria)
+                    .Include(p => p.UnidadMedidaBase)
+                    .Include(p => p.Proveedor)
+                    .Where(p => p.Estado)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        codigo = p.Codigo,
+                        nombre = p.Nombre,
+                        descripcion = p.Descripcion,
+                        proveedorId = p.ProveedorId,
+                        proveedorNombre = p.Proveedor != null ? p.Proveedor.Nombre : "Sin proveedor",
+                        categoriaNombre = p.Categoria != null ? p.Categoria.Nombre : "Sin categoría",
+                        unidad = p.UnidadMedidaBase != null ? p.UnidadMedidaBase.Abreviatura : "N/A",
+                        stockActual = p.StockActual,
+                        stockMinimo = p.StockMinimo,
+                        precioCostoPromedio = p.PrecioCostoPromedio,
+                        precioVenta = p.PrecioVenta
+                    })
+                    .ToListAsync();
+
+                var totalProductos = productos.Count;
+                var valorTotalInventario = productos.Sum(p => p.precioCostoPromedio * p.stockActual);
+                var productosStockBajo = productos.Count(p => p.stockActual <= p.stockMinimo && p.stockActual > 0);
+                var productosSinStock = productos.Count(p => p.stockActual == 0);
+
+                return Ok(new
+                {
+                    totalProductos,
+                    valorTotalInventario,
+                    productosStockBajo,
+                    productosSinStock,
+                    productos
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = $"Error al obtener el inventario: {ex.Message}" });
+                return BadRequest(new { Message = $"Error: {ex.Message}" });
             }
         }
 
