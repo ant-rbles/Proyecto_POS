@@ -209,27 +209,30 @@
 
     async loadMetricasRapidas() {
         try {
-            // Cargar estadísticas de ventas para las métricas
             const params = new URLSearchParams({
                 fechaInicio: this.getFirstDayOfMonth(),
                 fechaFin: new Date().toISOString().split('T')[0]
             });
 
-            const [ventasResponse, inventarioResponse] = await Promise.all([
+            const [ventasResponse, inventarioResponse, comprasResponse, productosTopResponse] = await Promise.all([
                 fetch(`/api/ventas/estadisticas?${params}`),
-                fetch('/api/reportes/inventario')
+                fetch('/api/reportes/inventario'),
+                fetch(`/api/reportes/compras?${params}`),
+                fetch(`/api/reportes/productos-mas-vendidos?${params}`)
             ]);
 
             const ventasData = await ventasResponse.json();
             const inventarioData = await inventarioResponse.json();
+            const comprasData = await comprasResponse.json();
+            const productosTopData = await productosTopResponse.json();
 
-            this.actualizarMetricasRapidas(ventasData, inventarioData);
+            this.actualizarMetricasRapidas(ventasData, inventarioData, comprasData, productosTopData);
         } catch (error) {
             console.error('Error cargando métricas rápidas:', error);
         }
     }
 
-    actualizarMetricasRapidas(ventasData, inventarioData) {
+    actualizarMetricasRapidas(ventasData, inventarioData, comprasData, productosTopData) {
         // Actualizar tarjeta de ventas
         document.getElementById('metricasVentas').textContent = ventasData.ventasMes || 0;
         document.getElementById('metricasIngresos').textContent = this.formatearMoneda(ventasData.ingresosMes || 0);
@@ -238,12 +241,17 @@
         document.getElementById('metricasTotalProductos').textContent = inventarioData.totalProductos || 0;
         document.getElementById('metricasStockBajo').textContent = inventarioData.productosStockBajo || 0;
 
-        // Actualizar tarjeta de compras (simuladas por ahora)
-        document.getElementById('metricasTotalCompras').textContent = '--';
-        document.getElementById('metricasInversion').textContent = '--';
+        // Actualizar tarjeta de compras 
+        document.getElementById('metricasTotalCompras').textContent = comprasData.totalCompras || 0;
+        document.getElementById('metricasInversion').textContent = this.formatearMoneda(comprasData.totalInvertido || 0);
 
         // Actualizar tarjeta de productos más vendidos
-        document.getElementById('metricasProductosTop').textContent = '--';
+        if (Array.isArray(productosTopData) && productosTopData.length > 0) {
+            const top = productosTopData[0]; // el más vendido
+            document.getElementById('metricasProductosTop').textContent = top.productoNombre || 'N/A';
+        } else {
+            document.getElementById('metricasProductosTop').textContent = '--';
+        }
     }
 
     // Métodos para mostrar resultados de cada tipo de reporte
@@ -476,6 +484,52 @@
 
         container.innerHTML = html;
         this.ocultarLoading();
+    }
+
+    generarTablaComprasPorProveedor(comprasPorProveedor) {
+        if (!Array.isArray(comprasPorProveedor) || comprasPorProveedor.length === 0) {
+            return `<div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-truck"></i></div>
+                    <h4>No hay compras registradas por proveedor</h4>
+                </div>`;
+        }
+
+        let html = `
+        <div class="table-responsive">
+            <table class="tabla-reporte">
+                <thead>
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>Cantidad de Compras</th>
+                        <th>Total Invertido</th>
+                        <th>Promedio por Compra</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+        comprasPorProveedor.forEach(item => {
+            const promedio = item.totalInvertido && item.cantidad
+                ? item.totalInvertido / item.cantidad
+                : 0;
+
+            html += `
+            <tr>
+                <td>${item.proveedor || 'Sin nombre'}</td>
+                <td class="text-right">${item.cantidad || 0}</td>
+                <td class="text-right">${this.formatearMoneda(item.totalInvertido || 0)}</td>
+                <td class="text-right">${this.formatearMoneda(promedio)}</td>
+            </tr>
+        `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+        return html;
     }
 
     mostrarProductosMasVendidos(data) {

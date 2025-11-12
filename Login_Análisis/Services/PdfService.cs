@@ -3,6 +3,7 @@ using Login_Análisis.Models;
 using Microsoft.EntityFrameworkCore;
 using QRCoder;
 using QuestPDF.Fluent;
+using System.Globalization;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System.Reflection.Metadata;
@@ -27,6 +28,8 @@ namespace Login_Análisis.Services
         {
             _context = context;
             QuestPDF.Settings.License = LicenseType.Community;
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("es-GT");
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("es-GT");
         }
 
         public async Task<byte[]> GenerarFacturaVenta(int ventaId)

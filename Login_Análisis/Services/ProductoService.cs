@@ -1039,18 +1039,36 @@ namespace Login_Análisis.Services
 
         public async Task<object> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin)
         {
-            var compras = await ObtenerCompras(fechaInicio, fechaFin);
+            var compras = await ObtenerCompras(fechaInicio, fechaFin, null);
+
+            var comprasConTotales = compras.Select(c => new
+            {
+                proveedor = c.Proveedor?.Nombre ?? "Sin proveedor",
+                total = (c.Total > 0 ? c.Total :
+                        (c.Detalles?.Sum(d => (d.TotalLinea > 0 ? d.TotalLinea : d.Cantidad * d.PrecioUnitario)) ?? 0m)
+                        + c.Impuestos)
+            }).ToList();
 
             var reporte = new
             {
-                TotalCompras = compras.Count,
-                TotalInvertido = compras.Sum(c => c.Total),
-                ComprasPorProveedor = compras.GroupBy(c => c.Proveedor.Nombre)
-                                   .Select(g => new { Proveedor = g.Key, Total = g.Sum(c => c.Total), Cantidad = g.Count() })
+                totalCompras = comprasConTotales.Count,
+                totalInvertido = comprasConTotales.Sum(c => c.total),
+                comprasPorProveedor = comprasConTotales
+                    .GroupBy(c => c.proveedor)
+                    .Select(g => new
+                    {
+                        proveedor = g.Key,
+                        cantidad = g.Count(),
+                        totalInvertido = g.Sum(c => c.total),
+                        promedioPorCompra = g.Count() > 0 ? g.Sum(c => c.total) / g.Count() : 0
+                    })
+                    .OrderByDescending(g => g.totalInvertido)
+                    .ToList()
             };
 
             return reporte;
         }
+
 
         public async Task<object> ObtenerEstadisticasVentas(DateTime? fechaInicio, DateTime? fechaFin)
         {
