@@ -204,11 +204,15 @@ namespace Login_Análisis.Services
 
         public async Task<byte[]> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin)
         {
+            DateTime? inicio = fechaInicio?.Date;
+            DateTime? fin = fechaFin?.Date.AddDays(1);
+
             var ventas = await _context.Venta
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.Producto)
-                .Where(v => (!fechaInicio.HasValue || v.FechaVenta >= fechaInicio) &&
-                            (!fechaFin.HasValue || v.FechaVenta <= fechaFin))
+                .Include(v => v.Detalles).ThenInclude(d => d.Producto)
+                .Where(v =>
+                    (!inicio.HasValue || v.FechaVenta >= inicio) &&
+                    (!fin.HasValue || v.FechaVenta < fin)
+                )
                 .OrderByDescending(v => v.FechaVenta)
                 .ToListAsync();
 
@@ -615,10 +619,15 @@ namespace Login_Análisis.Services
 
         public async Task<byte[]> GenerarReporteMovimientosInventarioPdf(DateTime? fechaInicio, DateTime? fechaFin)
         {
+            DateTime? inicio = fechaInicio?.Date;
+            DateTime? fin = fechaFin?.Date.AddDays(1);
+
             var movimientos = await _context.MovimientosInventario
                 .Include(m => m.Producto)
-                .Where(m => (!fechaInicio.HasValue || m.FechaMovimiento >= fechaInicio)
-                         && (!fechaFin.HasValue || m.FechaMovimiento <= fechaFin))
+                .Where(m =>
+                    (!inicio.HasValue || m.FechaMovimiento >= inicio) &&
+                    (!fin.HasValue || m.FechaMovimiento < fin)
+                )
                 .OrderByDescending(m => m.FechaMovimiento)
                 .ToListAsync();
 
@@ -793,12 +802,16 @@ namespace Login_Análisis.Services
         {
             try
             {
+                DateTime? inicio = fechaInicio?.Date;
+                DateTime? fin = fechaFin?.Date.AddDays(1);
+
                 var compras = await _context.Compras
                     .Include(c => c.Proveedor)
-                    .Include(c => c.Detalles)
-                    .ThenInclude(d => d.Producto)
-                    .Where(c => (!fechaInicio.HasValue || c.FechaCompra >= fechaInicio)
-                             && (!fechaFin.HasValue || c.FechaCompra <= fechaFin))
+                    .Include(c => c.Detalles).ThenInclude(d => d.Producto)
+                    .Where(c =>
+                        (!inicio.HasValue || c.FechaCompra >= inicio) &&
+                        (!fin.HasValue || c.FechaCompra < fin)
+                    )
                     .OrderByDescending(c => c.FechaCompra)
                     .ToListAsync();
 

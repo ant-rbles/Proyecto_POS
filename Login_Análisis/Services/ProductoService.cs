@@ -638,14 +638,17 @@ namespace Login_Análisis.Services
                 .Include(v => v.Usuario)
                 .AsQueryable();
 
+            // FILTRO FECHA INICIO
             if (fechaInicio.HasValue)
             {
-                query = query.Where(v => v.FechaVenta >= fechaInicio.Value);
+                query = query.Where(v => v.FechaVenta >= fechaInicio.Value.Date);
             }
 
+            // FILTRO FECHA FIN CORRECTO (fin +1 día)
             if (fechaFin.HasValue)
             {
-                query = query.Where(v => v.FechaVenta <= fechaFin.Value);
+                var fin = fechaFin.Value.Date.AddDays(1);
+                query = query.Where(v => v.FechaVenta < fin);
             }
 
             if (!string.IsNullOrEmpty(estado))
@@ -653,7 +656,9 @@ namespace Login_Análisis.Services
                 query = query.Where(v => v.Estado == estado);
             }
 
-            return await query.OrderByDescending(v => v.FechaVenta).ToListAsync();
+            return await query
+                .OrderByDescending(v => v.FechaVenta)
+                .ToListAsync();
         }
 
         public async Task<(bool success, string message)> CambiarEstadoVenta(int ventaId, string estado)
