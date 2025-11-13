@@ -245,6 +245,13 @@ async function handleCompraSubmit(e) {
             // Actualizar productos e inventario al instante
             if (typeof loadProductos === "function") await loadProductos();
             if (typeof loadInventario === "function") await loadInventario();
+
+           
+            await cargarProductos();              // vuelve a traer productos actualizados desde el backend
+            cargarProductosParaAjuste();          // actualiza el select del formulario de AJUSTE
+            cargarProductosFiltro();              // actualiza el select del filtro de MOVIMIENTOS
+
+            await cargarMovimientos();    
         } else {
             const error = await response.json();
             showMessage(error.message || 'Error al registrar compra', 'error');

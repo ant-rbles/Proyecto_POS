@@ -255,6 +255,7 @@
                                         <th>Teléfono</th>
                                         <th>Email</th>
                                         <th>Contacto</th>
+                                        <th>Estado</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -283,6 +284,7 @@
                                         <th>NIT</th>
                                         <th>Teléfono</th>
                                         <th>Email</th>
+                                        <th>Dirección</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
                                     </tr>
@@ -337,71 +339,6 @@
                                 <div class="form-actions">
                                     <button type="button" class="btn btn-secondary" onclick="hideClienteForm()">Cancelar</button>
                                     <button type="submit" class="btn btn-primary">Guardar Cliente</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Pestaña de Descuentos -->
-                    <div id="tab-descuentos" class="management-tab">
-                        <div class="tab-header">
-                            <h3><i class="fas fa-tag"></i> Configurar Descuentos</h3>
-                            <button class="btn btn-primary" onclick="showDescuentoForm()">
-                                <i class="fas fa-plus"></i> Nuevo Descuento
-                            </button>
-                        </div>
-
-                        <!-- Lista de Descuentos -->
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th>Cantidad Mínima</th>
-                                        <th>Descuento</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="descuentosTableBody">
-                                    <!-- Los descuentos se cargarán aquí -->
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Formulario de Descuentos -->
-                        <div id="descuentoForm" class="content-section" style="display: none; margin-top: 20px;">
-                            <div class="section-title">Configurar Descuento por Cantidad</div>
-                            <form id="descuentoFormElement" onsubmit="handleDescuentoSubmit(event)">
-                                <div class="form-row">
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="descuentoProducto">Producto *</label>
-                                            <select id="descuentoProducto" class="form-control" required>
-                                                <option value="">Seleccionar producto...</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="descuentoCantidadMinima">Cantidad Mínima *</label>
-                                            <input type="number" id="descuentoCantidadMinima" class="form-control" required min="1" step="1">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-column">
-                                        <div class="form-group">
-                                            <label for="descuentoPorcentaje">Porcentaje de Descuento (%) *</label>
-                                            <input type="number" id="descuentoPorcentaje" class="form-control" required min="0" max="100" step="0.01">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-actions">
-                                    <button type="button" class="btn btn-secondary" onclick="hideDescuentoForm()">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Guardar Descuento</button>
                                 </div>
                             </form>
                         </div>
@@ -890,6 +827,7 @@
                                             <th>Total (Q)</th>
                                             <th>Usuario</th>
                                             <th>Método de Pago</th>
+                                            <th>Estado</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>

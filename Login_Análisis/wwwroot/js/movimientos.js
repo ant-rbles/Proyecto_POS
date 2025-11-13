@@ -122,50 +122,54 @@ async function guardarAjuste() {
 
     hideAjusteForm();
 
+    // 🔥 RECARGAR productos del backend
+    await cargarProductos();
+
+    // 🔥 Reconstruir selects con stock actual
+    cargarProductosParaAjuste();
+    cargarProductosFiltro();
+
+    // 🔥 Recargar movimientos
     await cargarMovimientos();
+
+    alert("Ajuste realizado correctamente");
 }
 
 
 
 // ✅ PRODUCTOS EN SELECTS
 function cargarProductosParaAjuste() {
-    console.log("🔄 cargarProductosParaAjuste ejecutado");
-
     const select = document.getElementById("ajusteProductoId");
-    if (!select) return;
+    if (!select || !window.productos) return;
 
-    if (!window.productos || window.productos.length === 0) return;
+    console.log("🔄 Actualizando productos para AJUSTE...");
 
-    select.innerHTML =
-        '<option value="">Seleccionar producto</option>' +
-        window.productos
-            .filter(p => p.estado === true)
-            .map(p => `<option value="${p.id}">${p.nombre} (Stock: ${p.stockActual})</option>`)
-            .join('');
+    select.innerHTML = '<option value="">Seleccionar producto</option>';
+
+    window.productos
+        .filter(p => p.estado === true)
+        .forEach(p => {
+            select.innerHTML += `<option value="${p.id}">
+                ${p.nombre} (Stock: ${p.stockActual})
+            </option>`;
+        });
 }
 
 function cargarProductosFiltro() {
     const select = document.getElementById("movimientoProductoId");
     if (!select || !window.productos) return;
 
-    // ✅ Si ya tiene productos cargados, NO volver a llenarlo
-    if (select.options.length > 1) {
-        console.log("✅ Productos ya cargados en el filtro. No se vuelve a llenar.");
-        return;
-    }
+    console.log("🔄 Actualizando productos en FILTRO...");
 
-    // ✅ La primera vez sí lo llenamos
-    console.log("🔄 Llenando select de productos por primera vez...");
-
-    let opciones = '<option value="">Todos</option>';
+    select.innerHTML = '<option value="">Todos</option>';
 
     window.productos
         .filter(p => p.estado === true)
         .forEach(p => {
-            opciones += `<option value="${p.id}">${p.nombre}</option>`;
+            select.innerHTML += `<option value="${p.id}">
+                ${p.nombre}
+            </option>`;
         });
-
-    select.innerHTML = opciones;
 }
 
 

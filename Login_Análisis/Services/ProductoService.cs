@@ -2,6 +2,7 @@
 using Login_Análisis.DTOs;
 using Login_Análisis.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Numerics;
 
 namespace Login_Análisis.Services
 {
@@ -230,8 +231,10 @@ namespace Login_Análisis.Services
 
                     Context.DetalleCompras.Add(detalle);
 
-                    // Actualizar inventario
+                    // Guardar el stock anterior antes de actualizar
                     var stockAnterior = producto.StockActual;
+
+                    // 🔹 Actualizar inventario (dejamos tu lógica intacta)
                     producto.StockActual += detalle.Cantidad;
 
                     // Recalcular costo promedio (promedio ponderado)
@@ -244,8 +247,28 @@ namespace Login_Análisis.Services
                     producto.PrecioVenta = producto.PrecioCostoPromedio * (1 + (producto.MargenGanancia / 100m));
 
                     producto.FechaActualizacion = DateTime.UtcNow;
+
+                    // 🔹 Registrar movimiento de inventario
+                    var movimiento = new MovimientoInventario
+                    {
+                        ProductoId = producto.Id,
+                        TipoMovimiento = "ENTRADA",
+                        Cantidad = detalle.Cantidad, // No tocamos la conversión
+                        CantidadAnterior = stockAnterior,
+                        CantidadNueva = producto.StockActual,
+                        PrecioCosto = producto.PrecioCostoPromedio,
+                        PrecioVenta = producto.PrecioVenta,
+                        ReferenciaId = compra.Id,
+                        ReferenciaTipo = "COMPRA",
+                        Observaciones = $"Compra factura {compra.NumeroFactura ?? "Sin factura"}",
+                        UsuarioId = compra.UsuarioCreacion,
+                        FechaMovimiento = DateTime.UtcNow
+                    };
+
+                    Context.MovimientosInventario.Add(movimiento);
                 }
 
+                // Totales
                 compra.Subtotal = subtotal;
                 compra.Impuestos = subtotal * 0.12m;
                 compra.Total = compra.Subtotal + compra.Impuestos;
@@ -1143,14 +1166,19 @@ namespace Login_Análisis.Services
             return await _pdfService.GenerarReporteVentas(fechaInicio, fechaFin);
         }
 
-        public async Task<byte[]> GenerarReporteInventarioPdf()
-        {
-            return await _pdfService.GenerarReporteInventario();
-        }
-
         public async Task<byte[]> GenerarReporteComprasPdf(DateTime? fechaInicio, DateTime? fechaFin)
         {
-            return await _pdfService.GenerarReporteCompras(fechaInicio, fechaFin);
+            return await _pdfService.GenerarReporteComprasPdf(fechaInicio, fechaFin);
+        }
+
+        public async Task<byte[]> GenerarReporteInventarioPdf()
+        {
+            return await _pdfService.GenerarReporteInventarioPdf();
+        }
+
+        public async Task<byte[]> GenerarReporteMovimientosInventarioPdf(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            return await _pdfService.GenerarReporteMovimientosInventarioPdf(fechaInicio, fechaFin);
         }
     }
 }

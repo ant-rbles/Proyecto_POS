@@ -20,10 +20,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("ventas")]
-        public async Task<IActionResult> ReporteVentas(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin,
-            [FromQuery] string? tipoReporte = "diario")
+        public async Task<IActionResult> ReporteVentas([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin,[FromQuery] string? tipoReporte = "diario")
         {
             try
             {
@@ -99,10 +96,7 @@ namespace Login_Análisis.Controllers
 
 
         [HttpGet("productos-mas-vendidos")]
-        public async Task<IActionResult> ReporteProductosMasVendidos(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin,
-            [FromQuery] int top = 10)
+        public async Task<IActionResult> ReporteProductosMasVendidos([FromQuery] DateTime? fechaInicio,[FromQuery] DateTime? fechaFin,[FromQuery] int top = 10)
         {
             try
             {
@@ -116,10 +110,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("movimientos-inventario")]
-        public async Task<IActionResult> ReporteMovimientosInventario(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin,
-            [FromQuery] string? tipoMovimiento = null)
+        public async Task<IActionResult> ReporteMovimientosInventario( [FromQuery] DateTime? fechaInicio,[FromQuery] DateTime? fechaFin, [FromQuery] string? tipoMovimiento = null)
         {
             try
             {
@@ -133,9 +124,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("compras")]
-        public async Task<IActionResult> ReporteCompras(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin)
+        public async Task<IActionResult> ReporteCompras([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
         {
             try
             {
@@ -149,9 +138,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("pdf/ventas")]
-        public async Task<IActionResult> DescargarReporteVentasPdf(
-            [FromQuery] DateTime? fechaInicio,
-            [FromQuery] DateTime? fechaFin)
+        public async Task<IActionResult> DescargarReporteVentasPdf([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
         {
             try
             {
@@ -175,6 +162,40 @@ namespace Login_Análisis.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Message = $"Error al generar PDF de inventario: {ex.Message}" });
+            }
+        }
+
+        [HttpGet("pdf/compras")]
+        public async Task<IActionResult> DescargarReporteComprasPdf([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarReporteComprasPdf(fechaInicio, fechaFin);
+
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                    return BadRequest(new { Message = "No se pudo generar el archivo PDF. Verifique si hay datos disponibles." });
+
+                return File(pdfBytes, "application/pdf", $"reporte_compras_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF de compras: {ex.Message}" });
+            }
+        }
+
+        [HttpGet("pdf/movimientos")]
+        public async Task<IActionResult> DescargarReporteMovimientosPdf(
+    [FromQuery] DateTime? fechaInicio,
+    [FromQuery] DateTime? fechaFin)
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarReporteMovimientosInventarioPdf(fechaInicio, fechaFin);
+                return File(pdfBytes, "application/pdf", $"reporte_movimientos_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF de movimientos: {ex.Message}" });
             }
         }
     }

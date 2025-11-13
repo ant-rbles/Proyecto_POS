@@ -607,7 +607,7 @@
         // 🟦 Movimientos por tipo
         if (data.movimientosPorTipo && data.movimientosPorTipo.length > 0) {
             html += `
-            <h4>📊 Movimientos por Tipo</h4>
+            <h4> Movimientos por Tipo</h4>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -634,7 +634,7 @@
         // 🟨 Movimientos por producto
         if (data.movimientosPorProducto && data.movimientosPorProducto.length > 0) {
             html += `
-            <h4>📦 Movimientos por Producto</h4>
+            <h4>Movimientos por Producto</h4>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -661,7 +661,7 @@
         // 💰 Resumen valorado (si tu backend lo envía)
         if (data.resumenValorado) {
             html += `
-            <h4>💰 Resumen Valorado</h4>
+            <h4>Resumen Valorado</h4>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -879,12 +879,19 @@
                 case 'ventas':
                     url = `/api/reportes/pdf/ventas?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
                     break;
+
                 case 'compras':
                     url = `/api/reportes/pdf/compras?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
                     break;
+
                 case 'inventario':
                     url = `/api/reportes/pdf/inventario`;
                     break;
+
+                case 'movimientos':
+                    url = `/api/reportes/pdf/movimientos?fechaInicio=${this.currentFilters.fechaInicio}&fechaFin=${this.currentFilters.fechaFin}`;
+                    break;
+
                 default:
                     this.mostrarError('Descarga PDF no disponible para este tipo de reporte');
                     return;
@@ -902,6 +909,7 @@
             this.mostrarError('Error al descargar PDF: ' + error.message);
         }
     }
+
 
     exportarExcel() {
         // Implementación básica de exportación a Excel

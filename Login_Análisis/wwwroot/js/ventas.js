@@ -436,6 +436,11 @@ async function handleVentaSubmit(e) {
         // Recargar productos y ventas
         await loadProductosVentas();
         await cargarVentasRealizadas();
+        await cargarProductos();            // productos globales (inventario + ajustes + movimientos)
+        cargarProductosParaAjuste();        // actualiza select del formulario de ajuste
+        cargarProductosFiltro();            // actualiza select de filtro de movimientos
+        if (typeof loadInventario === "function") await loadInventario();
+        await cargarMovimientos();          // refresca tabla de movimientos
 
     } catch (error) {
         console.error('💥 Error de conexión:', error);

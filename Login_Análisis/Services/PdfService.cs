@@ -15,8 +15,10 @@ namespace Login_Análisis.Services
     {
         Task<byte[]> GenerarFacturaVenta(int ventaId);
         Task<byte[]> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin);
-        Task<byte[]> GenerarReporteInventario();
-        Task<byte[]> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin);
+        Task<byte[]> GenerarReporteComprasPdf(DateTime? fechaInicio, DateTime? fechaFin);
+        Task<byte[]> GenerarReporteInventarioPdf();
+        Task<byte[]> GenerarReporteMovimientosInventarioPdf(DateTime? fechaInicio, DateTime? fechaFin);
+
         Task<byte[]> GenerarFacturaCompra(int compraId);
     }
 
@@ -500,18 +502,134 @@ namespace Login_Análisis.Services
             return document.GeneratePdf();
         }
 
-        public async Task<byte[]> GenerarReporteCompras(DateTime? fechaInicio, DateTime? fechaFin)
+        public async Task<byte[]> GenerarReporteInventarioPdf()
         {
-            var compras = await _context.Compras
-                .Include(c => c.Proveedor)
-                .Include(c => c.Detalles)
-                .Where(c => (!fechaInicio.HasValue || c.FechaCompra >= fechaInicio) &&
-                            (!fechaFin.HasValue || c.FechaCompra <= fechaFin))
-                .OrderByDescending(c => c.FechaCompra)
+            var productos = await _context.Productos
+                .Include(p => p.Categoria)
+                .Include(p => p.UnidadMedidaBase)
+                .Where(p => p.Estado)
+                .OrderBy(p => p.Nombre)
                 .ToListAsync();
 
-            var totalCompras = compras.Count;
-            var totalInvertido = compras.Sum(c => c.Total);
+            var totalValorInventario = productos.Sum(p => p.StockActual * p.PrecioCostoPromedio);
+            var productosBajoStock = productos.Count(p => p.StockActual <= p.StockMinimo && p.StockActual > 0);
+            var productosSinStock = productos.Count(p => p.StockActual == 0);
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4.Landscape());
+                    page.Margin(40);
+                    page.DefaultTextStyle(t => t.FontSize(10));
+
+                    // HEADER
+                    page.Header().Column(header =>
+                    {
+                        header.Item().Text("CENTRO PLÁSTICO LEONOR").Bold().FontSize(16);
+                        header.Item().Text("Reporte de Inventario").FontSize(13).FontColor("#444");
+                        header.Item().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(9).FontColor("#888");
+                    });
+
+                    // CONTENT
+                    page.Content().Column(content =>
+                    {
+                        content.Spacing(15);
+
+                        // 🔹 Resumen general
+                        content.Item().Row(row =>
+                        {
+                            row.RelativeItem().Background("#E3F2FD").Padding(10).Border(1).Column(c =>
+                            {
+                                c.Item().Text("TOTAL PRODUCTOS").Bold();
+                                c.Item().Text(productos.Count.ToString("N0")).FontSize(14);
+                            });
+                            row.RelativeItem().Background("#E8F5E9").Padding(10).Border(1).Column(c =>
+                            {
+                                c.Item().Text("VALOR TOTAL INVENTARIO").Bold();
+                                c.Item().Text($"Q {totalValorInventario:N2}").FontSize(14);
+                            });
+                            row.RelativeItem().Background("#FFF3E0").Padding(10).Border(1).Column(c =>
+                            {
+                                c.Item().Text("STOCK BAJO").Bold();
+                                c.Item().Text(productosBajoStock.ToString()).FontSize(14);
+                            });
+                            row.RelativeItem().Background("#FFEBEE").Padding(10).Border(1).Column(c =>
+                            {
+                                c.Item().Text("SIN STOCK").Bold();
+                                c.Item().Text(productosSinStock.ToString()).FontSize(14);
+                            });
+                        });
+
+                        content.Item().Element(e =>
+                        {
+                            e.PaddingBottom(5).Text("DETALLE DE PRODUCTOS").Bold().FontSize(13).Underline();
+                        });
+
+                        content.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);
+                                columns.RelativeColumn(2);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Text("#").Bold();
+                                header.Cell().Text("Producto").Bold();
+                                header.Cell().Text("Unidad").Bold();
+                                header.Cell().Text("Stock").Bold();
+                                header.Cell().Text("Costo Promedio").Bold();
+                                header.Cell().Text("Valor Total").Bold();
+                                header.Cell().Text("Categoría").Bold();
+                            });
+
+                            int index = 1;
+                            foreach (var p in productos)
+                            {
+                                var valor = p.StockActual * p.PrecioCostoPromedio;
+                                table.Cell().Text(index++.ToString());
+                                table.Cell().Text(p.Nombre);
+                                table.Cell().Text(p.UnidadMedidaBase?.Abreviatura ?? "-");
+                                table.Cell().Text(p.StockActual.ToString("N2"));
+                                table.Cell().Text($"Q {p.PrecioCostoPromedio:N2}");
+                                table.Cell().Text($"Q {valor:N2}");
+                                table.Cell().Text(p.Categoria?.Nombre ?? "-");
+                            }
+                        });
+                    });
+
+                    // FOOTER
+                    page.Footer().AlignCenter().Text("Centro Plástico Leonor © " + DateTime.Now.Year);
+                });
+            });
+
+            return document.GeneratePdf();
+        }
+
+        public async Task<byte[]> GenerarReporteMovimientosInventarioPdf(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var movimientos = await _context.MovimientosInventario
+                .Include(m => m.Producto)
+                .Where(m => (!fechaInicio.HasValue || m.FechaMovimiento >= fechaInicio)
+                         && (!fechaFin.HasValue || m.FechaMovimiento <= fechaFin))
+                .OrderByDescending(m => m.FechaMovimiento)
+                .ToListAsync();
+
+            // 📊 Cálculos de resumen
+            int totalMovimientos = movimientos.Count;
+            int totalEntradas = movimientos.Count(m =>
+                m.TipoMovimiento != null && m.TipoMovimiento.Trim().ToUpper() == "ENTRADA");
+            int totalSalidas = movimientos.Count(m =>
+                m.TipoMovimiento != null && m.TipoMovimiento.Trim().ToUpper() == "SALIDA");
+            int totalAjustes = movimientos.Count(m =>
+                m.TipoMovimiento != null && m.TipoMovimiento.Trim().ToUpper() == "AJUSTE");
 
             var document = Document.Create(container =>
             {
@@ -522,114 +640,138 @@ namespace Login_Análisis.Services
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
+                    // 🟦 Encabezado principal
                     page.Header()
                         .Height(3, Unit.Centimetre)
-                        .Background(Colors.Purple.Medium)
+                        .Background("#2563EB")
                         .AlignCenter()
                         .AlignMiddle()
-                        .Text("REPORTE DE COMPRAS - CENTRO PLÁSTICO LEONOR")
+                        .Text("REPORTE DE MOVIMIENTOS DE INVENTARIO - CENTRO PLÁSTICO LEONOR")
                         .Bold().FontSize(18).FontColor(Colors.White);
 
+                    // 📑 Contenido principal
                     page.Content()
                         .PaddingVertical(1, Unit.Centimetre)
                         .Column(column =>
                         {
                             column.Spacing(15);
 
-                            // Resumen ejecutivo
-                            column.Item().Table(resumenTable =>
+                            // 🔸 Período del reporte
+                            column.Item().Background(Colors.Grey.Lighten3).Padding(10).Row(row =>
                             {
-                                resumenTable.ColumnsDefinition(columns =>
+                                row.RelativeItem().Text($"Período: {fechaInicio?.ToString("dd/MM/yyyy") ?? "Inicio"} - {fechaFin?.ToString("dd/MM/yyyy") ?? "Fin"}");
+                                row.RelativeItem().AlignRight().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}");
+                            });
+
+                            // 🔹 Resumen general
+                            column.Item().Table(resumen =>
+                            {
+                                resumen.ColumnsDefinition(columns =>
                                 {
+                                    columns.RelativeColumn();
                                     columns.RelativeColumn();
                                     columns.RelativeColumn();
                                     columns.RelativeColumn();
                                 });
 
-                                resumenTable.Cell().Background(Colors.Blue.Lighten3).Padding(10).AlignCenter().Column(c =>
+                                resumen.Cell().Background("#DBEAFE").Padding(10).AlignCenter().Column(c =>
                                 {
-                                    c.Item().Text("TOTAL COMPRAS").Bold();
-                                    c.Item().Text(totalCompras.ToString()).Bold().FontSize(16);
+                                    c.Item().Text("TOTAL MOVIMIENTOS").Bold();
+                                    c.Item().Text(totalMovimientos.ToString()).FontSize(16).Bold();
                                 });
 
-                                resumenTable.Cell().Background(Colors.Green.Lighten3).Padding(10).AlignCenter().Column(c =>
+                                resumen.Cell().Background("#D1FAE5").Padding(10).AlignCenter().Column(c =>
                                 {
-                                    c.Item().Text("TOTAL INVERTIDO").Bold();
-                                    c.Item().Text(totalInvertido.ToString("C")).Bold().FontSize(16);
+                                    c.Item().Text("ENTRADAS").Bold();
+                                    c.Item().Text(totalEntradas.ToString()).FontSize(16).Bold();
                                 });
 
-                                resumenTable.Cell().Background(Colors.Orange.Lighten3).Padding(10).AlignCenter().Column(c =>
+                                resumen.Cell().Background("#FEF9C3").Padding(10).AlignCenter().Column(c =>
                                 {
-                                    c.Item().Text("PROMEDIO POR COMPRA").Bold();
-                                    c.Item().Text((totalInvertido / Math.Max(1, totalCompras)).ToString("C")).Bold().FontSize(16);
+                                    c.Item().Text("SALIDAS").Bold();
+                                    c.Item().Text(totalSalidas.ToString()).FontSize(16).Bold();
+                                });
+
+                                resumen.Cell().Background("#FECACA").Padding(10).AlignCenter().Column(c =>
+                                {
+                                    c.Item().Text("AJUSTES").Bold();
+                                    c.Item().Text(totalAjustes.ToString()).FontSize(16).Bold();
                                 });
                             });
 
-                            // Tabla de compras
-                            column.Item().Table(comprasTable =>
+                            // 📋 Tabla detallada de movimientos
+                            column.Item().Text("DETALLE DE MOVIMIENTOS").Bold().FontSize(14).Underline();
+                            column.Item().Table(tabla =>
                             {
-                                comprasTable.ColumnsDefinition(columns =>
+                                tabla.ColumnsDefinition(columns =>
                                 {
-                                    columns.ConstantColumn(30);
-                                    columns.ConstantColumn(120);
-                                    columns.RelativeColumn(2);
-                                    columns.ConstantColumn(80);
-                                    columns.ConstantColumn(80);
-                                    columns.ConstantColumn(100);
-                                    columns.ConstantColumn(100);
-                                    columns.ConstantColumn(100);
-                                    columns.ConstantColumn(100);
+                                    columns.ConstantColumn(30);  // #
+                                    columns.ConstantColumn(90);  // Fecha
+                                    columns.RelativeColumn(2);   // Producto
+                                    columns.ConstantColumn(100); // Tipo
+                                    columns.ConstantColumn(80);  // Cantidad
+                                    columns.RelativeColumn(2);   // Observaciones
                                 });
 
                                 // Encabezado
-                                comprasTable.Header(header =>
+                                tabla.Header(header =>
                                 {
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignCenter().Text("#").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).Text("FACTURA").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).Text("PROVEEDOR").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).Text("FECHA").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignCenter().Text("ITEMS").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignRight().Text("SUBTOTAL").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignRight().Text("IMPUESTOS").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignRight().Text("TOTAL").FontColor(Colors.White).Bold();
-                                    header.Cell().Background(Colors.Grey.Darken1).Padding(3).AlignCenter().Text("ESTADO").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).AlignCenter().Text("#").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).Text("FECHA").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).Text("PRODUCTO").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).Text("TIPO").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).AlignRight().Text("CANTIDAD").FontColor(Colors.White).Bold();
+                                    header.Cell().Background(Colors.Grey.Darken1).Padding(4).Text("OBSERVACIONES").FontColor(Colors.White).Bold();
                                 });
 
-                                // Datos
-                                foreach (var (compra, index) in compras.Select((c, i) => (c, i + 1)))
+                                // Filas de datos
+                                foreach (var (mov, index) in movimientos.Select((m, i) => (m, i + 1)))
                                 {
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignCenter().Text(index.ToString());
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).Text(compra.NumeroFactura);
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).Text(compra.Proveedor?.Nombre ?? "N/A");
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).Text(compra.FechaCompra.ToString("dd/MM/yy"));
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignCenter().Text(compra.Detalles.Count.ToString());
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignRight().Text(compra.Subtotal.ToString("C"));
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignRight().Text(compra.Impuestos.ToString("C"));
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignRight().Text(compra.Total.ToString("C"));
-                                    comprasTable.Cell().BorderBottom(1).Padding(3).AlignCenter().Text(compra.Estado);
-                                }
+                                    string tipoColor = mov.TipoMovimiento?.Trim().ToUpper() switch
+                                    {
+                                        "ENTRADA" => "#DCFCE7",
+                                        "SALIDA" => "#FEF9C3",
+                                        "AJUSTE" => "#FEE2E2",
+                                        _ => Colors.White
+                                    };
 
-                                // Total
-                                comprasTable.Cell().ColumnSpan(7).BorderBottom(1).Padding(3).AlignRight().Text("TOTAL INVERTIDO:").Bold();
-                                comprasTable.Cell().BorderBottom(1).Padding(3).AlignRight().Text(totalInvertido.ToString("C")).Bold();
-                                comprasTable.Cell().BorderBottom(1).Padding(3);
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4).AlignCenter().Text(index.ToString());
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4)
+                                        .Text(mov.FechaMovimiento.HasValue
+                                            ? mov.FechaMovimiento.Value.ToString("dd/MM/yyyy HH:mm")
+                                            : "-");
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4)
+                                        .Text(mov.Producto?.Nombre ?? "N/A");
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4)
+                                        .Text(mov.TipoMovimiento ?? "-");
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4).AlignRight()
+                                        .Text(mov.Cantidad.ToString("N2"));
+                                    tabla.Cell().Background(tipoColor).BorderBottom(1).Padding(4)
+                                        .Text(mov.Observaciones ?? "-");
+                                }
                             });
                         });
 
+                    // 🔻 Pie de página
                     page.Footer()
                         .AlignCenter()
-                        .Text(text =>
+                        .Text(txt =>
                         {
-                            text.Span("Página ");
-                            text.CurrentPageNumber();
-                            text.Span(" de ");
-                            text.TotalPages();
+                            txt.Span("Página ");
+                            txt.CurrentPageNumber();
+                            txt.Span(" de ");
+                            txt.TotalPages();
+                            txt.Span(" | Generado el ");
+                            txt.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
                         });
                 });
             });
 
             return document.GeneratePdf();
         }
+
+
+
 
         public async Task<byte[]> GenerarFacturaCompra(int compraId)
         {
@@ -645,6 +787,153 @@ namespace Login_Análisis.Services
             var documento = new CompraPdfDocument(compra);
 
             return documento.GeneratePdf();
+        }
+
+        public async Task<byte[]> GenerarReporteComprasPdf(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            try
+            {
+                var compras = await _context.Compras
+                    .Include(c => c.Proveedor)
+                    .Include(c => c.Detalles)
+                    .ThenInclude(d => d.Producto)
+                    .Where(c => (!fechaInicio.HasValue || c.FechaCompra >= fechaInicio)
+                             && (!fechaFin.HasValue || c.FechaCompra <= fechaFin))
+                    .OrderByDescending(c => c.FechaCompra)
+                    .ToListAsync();
+
+                // 🧮 Datos generales
+                var totalCompras = compras.Count;
+                var totalInvertido = compras.Sum(c => c.Total);
+                var promedioCompra = totalCompras > 0 ? totalInvertido / totalCompras : 0;
+
+                // 🔷 Crear documento PDF con QuestPDF
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Margin(40);
+                        page.Size(PageSizes.A4.Landscape());
+
+                        // 🔹 Encabezado
+                        page.Header().Element(header =>
+                        {
+                            header.Row(row =>
+                            {
+                                row.RelativeItem().Column(col =>
+                                {
+                                    col.Item().Text("CENTRO PLÁSTICO LEONOR")
+                                        .FontSize(18)
+                                        .Bold()
+                                        .FontColor("#1565C0");
+                                    col.Item().Text("Reporte de Compras")
+                                        .FontSize(14)
+                                        .FontColor("#333333");
+                                    col.Item().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}")
+                                        .FontSize(10)
+                                        .FontColor("#777777");
+                                });
+                            });
+                        });
+
+                        // 🔹 Contenido principal
+                        page.Content().Column(content =>
+                        {
+                            content.Spacing(15);
+
+                            // 🧾 Resumen general
+                            content.Item().Row(row =>
+                            {
+                                row.RelativeItem(1).Background("#E3F2FD").Padding(10).Border(1).Column(c =>
+                                {
+                                    c.Item().Text("TOTAL DE COMPRAS").Bold();
+                                    c.Item().Text($"{totalCompras}").FontSize(14);
+                                });
+
+                                row.RelativeItem(1).Background("#BBDEFB").Padding(10).Border(1).Column(c =>
+                                {
+                                    c.Item().Text("TOTAL INVERTIDO").Bold();
+                                    c.Item().Text($"Q {totalInvertido:N2}").FontSize(14);
+                                });
+
+                                row.RelativeItem(1).Background("#90CAF9").Padding(10).Border(1).Column(c =>
+                                {
+                                    c.Item().Text("PROMEDIO POR COMPRA").Bold();
+                                    c.Item().Text($"Q {promedioCompra:N2}").FontSize(14);
+                                });
+                            });
+
+                            // 🧱 Espaciado visual
+                            content.Item().Height(10);
+
+                            // 📋 Título tabla
+                            content.Item().Element(e =>
+                            {
+                                e.PaddingBottom(5)
+                                 .Text("DETALLE DE COMPRAS")
+                                 .Bold()
+                                 .FontSize(13)
+                                 .Underline();
+                            });
+
+                            // 📄 Tabla detallada
+                            content.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(90);   // Fecha
+                                    columns.RelativeColumn(2);    // Proveedor
+                                    columns.RelativeColumn(2);    // Factura
+                                    columns.ConstantColumn(100);  // Total
+                                    columns.ConstantColumn(100);  // Estado
+                                });
+
+                                // Encabezado
+                                table.Header(header =>
+                                {
+                                    header.Cell().Background("#1565C0").Padding(5)
+                                        .Text("Fecha").FontColor("#FFFFFF").Bold();
+                                    header.Cell().Background("#1565C0").Padding(5)
+                                        .Text("Proveedor").FontColor("#FFFFFF").Bold();
+                                    header.Cell().Background("#1565C0").Padding(5)
+                                        .Text("Factura").FontColor("#FFFFFF").Bold();
+                                    header.Cell().Background("#1565C0").Padding(5)
+                                        .Text("Total").FontColor("#FFFFFF").Bold();
+                                    header.Cell().Background("#1565C0").Padding(5)
+                                        .Text("Estado").FontColor("#FFFFFF").Bold();
+                                });
+
+                                // Filas
+                                foreach (var c in compras)
+                                {
+                                    table.Cell().Padding(4).Text(c.FechaCompra.ToString("dd/MM/yyyy"));
+                                    table.Cell().Padding(4).Text(c.Proveedor?.Nombre ?? "N/A");
+                                    table.Cell().Padding(4).Text(c.NumeroFactura ?? "-");
+                                    table.Cell().Padding(4).Text($"Q {c.Total:N2}");
+                                    table.Cell().Padding(4).Text(c.Estado ?? "-");
+                                }
+                            });
+                        });
+
+                        // 🔹 Pie de página
+                        page.Footer().AlignCenter().Text(text =>
+                        {
+                            text.Span("Centro Plástico Leonor - Reporte de Compras ").FontSize(10);
+                            text.Span($" | Página ").FontSize(10);
+                            text.CurrentPageNumber().FontSize(10);
+                            text.Span(" de ").FontSize(10);
+                            text.TotalPages().FontSize(10);
+                        });
+                    });
+                });
+
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al generar PDF de compras: {ex.Message}");
+                throw;
+            }
         }
 
         public static byte[] GenerarQrPngBytes(string texto)
