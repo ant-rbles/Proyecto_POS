@@ -23,6 +23,8 @@ namespace Login_Análisis.Data
         public DbSet<DetalleVenta> DetalleVenta { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<DescuentoProducto> DescuentosProducto { get; set; }
+        public DbSet<TarjetaRegalo> TarjetasRegalo { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -250,6 +252,49 @@ namespace Login_Análisis.Data
                       .HasForeignKey(d => d.ProductoId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // Configuración de TarjetaRegalo
+            modelBuilder.Entity<TarjetaRegalo>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Codigo)
+                      .IsRequired()
+                      .HasMaxLength(50);
+                entity.Property(e => e.MontoInicial)
+                      .HasColumnType("decimal(10,2)")
+                      .IsRequired();
+                entity.Property(e => e.SaldoActual)
+                      .HasColumnType("decimal(10,2)")
+                      .IsRequired();
+                entity.Property(e => e.Moneda)
+                      .IsRequired()
+                      .HasMaxLength(5)
+                      .HasDefaultValue("GTQ");
+                entity.Property(e => e.FechaEmision)
+                      .IsRequired();
+                entity.Property(e => e.FechaExpiracion)
+                      .IsRequired();
+                entity.Property(e => e.Estado)
+                      .IsRequired()
+                      .HasMaxLength(20)
+                      .HasDefaultValue("Activa");
+                entity.Property(e => e.UsuarioRegistro)
+                      .IsRequired();
+
+                entity.Property(e => e.FechaRegistro)
+                      .IsRequired();
+
+                entity.Property(e => e.UsuarioActualizacion)
+                      .IsRequired(false);
+
+                entity.Property(e => e.FechaActualizacion)
+                      .IsRequired(false);
+
+                // Código único (igual que lo haces en otros módulos)
+                entity.HasIndex(e => e.Codigo)
+                      .IsUnique();
+            });
+
         }
     }
 }

@@ -1663,4 +1663,40 @@ body {
     animation: fadeIn 0.5s ease-out;
 }
 
+#tarjetasTable .badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #eef;
+    color: #2447b3;
+    font-weight: 600;
+}
+
+.data-table thead {
+    background: #3f65d6;
+    color: #fff;
+}
+
+.data-table th, .data-table td {
+    padding: 10px 12px;
+}
+
+.management-form .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.management-form .form-column {
+    flex: 1;
+}
+
+    .management-form .form-column.full {
+        flex-basis: 100%;
+    }
+
+.full-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+}
 

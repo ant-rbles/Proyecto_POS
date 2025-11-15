@@ -137,6 +137,10 @@ function openManagementTab(tabName) {
                         cargarMovimientos(); // Esto ahora traerá TODOS
                     });
                     break;
+                case 'tarjetas':
+                    loadTarjetas();
+                    setTimeout(() => initTarjetasModule(), 20);
+                    break;
             }
         } else {
             console.error('No se encontró la pestaña:', `${tabName}Section`);
