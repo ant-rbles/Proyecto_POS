@@ -462,7 +462,7 @@ namespace Login_Análisis.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 🔹 Validación inicial
+                // 🔹 TU CÓDIGO ORIGINAL EXACTO - NO LO MODIFICAMOS
                 if (request.Detalles == null || !request.Detalles.Any())
                 {
                     return (false, "Debe incluir al menos un producto en la venta", null);
@@ -473,18 +473,17 @@ namespace Login_Análisis.Services
                     if (detalle.ProductoId <= 0)
                         return (false, "Producto no válido en el detalle de venta", null);
 
-                    // Evita errores si el frontend no manda unidad
                     if (detalle.UnidadMedidaId <= 0)
-                        detalle.UnidadMedidaId = 1; // ⚙️ fallback a la unidad base por defecto (id=1)
+                        detalle.UnidadMedidaId = 1;
 
                     if (detalle.Cantidad <= 0)
                         return (false, "La cantidad del producto debe ser mayor a 0", null);
                 }
 
-                // 🔹 Generar número de factura automático
+                // 🔹 TU GENERACIÓN DE FACTURA ORIGINAL
                 var numeroFactura = GenerarNumeroFactura();
 
-                // 🔹 Crear entidad Venta
+                // 🔹 TU ENTIDAD VENTA ORIGINAL
                 var venta = new Venta
                 {
                     NumeroFactura = numeroFactura,
@@ -498,10 +497,11 @@ namespace Login_Análisis.Services
                     UsuarioCreacion = request.UsuarioCreacion,
                     MetodoPago = request.MetodoPago ?? "Efectivo",
                     FechaCreacion = DateTime.UtcNow,
-                    Estado = "COMPLETADA"
+                    Estado = "COMPLETADA",
+                    EsPresupuesto = false // 🔹 POR DEFECTO ES VENTA REAL
                 };
 
-                // 🔹 Calcular totales
+                // 🔹 TUS CÁLCULOS ORIGINALES
                 decimal subtotal = 0;
                 var detalles = new List<DetalleVenta>();
 
@@ -518,13 +518,8 @@ namespace Login_Análisis.Services
                     if (unidadMedida == null)
                         return (false, "Unidad de medida no encontrada", null);
 
-                    // ⚙️ Conversión a unidad base
                     var cantidadBase = detalleRequest.Cantidad * unidadMedida.FactorConversion;
-
-                    // ⚙️ Precio fijo (no editable)
                     var precioUnitario = producto.PrecioVenta;
-
-                    // ⚙️ Descuento (si aplica)
                     var precioConDescuento = precioUnitario * (1 - (detalleRequest.DescuentoAplicado / 100));
                     var totalLinea = detalleRequest.Cantidad * precioConDescuento;
                     subtotal += totalLinea;
@@ -543,16 +538,13 @@ namespace Login_Análisis.Services
                     detalles.Add(detalle);
                 }
 
-                // 🔹 Calcular descuentos e impuestos
                 venta.Subtotal = subtotal - request.DescuentoGlobal;
-                venta.Impuestos = request.AplicarIVA ? venta.Subtotal * 0.12m : 0; // 12% IVA
+                venta.Impuestos = request.AplicarIVA ? venta.Subtotal * 0.12m : 0;
                 venta.Total = venta.Subtotal + venta.Impuestos;
 
-                // 🔹 Guardar venta principal
                 _context.Venta.Add(venta);
                 await _context.SaveChangesAsync();
 
-                // 🔹 Guardar detalles y actualizar stock
                 foreach (var detalle in detalles)
                 {
                     detalle.VentaId = venta.Id;
@@ -572,17 +564,195 @@ namespace Login_Análisis.Services
             {
                 await transaction.RollbackAsync();
 
-                // 🔹 Si es un error conocido de validación
                 if (ex.Message.Contains("no encontrado") || ex.Message.Contains("inexistente"))
                 {
                     return (false, $"Datos inválidos: {ex.Message}", null);
                 }
 
-                // 🔹 Error inesperado (mantiene trazabilidad)
                 return (false, $"Error interno: {ex.Message}", null);
             }
         }
 
+        // 🔹 AGREGAMOS MÉTODO SEPARADO PARA PRESUPUESTOS (NO INTERFIERE CON VENTAS)
+        public async Task<(bool success, string message, Venta presupuesto)> CrearPresupuesto(VentaRequest request)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Validaciones similares a ventas pero SIN verificación de stock
+                if (request.Detalles == null || !request.Detalles.Any())
+                {
+                    return (false, "Debe incluir al menos un producto en el presupuesto", null);
+                }
+
+                foreach (var detalle in request.Detalles)
+                {
+                    if (detalle.ProductoId <= 0)
+                        return (false, "Producto no válido en el detalle del presupuesto", null);
+
+                    if (detalle.UnidadMedidaId <= 0)
+                        detalle.UnidadMedidaId = 1;
+
+                    if (detalle.Cantidad <= 0)
+                        return (false, "La cantidad del producto debe ser mayor a 0", null);
+                }
+
+                // Generar número de presupuesto (diferente al de factura)
+                var numeroPresupuesto = GenerarNumeroPresupuesto();
+
+                // Crear presupuesto (similar a venta pero con flags diferentes)
+                var presupuesto = new Venta
+                {
+                    NumeroFactura = numeroPresupuesto,
+                    FechaVenta = request.FechaVenta,
+                    ClienteId = request.ClienteId,
+                    NombreCliente = request.NombreCliente,
+                    NITCliente = request.NITCliente,
+                    DescuentoGlobal = request.DescuentoGlobal,
+                    AplicarIVA = request.AplicarIVA,
+                    Observaciones = request.Observaciones,
+                    UsuarioCreacion = request.UsuarioCreacion,
+                    MetodoPago = request.MetodoPago ?? "Efectivo",
+                    FechaCreacion = DateTime.UtcNow,
+                    Estado = "PRESUPUESTO", // Estado diferente
+                    EsPresupuesto = true // Marcar como presupuesto
+                };
+
+                // Cálculos idénticos a ventas
+                decimal subtotal = 0;
+                var detalles = new List<DetalleVenta>();
+
+                foreach (var detalleRequest in request.Detalles)
+                {
+                    var producto = await _context.Productos.FindAsync(detalleRequest.ProductoId);
+                    if (producto == null)
+                        return (false, $"Producto con ID {detalleRequest.ProductoId} no encontrado", null);
+
+                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalleRequest.UnidadMedidaId)
+                                        ?? await _context.UnidadesMedida.FirstOrDefaultAsync(u => u.Id == producto.UnidadMedidaBaseId)
+                                        ?? await _context.UnidadesMedida.FirstOrDefaultAsync();
+
+                    if (unidadMedida == null)
+                        return (false, "Unidad de medida no encontrada", null);
+
+                    var cantidadBase = detalleRequest.Cantidad * unidadMedida.FactorConversion;
+                    var precioUnitario = producto.PrecioVenta;
+                    var precioConDescuento = precioUnitario * (1 - (detalleRequest.DescuentoAplicado / 100));
+                    var totalLinea = detalleRequest.Cantidad * precioConDescuento;
+                    subtotal += totalLinea;
+
+                    var detalle = new DetalleVenta
+                    {
+                        ProductoId = detalleRequest.ProductoId,
+                        UnidadMedidaId = unidadMedida.Id,
+                        Cantidad = detalleRequest.Cantidad,
+                        CantidadBase = cantidadBase,
+                        PrecioUnitario = precioConDescuento,
+                        DescuentoAplicado = detalleRequest.DescuentoAplicado,
+                        TotalLinea = totalLinea
+                    };
+
+                    detalles.Add(detalle);
+                }
+
+                presupuesto.Subtotal = subtotal - request.DescuentoGlobal;
+                presupuesto.Impuestos = request.AplicarIVA ? presupuesto.Subtotal * 0.12m : 0;
+                presupuesto.Total = presupuesto.Subtotal + presupuesto.Impuestos;
+
+                _context.Venta.Add(presupuesto);
+                await _context.SaveChangesAsync();
+
+                // 🔹 DIFERENCIA CLAVE: NO ACTUALIZAMOS INVENTARIO
+                foreach (var detalle in detalles)
+                {
+                    detalle.VentaId = presupuesto.Id;
+                    _context.DetalleVenta.Add(detalle);
+                    // 🔹 NO llamamos a ActualizarInventarioVenta para presupuestos
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, "Presupuesto creado exitosamente", presupuesto);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error al crear presupuesto: {ex.Message}", null);
+            }
+        }
+
+        // 🔹 MANTENEMOS TU MÉTODO ORIGINAL DE OBTENER VENTAS
+        public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null, bool? esPresupuesto = null)
+        {
+            var query = _context.Venta
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .Include(v => v.Cliente)
+                .Include(v => v.Usuario)
+                .AsQueryable();
+
+            // FILTRO FECHA INICIO
+            if (fechaInicio.HasValue)
+            {
+                query = query.Where(v => v.FechaVenta >= fechaInicio.Value.Date);
+            }
+
+            // FILTRO FECHA FIN
+            if (fechaFin.HasValue)
+            {
+                var fin = fechaFin.Value.Date.AddDays(1);
+                query = query.Where(v => v.FechaVenta < fin);
+            }
+
+            if (!string.IsNullOrEmpty(estado))
+            {
+                query = query.Where(v => v.Estado == estado);
+            }
+
+            // 🔹 NUEVO FILTRO: PRESUPUESTO O VENTA REAL
+            if (esPresupuesto.HasValue)
+            {
+                query = query.Where(v => v.EsPresupuesto == esPresupuesto.Value);
+            }
+
+            return await query
+                .OrderByDescending(v => v.FechaVenta)
+                .ToListAsync();
+        }
+
+        // 🔹 AGREGAMOS MÉTODO ESPECÍFICO PARA OBTENER PRESUPUESTOS
+        public async Task<List<Venta>> ObtenerPresupuestos(DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        {
+            var query = _context.Venta
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(v => v.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .Include(v => v.Cliente)
+                .Include(v => v.Usuario)
+                .Where(v => v.EsPresupuesto) // 🔹 Solo presupuestos
+                .AsQueryable();
+
+            if (fechaInicio.HasValue)
+            {
+                query = query.Where(v => v.FechaVenta >= fechaInicio.Value.Date);
+            }
+
+            if (fechaFin.HasValue)
+            {
+                var fin = fechaFin.Value.Date.AddDays(1);
+                query = query.Where(v => v.FechaVenta < fin);
+            }
+
+            return await query
+                .OrderByDescending(v => v.FechaVenta)
+                .ToListAsync();
+        }
+
+        // 🔹 MANTENEMOS TODOS TUS MÉTODOS ORIGINALES SIN CAMBIOS
         private async Task<decimal> CalcularDescuentoPorCantidad(int productoId, decimal cantidad)
         {
             var descuentos = await _context.DescuentosProducto
@@ -593,21 +763,19 @@ namespace Login_Análisis.Services
             return descuentos.FirstOrDefault()?.PorcentajeDescuento ?? 0;
         }
 
+        // 🔹 MANTENEMOS TU MÉTODO ORIGINAL DE ACTUALIZAR INVENTARIO
         private async Task ActualizarInventarioVenta(Producto producto, DetalleVenta detalle)
         {
             var cantidadAnterior = producto.StockActual;
 
-            // Verificar stock suficiente
             if (producto.StockActual < detalle.CantidadBase)
             {
                 throw new Exception($"Stock insuficiente para el producto {producto.Nombre}. Stock actual: {producto.StockActual}, Se requiere: {detalle.CantidadBase}");
             }
 
-            // Reducir stock
             producto.StockActual -= detalle.CantidadBase;
             producto.FechaActualizacion = DateTime.UtcNow;
 
-            // Registrar movimiento de inventario
             var movimiento = new MovimientoInventario
             {
                 ProductoId = producto.Id,
@@ -625,40 +793,6 @@ namespace Login_Análisis.Services
             };
 
             _context.MovimientosInventario.Add(movimiento);
-        }
-
-        public async Task<List<Venta>> ObtenerVentas(DateTime? fechaInicio = null, DateTime? fechaFin = null, string? estado = null)
-        {
-            var query = _context.Venta
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.Producto)
-                .Include(v => v.Detalles)
-                    .ThenInclude(d => d.UnidadMedida)
-                .Include(v => v.Cliente)
-                .Include(v => v.Usuario)
-                .AsQueryable();
-
-            // FILTRO FECHA INICIO
-            if (fechaInicio.HasValue)
-            {
-                query = query.Where(v => v.FechaVenta >= fechaInicio.Value.Date);
-            }
-
-            // FILTRO FECHA FIN CORRECTO (fin +1 día)
-            if (fechaFin.HasValue)
-            {
-                var fin = fechaFin.Value.Date.AddDays(1);
-                query = query.Where(v => v.FechaVenta < fin);
-            }
-
-            if (!string.IsNullOrEmpty(estado))
-            {
-                query = query.Where(v => v.Estado == estado);
-            }
-
-            return await query
-                .OrderByDescending(v => v.FechaVenta)
-                .ToListAsync();
         }
 
         public async Task<(bool success, string message)> CambiarEstadoVenta(int ventaId, string estado)
@@ -815,6 +949,25 @@ namespace Login_Análisis.Services
 
             return $"FAC-{numero:000000}";
         }
+        private string GenerarNumeroPresupuesto()
+        {
+            var ultimoPresupuesto = _context.Venta
+                .Where(v => v.NumeroFactura.StartsWith("PRE-"))
+                .OrderByDescending(v => v.Id)
+                .FirstOrDefault();
+
+            var numero = 1;
+            if (ultimoPresupuesto != null)
+            {
+                var partes = ultimoPresupuesto.NumeroFactura.Split('-');
+                if (partes.Length > 1 && int.TryParse(partes[1], out int ultimoNumero))
+                {
+                    numero = ultimoNumero + 1;
+                }
+            }
+
+            return $"PRE-{numero:000000}";
+        }
 
 
         // Métodos para Movimientos de Inventario
@@ -955,6 +1108,29 @@ namespace Login_Análisis.Services
 
             return reporte;
         }
+
+        public async Task<byte[]> GenerarPresupuestoPdf(int presupuestoId)
+        {
+            try
+            {
+                var presupuesto = await _context.Venta
+                    .Include(v => v.Detalles).ThenInclude(d => d.Producto)
+                    .Include(v => v.Detalles).ThenInclude(d => d.UnidadMedida)
+                    .Include(v => v.Cliente)
+                    .Include(v => v.Usuario)
+                    .FirstOrDefaultAsync(v => v.Id == presupuestoId && v.EsPresupuesto);
+
+                if (presupuesto == null)
+                    throw new Exception("Presupuesto no encontrado");
+
+                return await _pdfService.GenerarPresupuestoPdf(presupuesto);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al generar PDF del presupuesto: {ex.Message}");
+            }
+        }
+
         public async Task<object> GenerarReporteInventario()
         {
             var productos = await _context.Productos

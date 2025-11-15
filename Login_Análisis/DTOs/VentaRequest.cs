@@ -21,6 +21,8 @@ namespace Login_Análisis.DTOs
         public string Observaciones { get; set; }
         public int UsuarioCreacion { get; set; }
 
+        public bool EsPresupuesto { get; set; } = false;
+
         [Required]
         public List<DetalleVentaRequest> Detalles { get; set; }
     }

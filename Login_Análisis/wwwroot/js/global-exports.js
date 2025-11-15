@@ -8,6 +8,14 @@ window.editUser = editUser;
 window.deleteUser = deleteUser;
 window.activateUser = activateUser;
 window.logout = logout;
+window.checkAuth = checkAuth;
+window.logout = logout;
+window.togglePassword = togglePassword;
+window.checkAuth = checkAuth;
+window.getCurrentUser = getCurrentUser;
+window.getCurrentUserRole = getCurrentUserRole;
+window.hasRole = hasRole;
+window.applyRoleRestrictions = applyRoleRestrictions;
 
 // Navegación
 window.showWelcomeView = showWelcomeView;

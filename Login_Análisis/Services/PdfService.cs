@@ -13,13 +13,13 @@ namespace Login_Análisis.Services
 {
     public interface IPdfService
     {
-        Task<byte[]> GenerarFacturaVenta(int ventaId);
+        Task<byte[]> GenerarFacturaVenta(int ventaId); 
         Task<byte[]> GenerarReporteVentas(DateTime? fechaInicio, DateTime? fechaFin);
         Task<byte[]> GenerarReporteComprasPdf(DateTime? fechaInicio, DateTime? fechaFin);
         Task<byte[]> GenerarReporteInventarioPdf();
         Task<byte[]> GenerarReporteMovimientosInventarioPdf(DateTime? fechaInicio, DateTime? fechaFin);
-
-        Task<byte[]> GenerarFacturaCompra(int compraId);
+        Task<byte[]> GenerarFacturaCompra(int compraId); 
+        Task<byte[]> GenerarPresupuestoPdf(Venta presupuesto);
     }
 
     public class PdfService : IPdfService
@@ -34,7 +34,8 @@ namespace Login_Análisis.Services
             CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("es-GT");
         }
 
-        public async Task<byte[]> GenerarFacturaVenta(int ventaId)
+        // 🔹 CORREGIR EL NOMBRE DEL MÉTODO
+        public async Task<byte[]> GenerarFacturaVenta(int ventaId) // 🔹 CORREGIDO: "Factura" con "c"
         {
             var venta = await _context.Venta
                 .Include(v => v.Detalles).ThenInclude(d => d.Producto)
@@ -81,14 +82,15 @@ namespace Login_Análisis.Services
                     {
                         col.Spacing(15);
 
-                        col.Item().Text("FACTURA DE VENTA")
+                        col.Item().Text("FACTURA DE VENTA") // 🔹 CORREGIDO: "Factura" con "c"
                             .FontSize(15).Bold().FontColor("#003399");
 
+                        // ... (el resto del código del método permanece igual)
                         col.Item().Border(1).Padding(10).Column(info =>
                         {
                             info.Item().Row(r =>
                             {
-                                r.RelativeItem().Text($"Número de Factura:").Bold();
+                                r.RelativeItem().Text($"Número de Factura:").Bold(); // 🔹 CORREGIDO: "Factura" con "c"
                                 r.RelativeItem().Text(venta.NumeroFactura);
                             });
 
@@ -157,7 +159,6 @@ namespace Login_Análisis.Services
                         });
 
                         // totales 
-
                         col.Item().AlignRight().Width(250).Border(1).Padding(10).Column(tot =>
                         {
                             tot.Item().Row(r =>
@@ -180,7 +181,6 @@ namespace Login_Análisis.Services
                         });
 
                         //QR
-
                         col.Item().PaddingTop(30).AlignCenter().Column(q =>
                         {
                             q.Item().Text("VERIFICACIÓN").Bold().FontColor("#003399").FontSize(12).AlignCenter();
@@ -195,6 +195,206 @@ namespace Login_Análisis.Services
                         txt.CurrentPageNumber();
                         txt.Span(" de ");
                         txt.TotalPages();
+                    });
+                });
+            });
+
+            return document.GeneratePdf();
+        }
+
+        // 🔹 AGREGAR EL MÉTODO PARA PRESUPUESTOS
+        public async Task<byte[]> GenerarPresupuestoPdf(Venta presupuesto)
+        {
+            // Asegurarnos de que los detalles estén cargados
+            if (presupuesto.Detalles == null)
+            {
+                presupuesto = await _context.Venta
+                    .Include(v => v.Detalles).ThenInclude(d => d.Producto)
+                    .Include(v => v.Detalles).ThenInclude(d => d.UnidadMedida)
+                    .Include(v => v.Cliente)
+                    .Include(v => v.Usuario)
+                    .FirstOrDefaultAsync(v => v.Id == presupuesto.Id);
+            }
+
+            // ✅ Generar QR para el presupuesto
+            using var qrGenerator = new QRCodeGenerator();
+            using var qrData = qrGenerator.CreateQrCode($"PRESUPUESTO:{presupuesto.NumeroFactura}", QRCodeGenerator.ECCLevel.Q);
+            using var qr = new QRCode(qrData);
+            using var qrBitmap = qr.GetGraphic(6);
+            using var qrStream = new MemoryStream();
+            qrBitmap.Save(qrStream, System.Drawing.Imaging.ImageFormat.Png);
+            var qrBytes = qrStream.ToArray();
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(30);
+                    page.DefaultTextStyle(t => t.FontSize(11));
+
+                    // Encabezado
+                    page.Header().Column(col =>
+                    {
+                        col.Item().Text("Centro Plástico Leonor")
+                            .Bold().FontSize(20).FontColor("#003399");
+
+                        col.Item().Text("Distribuidora y Ventas Generales")
+                            .FontSize(11);
+
+                        col.Item().Text("NIT: 548904-1")
+                            .FontSize(10);
+
+                        col.Item().Text("Tel: (502) 7872-2173 • 3ra. Avenida y 8a. Calle B Zona 1 Mazatenango, Suchitepéquez")
+                            .FontSize(9).FontColor(Colors.Grey.Darken2);
+                    });
+
+                    page.Content().PaddingTop(10).Column(col =>
+                    {
+                        col.Spacing(15);
+
+                        // 🔹 Título específico para presupuesto
+                        col.Item().Text("PRESUPUESTO")
+                            .FontSize(15).Bold().FontColor("#FF6600");
+
+                        col.Item().Border(1).Padding(10).Column(info =>
+                        {
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text($"Número de Presupuesto:").Bold();
+                                r.RelativeItem().Text(presupuesto.NumeroFactura);
+                            });
+
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text($"Fecha:").Bold();
+                                r.RelativeItem().Text(presupuesto.FechaVenta.ToString("dd/MM/yyyy HH:mm"));
+                            });
+
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text($"Cliente:").Bold();
+                                r.RelativeItem().Text(presupuesto.NombreCliente ?? "Consumidor Final");
+                            });
+
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("NIT Cliente:").Bold();
+                                r.RelativeItem().Text(presupuesto.NITCliente ?? "CF");
+                            });
+
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Estado:").Bold();
+                                r.RelativeItem().Text(presupuesto.Estado);
+                            });
+
+                            // 🔹 Información específica de presupuesto
+                            info.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Válido hasta:").Bold();
+                                r.RelativeItem().Text(DateTime.Now.AddDays(30).ToString("dd/MM/yyyy"));
+                            });
+                        });
+
+                        col.Item().PaddingTop(10).Element(e =>
+                        {
+                            e.Text(t => t.Span("DETALLES DEL PRESUPUESTO").FontSize(14).Bold().FontColor("#FF6600"));
+                        });
+
+                        col.Item().Border(1).Padding(10).Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30); // #
+                                columns.RelativeColumn(3);  // Producto
+                                columns.ConstantColumn(60); // Cantidad
+                                columns.ConstantColumn(60); // Unidad
+                                columns.ConstantColumn(80); // Precio
+                                columns.ConstantColumn(80); // Total
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Background("#FF6600").Padding(5).Text("#").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#FF6600").Padding(5).Text("PRODUCTO").FontColor(Colors.White).Bold();
+                                header.Cell().Background("#FF6600").Padding(5).Text("CANT.").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#FF6600").Padding(5).Text("UNIDAD").FontColor(Colors.White).Bold().AlignCenter();
+                                header.Cell().Background("#FF6600").Padding(5).Text("PRECIO").FontColor(Colors.White).Bold().AlignRight();
+                                header.Cell().Background("#FF6600").Padding(5).Text("TOTAL").FontColor(Colors.White).Bold().AlignRight();
+                            });
+
+                            int index = 1;
+                            foreach (var d in presupuesto.Detalles)
+                            {
+                                table.Cell().BorderBottom(1).Padding(5).Text(index++.ToString()).AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.Producto?.Nombre ?? "N/A");
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.Cantidad.ToString("F2")).AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.UnidadMedida?.Abreviatura ?? "UND").AlignCenter();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.PrecioUnitario.ToString("C")).AlignRight();
+                                table.Cell().BorderBottom(1).Padding(5).Text(d.TotalLinea.ToString("C")).AlignRight();
+                            }
+                        });
+
+                        // Totales 
+                        col.Item().AlignRight().Width(250).Border(1).Padding(10).Column(tot =>
+                        {
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Subtotal:").Bold();
+                                r.RelativeItem().AlignRight().Text(presupuesto.Subtotal.ToString("C"));
+                            });
+
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Impuestos:").Bold();
+                                r.RelativeItem().AlignRight().Text(presupuesto.Impuestos.ToString("C"));
+                            });
+
+                            tot.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("TOTAL:").Bold().FontSize(13);
+                                r.RelativeItem().AlignRight().Text(presupuesto.Total.ToString("C")).Bold().FontSize(13);
+                            });
+                        });
+
+                        // Observaciones del presupuesto
+                        if (!string.IsNullOrEmpty(presupuesto.Observaciones))
+                        {
+                            col.Item().Border(1).Padding(10).Column(obs =>
+                            {
+                                obs.Item().Text("Observaciones:").Bold();
+                                obs.Item().Text(presupuesto.Observaciones);
+                            });
+                        }
+
+                        // Notas importantes del presupuesto
+                        col.Item().Border(1).Background(Colors.Orange.Lighten5).Padding(10).Column(notas =>
+                        {
+                            notas.Item().Text("NOTAS IMPORTANTES:").Bold().FontColor("#FF6600");
+                            notas.Item().Text("• Este documento es un presupuesto y no tiene validez como factura");
+                            notas.Item().Text("• Los precios están sujetos a cambio sin previo aviso");
+                            notas.Item().Text("• Válido por 30 días a partir de la fecha de emisión");
+                            notas.Item().Text("• Para convertirlo en venta, contacte con nuestro personal");
+                        });
+
+                        // QR
+                        col.Item().PaddingTop(30).AlignCenter().Column(q =>
+                        {
+                            q.Item().Text("CÓDIGO DE VERIFICACIÓN").Bold().FontColor("#FF6600").FontSize(12).AlignCenter();
+                            q.Item().Width(120).Height(120).Image(qrBytes);
+                            q.Item().Text("Presupuesto - Centro Plástico Leonor").FontSize(9).FontColor(Colors.Grey.Darken2).AlignCenter();
+                        });
+                    });
+
+                    page.Footer().AlignCenter().Text(txt =>
+                    {
+                        txt.Span("Página ");
+                        txt.CurrentPageNumber();
+                        txt.Span(" de ");
+                        txt.TotalPages();
+                        txt.Span(" | Presupuesto válido hasta: ");
+                        txt.Span(DateTime.Now.AddDays(30).ToString("dd/MM/yyyy"));
                     });
                 });
             });

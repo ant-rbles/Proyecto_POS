@@ -3,11 +3,15 @@ using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Login_Análisis.Constants;
+using Login_Análisis.Attributes;
 
 namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ReportesController : ControllerBase
     {
         private readonly ProductoService _productoService;
@@ -20,7 +24,8 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("ventas")]
-        public async Task<IActionResult> ReporteVentas([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin,[FromQuery] string? tipoReporte = "diario")
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede ver reportes de ventas
+        public async Task<IActionResult> ReporteVentas([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin, [FromQuery] string? tipoReporte = "diario")
         {
             try
             {
@@ -34,6 +39,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("inventario")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)] // Todos pueden consultar inventario
         public async Task<IActionResult> ReporteInventario()
         {
             try
@@ -48,6 +54,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("inventario/detallado")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)] // Todos pueden consultar inventario detallado
         public async Task<IActionResult> ReporteInventarioDetallado()
         {
             try
@@ -94,9 +101,9 @@ namespace Login_Análisis.Controllers
             }
         }
 
-
         [HttpGet("productos-mas-vendidos")]
-        public async Task<IActionResult> ReporteProductosMasVendidos([FromQuery] DateTime? fechaInicio,[FromQuery] DateTime? fechaFin,[FromQuery] int top = 10)
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede ver productos más vendidos
+        public async Task<IActionResult> ReporteProductosMasVendidos([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin, [FromQuery] int top = 10)
         {
             try
             {
@@ -110,7 +117,8 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("movimientos-inventario")]
-        public async Task<IActionResult> ReporteMovimientosInventario( [FromQuery] DateTime? fechaInicio,[FromQuery] DateTime? fechaFin, [FromQuery] string? tipoMovimiento = null)
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede ver reportes de movimientos
+        public async Task<IActionResult> ReporteMovimientosInventario([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin, [FromQuery] string? tipoMovimiento = null)
         {
             try
             {
@@ -124,6 +132,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("compras")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede ver reportes de compras
         public async Task<IActionResult> ReporteCompras([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
         {
             try
@@ -138,6 +147,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("pdf/ventas")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede exportar PDF de ventas
         public async Task<IActionResult> DescargarReporteVentasPdf([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
         {
             try
@@ -152,6 +162,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("pdf/inventario")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)] // Admin y Cajero pueden exportar PDF de inventario
         public async Task<IActionResult> DescargarReporteInventarioPdf()
         {
             try
@@ -166,6 +177,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("pdf/compras")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede exportar PDF de compras
         public async Task<IActionResult> DescargarReporteComprasPdf([FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
         {
             try
@@ -184,9 +196,10 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("pdf/movimientos")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede exportar PDF de movimientos
         public async Task<IActionResult> DescargarReporteMovimientosPdf(
-    [FromQuery] DateTime? fechaInicio,
-    [FromQuery] DateTime? fechaFin)
+            [FromQuery] DateTime? fechaInicio,
+            [FromQuery] DateTime? fechaFin)
         {
             try
             {

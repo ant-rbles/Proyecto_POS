@@ -5,11 +5,15 @@ using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Login_Análisis.Constants;
+using Login_Análisis.Attributes;
 
 namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ProductosController : ControllerBase
     {
         private readonly ProductoService _productoService;
@@ -19,9 +23,9 @@ namespace Login_Análisis.Controllers
             _productoService = productoService;
         }
 
-        //Productos
-
+        // Productos - Consulta para todos los roles
         [HttpGet]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
         {
             var productos = await _productoService.ObtenerProductosActivosAsync();
@@ -29,6 +33,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("todos")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)] // Vendedor no ve productos inactivos
         public async Task<ActionResult<IEnumerable<Producto>>> GetTodosProductos()
         {
             try
@@ -43,6 +48,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("por-proveedor/{proveedorId}")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<IActionResult> ObtenerProductosPorProveedor(int proveedorId)
         {
             try
@@ -57,6 +63,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpGet("{id}")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<IActionResult> ObtenerProducto(int id)
         {
             var producto = await _productoService.ObtenerProducto(id);
@@ -67,6 +74,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPost]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede crear productos
         public async Task<IActionResult> CrearProducto([FromBody] ProductRequest request)
         {
             if (!ModelState.IsValid)
@@ -141,6 +149,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPut("{id}")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede editar productos
         public async Task<IActionResult> ActualizarProducto(int id, [FromBody] ProductRequest request)
         {
             if (!ModelState.IsValid)
@@ -223,6 +232,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpDelete("{id}")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede eliminar productos
         public async Task<IActionResult> EliminarProducto(int id)
         {
             try
@@ -245,6 +255,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPut("{id}/activate")]
+        [RoleAccess(Roles.Administrador)] // Solo Administrador puede activar productos
         public async Task<IActionResult> ActivarProducto(int id)
         {
             try
@@ -265,8 +276,9 @@ namespace Login_Análisis.Controllers
             }
         }
 
-        // Conversión de unidades
+        // Conversión de unidades - Disponible para todos los roles
         [HttpGet("convertir-unidad")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<IActionResult> ConvertirUnidad([FromQuery] int desdeUnidadId, [FromQuery] int aUnidadId, [FromQuery] decimal cantidad)
         {
             try

@@ -1,6 +1,6 @@
-using Login_An�lisis.Controllers;
-using Login_An�lisis.Data;
-using Login_An�lisis.Services;
+﻿using Login_Análisis.Controllers;
+using Login_Análisis.Data;
+using Login_Análisis.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,14 +22,16 @@ builder.Services.AddScoped<EmailService>();
 
 // Configurar JwtSettings desde appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
 
 builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<ProductoService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<ProductoService>();
-builder.Services.AddScoped<VentasController>();
+builder.Services.AddScoped<EmailService>();
 
-// Configuraci�n JWT
+// Configuración JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
 var key = Encoding.ASCII.GetBytes(jwtSettings.Secret);
 
@@ -49,6 +51,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// 🔹 CONFIGURACIÓN DE AUTORIZACIÓN (FALTABA ESTO)
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Administrador", policy =>
+        policy.RequireRole("Administrador"));
+
+    options.AddPolicy("Cajero", policy =>
+        policy.RequireRole("Cajero"));
+
+    options.AddPolicy("Vendedor", policy =>
+        policy.RequireRole("Vendedor"));
+
+    // Política para múltiples roles
+    options.AddPolicy("Staff", policy =>
+        policy.RequireRole("Administrador", "Cajero", "Vendedor"));
+});
+
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -56,13 +75,14 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
-// Configuraci�n JSON para evitar ciclos de referencia
+// Configuración JSON para evitar ciclos de referencia
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     options.JsonSerializerOptions.WriteIndented = true;
     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
+
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -75,7 +95,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configurar URLs expl�citamente
+// Configurar URLs explícitamente
 app.Urls.Add("http://localhost:5000");
 app.Urls.Add("https://localhost:7000");
 
@@ -85,7 +105,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthorization(); 
 app.MapControllers();
 app.UseDefaultFiles();
 

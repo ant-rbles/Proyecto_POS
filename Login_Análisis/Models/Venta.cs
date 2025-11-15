@@ -1,8 +1,8 @@
-﻿    using System.ComponentModel.DataAnnotations;
-    using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-    namespace Login_Análisis.Models
-    {
+namespace Login_Análisis.Models
+{
     public class Venta
     {
         [Key]
@@ -51,6 +51,9 @@
 
         [Required]
         public bool AplicarIVA { get; set; } = true;
+
+        [Required]
+        public bool EsPresupuesto { get; set; } = false;
 
         public int UsuarioCreacion { get; set; }
 

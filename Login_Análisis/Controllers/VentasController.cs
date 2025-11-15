@@ -4,21 +4,30 @@ using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Login_Análisis.Constants;
+using Login_Análisis.Attributes;
 
 namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class VentasController : ControllerBase
     {
         private readonly ProductoService _productoService;
+        private readonly IAuthorizationService _authorizationService;
+        private readonly IUserContextService _userContext;
 
-        public VentasController(ProductoService productoService)
+        public VentasController(ProductoService productoService, IAuthorizationService authorizationService, IUserContextService userContext)
         {
             _productoService = productoService;
+            _authorizationService = authorizationService;
+            _userContext = userContext;
         }
 
-        [HttpPost]
+        [HttpPost("venta")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)]
         public async Task<IActionResult> CrearVenta([FromBody] VentaRequest request)
         {
             try
@@ -41,6 +50,9 @@ namespace Login_Análisis.Controllers
                         Errors = errores
                     });
                 }
+
+                // Marcar como venta real (no presupuesto)
+                request.EsPresupuesto = false;
 
                 // 🧮 VALIDAR STOCK ANTES DE CREAR VENTA
                 foreach (var detalle in request.Detalles)
@@ -99,8 +111,78 @@ namespace Login_Análisis.Controllers
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> ObtenerVentas(
+        [HttpPost("presupuesto")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
+        public async Task<IActionResult> CrearPresupuesto([FromBody] VentaRequest request)
+        {
+            try
+            {
+                // 🧩 VALIDACIÓN DE MODELO
+                if (!ModelState.IsValid)
+                {
+                    var errores = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+
+                    return BadRequest(new
+                    {
+                        Message = "Datos del presupuesto inválidos",
+                        Errors = errores
+                    });
+                }
+
+                // Marcar como presupuesto (no venta real)
+                request.EsPresupuesto = true;
+
+                // Para presupuestos, no validamos stock ya que es solo una cotización
+                // pero sí validamos que los productos existan
+                foreach (var detalle in request.Detalles)
+                {
+                    var producto = await _productoService.ObtenerProducto(detalle.ProductoId);
+                    if (producto == null)
+                    {
+                        return BadRequest(new
+                        {
+                            Message = $"El producto con ID {detalle.ProductoId} no existe."
+                        });
+                    }
+                }
+
+                // ✅ LLAMAR A LA LÓGICA DE CREACIÓN
+                var result = await _productoService.CrearVenta(request);
+
+                if (!result.success)
+                {
+                    Console.WriteLine($"⚠️ Fallo en la creación del presupuesto: {result.message}");
+                    return BadRequest(new { Message = result.message });
+                }
+
+                Console.WriteLine($"✅ Presupuesto creado correctamente con ID {result.venta.Id}");
+
+                return Ok(new
+                {
+                    Message = "Presupuesto creado exitosamente",
+                    Venta = result.venta,
+                    VentaId = result.venta.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("🔥 Error en CrearPresupuesto:");
+                Console.WriteLine($"Mensaje: {ex.Message}");
+
+                return BadRequest(new
+                {
+                    Message = "Error al crear el presupuesto",
+                    Error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("facturas")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)]
+        public async Task<IActionResult> ObtenerFacturas(
             [FromQuery] DateTime? fechaInicio = null,
             [FromQuery] DateTime? fechaFin = null,
             [FromQuery] string? estado = null)
@@ -111,20 +193,49 @@ namespace Login_Análisis.Controllers
                 fechaInicio ??= DateTime.Today.AddMonths(-1);
                 fechaFin ??= DateTime.Today.AddDays(1);
 
-                var ventas = await _productoService.ObtenerVentas(fechaInicio, fechaFin, estado);
+                // Obtener solo facturas (no presupuestos)
+                var ventas = await _productoService.ObtenerVentas(fechaInicio, fechaFin, estado, false);
 
                 if (ventas == null || !ventas.Any())
-                    return Ok(new List<object>()); // devuelve lista vacía para evitar 500
+                    return Ok(new List<object>());
 
                 return Ok(ventas);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Error al obtener ventas", Error = ex.Message });
+                return StatusCode(500, new { Message = "Error al obtener facturas", Error = ex.Message });
+            }
+        }
+
+        [HttpGet("presupuestos")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
+        public async Task<IActionResult> ObtenerPresupuestos(
+            [FromQuery] DateTime? fechaInicio = null,
+            [FromQuery] DateTime? fechaFin = null,
+            [FromQuery] string? estado = null)
+        {
+            try
+            {
+                // Valores por defecto si no vienen del frontend
+                fechaInicio ??= DateTime.Today.AddMonths(-1);
+                fechaFin ??= DateTime.Today.AddDays(1);
+
+                // Obtener solo presupuestos
+                var presupuestos = await _productoService.ObtenerVentas(fechaInicio, fechaFin, estado, true);
+
+                if (presupuestos == null || !presupuestos.Any())
+                    return Ok(new List<object>());
+
+                return Ok(presupuestos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error al obtener presupuestos", Error = ex.Message });
             }
         }
 
         [HttpGet("{id}")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<IActionResult> ObtenerVenta(int id)
         {
             var venta = await _productoService.ObtenerVenta(id);
@@ -135,6 +246,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPut("{id}/estado")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)]
         public async Task<IActionResult> CambiarEstadoVenta(int id, [FromBody] CambiarEstadoVentaRequest request)
         {
             try
@@ -151,14 +263,15 @@ namespace Login_Análisis.Controllers
             }
         }
 
-        [HttpGet("{id}/pdf")]
+        [HttpGet("{id}/pdf/factura")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)]
         public async Task<IActionResult> DescargarFacturaPdf(int id)
         {
             try
             {
                 var pdfBytes = await _productoService.GenerarFacturaPdf(id);
                 if (pdfBytes == null)
-                    return NotFound(new { Message = "Venta no encontrada" });
+                    return NotFound(new { Message = "Factura no encontrada" });
 
                 return File(pdfBytes, "application/pdf", $"factura_{id}.pdf");
             }
@@ -168,9 +281,26 @@ namespace Login_Análisis.Controllers
             }
         }
 
-        // Método para obtener estadísticas de ventas
+        [HttpGet("{id}/pdf/presupuesto")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
+        public async Task<IActionResult> DescargarPresupuestoPdf(int id)
+        {
+            try
+            {
+                var pdfBytes = await _productoService.GenerarPresupuestoPdf(id);
+                if (pdfBytes == null)
+                    return NotFound(new { Message = "Presupuesto no encontrado" });
+
+                return File(pdfBytes, "application/pdf", $"presupuesto_{id}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = $"Error al generar PDF: {ex.Message}" });
+            }
+        }
 
         [HttpGet("estadisticas")]
+        [RoleAccess(Roles.Administrador, Roles.Cajero)]
         public async Task<IActionResult> ObtenerEstadisticasVentas(
             [FromQuery] DateTime? fechaInicio = null,
             [FromQuery] DateTime? fechaFin = null)
