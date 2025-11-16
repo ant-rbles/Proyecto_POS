@@ -1,11 +1,14 @@
-﻿using Login_Análisis.Services;
-using Microsoft.AspNetCore.Mvc;
+﻿using Login_Análisis.Constants;
 using Login_Análisis.DTOs;
+using Login_Análisis.Filters;
+using Login_Análisis.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AuthorizeRole(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
     public class MovimientosController : ControllerBase
     {
         private readonly ProductoService _productoService;
@@ -36,6 +39,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPost("ajuste")]
+        [AuthorizeRole(Roles.Administrador)]
         public async Task<IActionResult> RegistrarAjuste([FromBody] AjusteDto dto)
         {
             var result = await _productoService.CrearAjusteInventario(

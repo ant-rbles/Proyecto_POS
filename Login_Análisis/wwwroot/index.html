@@ -117,63 +117,62 @@
 
         <div class="dashboard-body">
             <!-- Sidebar -->
-            <div class="sidebar">
+            <div class="sidebar" id="sidebar">
                 <div class="sidebar-header">
+                    <h3>Menú Principal</h3>
                 </div>
 
                 <div class="sidebar-section">Gestión Principal</div>
-                <a class="sidebar-item" onclick="showWelcomeView()">
+                <a class="sidebar-item" onclick="showWelcomeView()" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
 
-                <div class="sidebar-section">Usuarios y Seguridad</div>
-                <a class="sidebar-item" onclick="viewUsers()">
+                <div class="sidebar-section" id="usuarios-seccion">Usuarios y Seguridad</div>
+                <a class="sidebar-item" id="users-section" onclick="viewUsers()" data-tab="usuarios" data-role="Administrador">
                     <i class="fas fa-users"></i> Ver Usuarios
                 </a>
-                <a class="sidebar-item" onclick="toggleRegistrationForm()">
+                <a class="sidebar-item" id="registrar-user-section" onclick="toggleRegistrationForm()" data-role="Administrador">
                     <i class="fas fa-user-plus"></i> Registrar Usuario
                 </a>
 
-                <div class="sidebar-section">Inventario y Productos</div>
-                <a class="sidebar-item" onclick="openManagementTab('productos')">
+                <div class="sidebar-section" id="inventario-seccion">Inventario y Productos</div>
+                <a class="sidebar-item" id="productos-section" onclick="openManagementTab('productos')" data-tab="productos" data-role="Administrador">
                     <i class="fas fa-boxes"></i> Productos
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('categorias')">
+                <a class="sidebar-item" id="categorias-section" onclick="openManagementTab('categorias')" data-tab="categorias" data-role="Administrador">
                     <i class="fas fa-tags"></i> Categorías
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('unidades')">
+                <a class="sidebar-item" id="unidades-section" onclick="openManagementTab('unidades')" data-tab="unidades" data-role="Administrador">
                     <i class="fas fa-balance-scale"></i> Unidades Medida
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('inventario')">
+                <a class="sidebar-item" id="inventario-section" onclick="openManagementTab('inventario')" data-tab="inventario" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-warehouse"></i> Inventario
                 </a>
 
-                <div class="sidebar-section">Compras y Proveedores</div>
-                <a class="sidebar-item" onclick="openManagementTab('proveedores')">
+                <div class="sidebar-section" id="compras-seccion">Compras y Proveedores</div>
+                <a class="sidebar-item" id="proveedores-section" onclick="openManagementTab('proveedores')" data-tab="proveedores" data-role="Administrador">
                     <i class="fas fa-truck"></i> Proveedores
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('compras')">
+                <a class="sidebar-item" id="compras-section" onclick="openManagementTab('compras')" data-tab="compras" data-role="Administrador">
                     <i class="fas fa-shopping-cart"></i> Compras
                 </a>
 
-                <div class="sidebar-section">Ventas y Clientes</div>
-                <a class="sidebar-item" onclick="openManagementTab('ventas')">
+                <div class="sidebar-section" id="ventas-seccion">Ventas y Clientes</div>
+                <a class="sidebar-item" id="ventas-section" onclick="openManagementTab('ventas')" data-tab="ventas" data-role="Administrador,Cajero">
                     <i class="fas fa-cash-register"></i> Ventas
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('clientes')">
+                <a class="sidebar-item" id="clientes-section" onclick="openManagementTab('clientes')" data-tab="clientes" data-role="Administrador">
                     <i class="fas fa-users"></i> Clientes
                 </a>
 
-                <div class="sidebar-section">Reportes y Análisis</div>
-                <a class="sidebar-item" onclick="openManagementTab('movimientos')">
+                <div class="sidebar-section" id="reportes-seccion">Reportes y Análisis</div>
+                <a class="sidebar-item" id="movimientos-section" onclick="openManagementTab('movimientos')" data-tab="movimientos" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-exchange-alt"></i> Movimientos
                 </a>
-                <a class="sidebar-item" onclick="openManagementTab('reportes')">
+                <a class="sidebar-item" id="reportes-section" onclick="openManagementTab('reportes')" data-tab="reportes" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-chart-bar"></i> Reportes
                 </a>
             </div>
-
-
 
             <div class="dashboard-content">
                 <!-- Vista de Bienvenida -->
