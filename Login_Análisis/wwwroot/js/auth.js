@@ -53,6 +53,31 @@ if (loginForm) {
     });
 }
 
+function handleLoginSuccess(data) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('userRole', data.user.rol);
+    localStorage.setItem('userName', data.user.nombre);
+
+    // Redirigir al dashboard según el rol
+    redirectToDashboard(data.user.rol);
+}
+
+function redirectToDashboard(role) {
+    switch (role) {
+        case 'Administrador':
+            window.location.href = '/dashboard-admin.html';
+            break;
+        case 'Cajero':
+            window.location.href = '/dashboard-cajero.html';
+            break;
+        case 'Vendedor':
+            window.location.href = '/dashboard-vendedor.html';
+            break;
+        default:
+            window.location.href = '/dashboard.html';
+    }
+}
+
 // Manejo de vistas del formulario de recuperación de contraseña
 if (showForgotPasswordLink) {
     showForgotPasswordLink.addEventListener('click', (e) => {

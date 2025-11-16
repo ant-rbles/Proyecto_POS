@@ -1,6 +1,7 @@
 using Login_Análisis.Constants;
 using Login_Análisis.DTOs.Requests;
 using Login_Análisis.DTOs.Responses;
+using Login_Análisis.Filters;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
@@ -77,13 +78,15 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("users")]
+    [AuthorizeRole(Roles.Administrador)]
     public async Task<IActionResult> GetUsers()
     {
         var users = await _authService.GetAllUsers();
         return Ok(users);
     }
 
-    [HttpGet("users/{id}")]
+    [HttpPut("users/{id}")]
+    [AuthorizeRole(Roles.Administrador)]
     public async Task<IActionResult> GetUser(int id)
     {
         try
@@ -142,6 +145,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpDelete("users/{id}")]
+    [AuthorizeRole(Roles.Administrador)]
     public async Task<IActionResult> DeleteUser(int id)
     {
         var result = await _authService.UpdateUserStatus(id, false);

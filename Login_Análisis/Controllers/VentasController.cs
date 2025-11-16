@@ -1,4 +1,6 @@
-﻿using Login_Análisis.DTOs;
+﻿using Login_Análisis.Constants;
+using Login_Análisis.DTOs;
+using Login_Análisis.Filters;
 using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +11,7 @@ namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AuthorizeRole(Roles.Administrador, Roles.Cajero)]
     public class VentasController : ControllerBase
     {
         private readonly ProductoService _productoService;

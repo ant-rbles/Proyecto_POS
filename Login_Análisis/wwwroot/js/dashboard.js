@@ -1,6 +1,6 @@
-﻿// Muestra el dashboard después de login
-function showDashboard(user) {
+﻿function showDashboard(user) {
     hideAllForms();
+    const dashboard = document.getElementById('dashboard');
     if (dashboard) dashboard.style.display = 'block';
 
     // Información básica del usuario
@@ -19,10 +19,18 @@ function showDashboard(user) {
         document.getElementById('userAvatar').textContent = initials;
     }
 
+    // Guardar el rol en localStorage para uso posterior
+    const userRole = user.rol || user.role;
+    localStorage.setItem('userRole', userRole);
+    localStorage.setItem('token', user.token); // Asegurar que el token se guarda
+
+    // Configurar interfaz según el rol del usuario
+    configurarInterfazPorRol(userRole);
+
     // Mostrar panel de administración solo para Administrador
     const databasePanel = document.getElementById('databasePanel');
     if (databasePanel) {
-        if (user.rol === 'Administrador' || user.role === 'Administrador') {
+        if (userRole === 'Administrador') {
             databasePanel.style.display = 'block';
         } else {
             databasePanel.style.display = 'none';
@@ -32,18 +40,14 @@ function showDashboard(user) {
     // Mostrar vista de bienvenida
     showWelcomeView();
 
-    // Cargar datos iniciales
-    loadUnidadesMedida();
-    loadProveedores();
-    loadCategorias();
-    loadProductos();
-    loadClientes();
+    // Cargar datos iniciales según permisos
+    cargarDatosInicialesPorRol(userRole);
 
     // Configurar event listeners para gestión
-    setTimeout(setupManagementEventListeners, 100);
+    setTimeout(() => setupManagementEventListeners(userRole), 100);
 }
 
-// Oculta secciones de contenido (tablas, formularios, inicio)
+// Función para ocultar todas las secciones de contenido
 function hideAllContentSections() {
     const sections = document.querySelectorAll('.content-section, .welcome-card, .user-registration-form, .management-panel, #managementTabs');
     sections.forEach(section => {
@@ -51,7 +55,7 @@ function hideAllContentSections() {
     });
 }
 
-// Muestra la vista de inicio (tarjeta de bienvenida)
+// Función para mostrar la vista de bienvenida
 function showWelcomeView() {
     hideAllContentSections();
     const welcomeCard = document.querySelector('.welcome-card');
@@ -61,8 +65,192 @@ function showWelcomeView() {
     currentSection = 'welcome';
 }
 
-// FUNCIÓN PRINCIPAL PARA ABRIR PESTAÑAS DE GESTIÓN
+// Función para ocultar todos los formularios
+function hideAllForms() {
+    const forms = document.querySelectorAll('.auth-container');
+    forms.forEach(form => {
+        form.style.display = 'none';
+    });
+}
+
+// Variable global para la sección actual
+let currentSection = 'welcome';
+
+// Función para configurar la interfaz según el rol
+function configurarInterfazPorRol(userRole) {
+    console.log('Configurando interfaz para rol:', userRole);
+
+    // Definir elementos visibles por rol
+    const elementosPorRol = {
+        'Administrador': [
+            'usuarios-seccion', 'users-section', 'registrar-user-section',
+            'inventario-seccion', 'productos-section', 'categorias-section', 'unidades-section', 'inventario-section',
+            'compras-seccion', 'proveedores-section', 'compras-section',
+            'ventas-seccion', 'ventas-section', 'clientes-section',
+            'reportes-seccion', 'movimientos-section', 'reportes-section'
+        ],
+        'Cajero': [
+            'inventario-seccion', 'inventario-section',
+            'ventas-seccion', 'ventas-section',
+            'reportes-seccion', 'movimientos-section', 'reportes-section'
+        ],
+        'Vendedor': [
+            'inventario-seccion', 'inventario-section',
+            'reportes-seccion', 'movimientos-section', 'reportes-section'
+        ]
+    };
+
+    // Ocultar todos los elementos del sidebar primero
+    const todosLosElementos = [
+        'usuarios-seccion', 'users-section', 'registrar-user-section',
+        'inventario-seccion', 'productos-section', 'categorias-section', 'unidades-section', 'inventario-section',
+        'compras-seccion', 'proveedores-section', 'compras-section',
+        'ventas-seccion', 'ventas-section', 'clientes-section',
+        'reportes-seccion', 'movimientos-section', 'reportes-section'
+    ];
+
+    todosLosElementos.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+
+    // Mostrar elementos permitidos según el rol
+    if (elementosPorRol[userRole]) {
+        elementosPorRol[userRole].forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = 'block';
+            }
+        });
+    }
+
+    // También configurar las tarjetas del dashboard
+    configurarTarjetasDashboard(userRole);
+
+    // Configurar permisos de solo lectura para roles no administradores
+    if (userRole !== 'Administrador') {
+        configurarModoSoloLectura(userRole);
+    }
+}
+
+// Función para configurar las tarjetas del dashboard por rol
+function configurarTarjetasDashboard(userRole) {
+    const tarjetasPorRol = {
+        'Administrador': [
+            'users-section', 'products-section', 'categorias-section', 'unidades-section',
+            'proveedores-section', 'clientes-section', 'compras-section', 'ventas-section',
+            'inventario-section', 'movimientos-section', 'reportes-section'
+        ],
+        'Cajero': [
+            'ventas-section', 'inventario-section', 'movimientos-section', 'reportes-section'
+        ],
+        'Vendedor': [
+            'inventario-section', 'movimientos-section', 'reportes-section'
+        ]
+    };
+
+    // Ocultar todas las tarjetas primero
+    const todasLasTarjetas = [
+        'users-section', 'products-section', 'categorias-section', 'unidades-section',
+        'proveedores-section', 'clientes-section', 'compras-section', 'ventas-section',
+        'inventario-section', 'movimientos-section', 'reportes-section'
+    ];
+
+    todasLasTarjetas.forEach(cardId => {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.style.display = 'none';
+        }
+    });
+
+    // Mostrar tarjetas permitidas
+    if (tarjetasPorRol[userRole]) {
+        tarjetasPorRol[userRole].forEach(cardId => {
+            const card = document.getElementById(cardId);
+            if (card) {
+                card.style.display = 'block';
+            }
+        });
+    }
+}
+
+// Función para cargar datos iniciales según el rol
+function cargarDatosInicialesPorRol(userRole) {
+    // Datos que todos los roles necesitan
+    loadUnidadesMedida();
+    loadProductos();
+    loadClientes();
+
+    // Datos específicos por rol
+    if (userRole === 'Administrador') {
+        loadProveedores();
+        loadCategorias();
+    }
+
+    if (userRole === 'Cajero' || userRole === 'Administrador') {
+        // Datos necesarios para ventas
+        loadProveedores();
+    }
+}
+
+// Función para configurar modo solo lectura
+function configurarModoSoloLectura(userRole) {
+    console.log('Configurando modo solo lectura para:', userRole);
+
+    // Ocultar botones de acción según el rol
+    const accionesOcultas = {
+        'Cajero': ['btn-agregar-usuario', 'btn-editar-usuario', 'btn-eliminar-usuario',
+            'btn-agregar-producto', 'btn-editar-producto', 'btn-eliminar-producto',
+            'btn-agregar-proveedor', 'btn-editar-proveedor', 'btn-eliminar-proveedor',
+            'btn-agregar-categoria', 'btn-editar-categoria', 'btn-eliminar-categoria',
+            'btn-agregar-unidad', 'btn-editar-unidad', 'btn-eliminar-unidad',
+            'btn-crear-compra'],
+        'Vendedor': ['btn-agregar-usuario', 'btn-editar-usuario', 'btn-eliminar-usuario',
+            'btn-agregar-producto', 'btn-editar-producto', 'btn-eliminar-producto',
+            'btn-agregar-proveedor', 'btn-editar-proveedor', 'btn-eliminar-proveedor',
+            'btn-agregar-categoria', 'btn-editar-categoria', 'btn-eliminar-categoria',
+            'btn-agregar-unidad', 'btn-editar-unidad', 'btn-eliminar-unidad',
+            'btn-crear-compra', 'btn-crear-venta', 'btn-registrar-ajuste']
+    };
+
+    const accionesAOcultar = accionesOcultas[userRole] || [];
+
+    accionesAOcultar.forEach(btnId => {
+        const boton = document.getElementById(btnId);
+        if (boton) {
+            boton.style.display = 'none';
+        }
+    });
+
+    // También ocultar botones por clase
+    const clasesAOcultar = {
+        'Cajero': ['.btn-eliminar', '.btn-editar', '.btn-agregar'],
+        'Vendedor': ['.btn-eliminar', '.btn-editar', '.btn-agregar', '.btn-guardar']
+    };
+
+    const clases = clasesAOcultar[userRole] || [];
+    clases.forEach(clase => {
+        const botones = document.querySelectorAll(clase);
+        botones.forEach(boton => {
+            if (!boton.id || accionesAOcultar.includes(boton.id)) {
+                boton.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Actualizar la función openManagementTab para verificar permisos
 function openManagementTab(tabName) {
+    const userRole = localStorage.getItem('userRole');
+
+    // Verificar permisos antes de abrir la pestaña
+    if (!tienePermisoParaSeccion(userRole, tabName)) {
+        alert('No tiene permisos para acceder a esta sección.');
+        return;
+    }
+
     console.log('Abriendo pestaña:', tabName);
 
     // Ocultar todas las secciones de contenido
@@ -85,67 +273,122 @@ function openManagementTab(tabName) {
             selectedTab.style.display = 'block';
             console.log('Pestaña mostrada:', selectedTab.id);
 
-            // Cargar datos específicos de la pestaña
-            switch (tabName) {
-                case 'clientes':
-                    loadClientes();
-                    break;
-                case 'proveedores':
-                    console.log('Cargando TODOS los proveedores...');
-                    loadProveedores();
-                    break;
-                case 'productos':
-                    console.log('Forzando recarga de productos...');
-                    loadProductos();
-                    break;
-                case 'compras':
-                    loadCompras();
-                    cargarCompras();
-                    loadProductos().then(() => {
-                        updateProductosSelects();
-                    });
-                    break;
-                case 'inventario':
-                    loadInventario();
-                    break;
-                case 'ventas':
-                    cargarVentas();
-                    cargarEstadisticasVentas();
-                    loadProductos().then(() => {
-                        updateProductosSelects();
-                        updateProductosSelectsVentas();
-                        cargarUnidadesParaVenta();
-                    });
-                    break;
-                case 'categorias':
-                    loadCategorias();
-                    break;
-                case 'unidades':
-                    loadUnidadesMedida();
-                    break;
-                case 'reportes':
-                    inicializarSeccionReportes();
-                    break;
-                case 'movimientos':
-                    // Dejamos las fechas vacías para que se muestren todos
-                    document.getElementById('movimientoFechaInicio').value = "";
-                    document.getElementById('movimientoFechaFin').value = "";
-
-                    loadProductos().then(() => {
-                        cargarProductosParaAjuste();
-                        cargarProductosFiltro();
-                        cargarMovimientos(); // Esto ahora traerá TODOS
-                    });
-                    break;
-                case 'tarjetas':
-                    loadTarjetas();
-                    setTimeout(() => initTarjetasModule(), 20);
-                    break;
-            }
+            // Cargar datos específicos de la pestaña con verificación de permisos
+            cargarDatosPestana(tabName, userRole);
         } else {
-            console.error('No se encontró la pestaña:', `${tabName}Section`);
+            console.error('No se encontró la pestaña:', `tab-${tabName}`);
         }
     }
+}
+
+// Función para verificar permisos por sección
+function tienePermisoParaSeccion(userRole, seccion) {
+    const permisos = {
+        'Administrador': ['clientes', 'proveedores', 'productos', 'compras', 'inventario', 'ventas', 'categorias', 'unidades', 'reportes', 'movimientos', 'usuarios'],
+        'Cajero': ['ventas', 'inventario', 'movimientos', 'reportes'],
+        'Vendedor': ['inventario', 'movimientos', 'reportes']
+    };
+
+    return permisos[userRole] && permisos[userRole].includes(seccion);
+}
+
+// Función para cargar datos de pestaña con verificación de permisos
+function cargarDatosPestana(tabName, userRole) {
+    switch (tabName) {
+        case 'clientes':
+            if (userRole === 'Administrador') loadClientes();
+            break;
+        case 'proveedores':
+            if (userRole === 'Administrador') loadProveedores();
+            break;
+        case 'productos':
+            loadProductos(); // Todos pueden ver productos
+            break;
+        case 'compras':
+            if (userRole === 'Administrador') {
+                loadCompras();
+                cargarCompras();
+                loadProductos().then(() => {
+                    updateProductosSelects();
+                });
+            }
+            break;
+        case 'inventario':
+            loadInventario();
+            break;
+        case 'ventas':
+            if (userRole === 'Administrador' || userRole === 'Cajero') {
+                cargarVentas();
+                cargarEstadisticasVentas();
+                loadProductos().then(() => {
+                    updateProductosSelects();
+                    updateProductosSelectsVentas();
+                    cargarUnidadesParaVenta();
+                });
+            }
+            break;
+        case 'categorias':
+            if (userRole === 'Administrador') loadCategorias();
+            break;
+        case 'unidades':
+            if (userRole === 'Administrador') loadUnidadesMedida();
+            break;
+        case 'reportes':
+            inicializarSeccionReportes();
+            break;
+        case 'movimientos':
+            // Todos los roles pueden ver movimientos, pero con diferentes permisos de acción
+            document.getElementById('movimientoFechaInicio').value = "";
+            document.getElementById('movimientoFechaFin').value = "";
+
+            loadProductos().then(() => {
+                if (userRole === 'Administrador') {
+                    cargarProductosParaAjuste();
+                }
+                cargarProductosFiltro();
+                cargarMovimientos();
+            });
+            break;
+        case 'usuarios':
+            if (userRole === 'Administrador') {
+                // Cargar gestión de usuarios
+                cargarUsuarios();
+            }
+            break;
+    }
+}
+
+// Actualizar setupManagementEventListeners para considerar roles
+function setupManagementEventListeners(userRole) {
+    console.log('Configurando event listeners para rol:', userRole);
+
+    // Solo configurar listeners para elementos visibles
+    const managementCards = document.querySelectorAll('.management-card');
+    managementCards.forEach(card => {
+        if (card.style.display !== 'none') {
+            card.addEventListener('click', function () {
+                const tabName = this.getAttribute('data-tab');
+                if (tabName && tienePermisoParaSeccion(userRole, tabName)) {
+                    openManagementTab(tabName);
+                }
+            });
+        }
+    });
+
+    // Configurar sidebar items
+    const sidebarItems = document.querySelectorAll('.sidebar-item');
+    sidebarItems.forEach(item => {
+        if (item.style.display !== 'none') {
+            item.addEventListener('click', function () {
+                const tabName = this.getAttribute('data-tab');
+                if (tabName && tienePermisoParaSeccion(userRole, tabName)) {
+                    openManagementTab(tabName);
+                }
+            });
+        }
+    });
+
+    console.log('Event listeners configurados para rol:', userRole);
 }
 
 function closeManagementTabs() {

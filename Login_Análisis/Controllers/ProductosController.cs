@@ -1,5 +1,7 @@
-﻿using Login_Análisis.DTOs;
+﻿using Login_Análisis.Constants;
+using Login_Análisis.DTOs;
 using Login_Análisis.DTOs.Requests;
+using Login_Análisis.Filters;
 using Login_Análisis.Models;
 using Login_Análisis.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +12,7 @@ namespace Login_Análisis.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AuthorizeRole(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
     public class ProductosController : ControllerBase
     {
         private readonly ProductoService _productoService;
@@ -67,6 +70,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPost]
+        [AuthorizeRole(Roles.Administrador)]
         public async Task<IActionResult> CrearProducto([FromBody] ProductRequest request)
         {
             if (!ModelState.IsValid)
@@ -141,6 +145,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpPut("{id}")]
+        [AuthorizeRole(Roles.Administrador)]
         public async Task<IActionResult> ActualizarProducto(int id, [FromBody] ProductRequest request)
         {
             if (!ModelState.IsValid)
@@ -223,6 +228,7 @@ namespace Login_Análisis.Controllers
         }
 
         [HttpDelete("{id}")]
+        [AuthorizeRole(Roles.Administrador)]
         public async Task<IActionResult> EliminarProducto(int id)
         {
             try
