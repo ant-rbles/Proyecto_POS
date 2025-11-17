@@ -1,7 +1,7 @@
 ﻿//Funciones Productos   
 function showProductoForm(producto = null) {
     openManagementTab('productos');
-    loadProveedores(); 
+    loadProveedores();
 
     const form = document.getElementById('productoForm');
     const title = document.getElementById('productoFormTitle');
@@ -88,7 +88,7 @@ async function handleProductoSubmit(e) {
             Nombre: document.getElementById('productoNombre').value.trim(),
             Descripcion: document.getElementById('productoDescripcion').value.trim() || "",
             ProveedorId: document.getElementById('productoProveedor').value ?
-                parseInt(document.getElementById('productoProveedor').value) : null, 
+                parseInt(document.getElementById('productoProveedor').value) : null,
             CategoriaId: document.getElementById('productoCategoria').value ?
                 parseInt(document.getElementById('productoCategoria').value) : null,
             UnidadMedidaBaseId: parseInt(document.getElementById('productoUnidadBase').value),
@@ -297,6 +297,8 @@ async function loadProductos() {
 
             // Asignar a variable global
             productos = productosData;
+            // Exponer globalmente para otros módulos
+            window.productos = productos;
 
             // Mostrar estadísticas
             const activos = productos.filter(p => p.estado === true).length;
@@ -318,6 +320,14 @@ async function loadProductos() {
             console.error('Error al cargar productos. Status:', response.status);
             const errorText = await response.text();
             console.error('Error response:', errorText);
+            if (response.status === 401) {
+                showMessage('Sesión expirada o no autorizada. Por favor inicia sesión nuevamente.', 'error');
+                // Limpiar productos globales para evitar errores en otros módulos
+                window.productos = [];
+                // Intentar cerrar sesión en cliente
+                if (typeof logout === 'function') logout();
+                return;
+            }
             showMessage('Error al cargar los productos', 'error');
         }
     } catch (error) {
@@ -590,3 +600,24 @@ document.getElementById('compraProveedor').addEventListener('change', (e) => {
         selectProducto.innerHTML = '<option value="">Seleccionar producto</option>';
     }
 });
+
+// Función segura para actualizar una fila de producto o recargar la lista
+function updateProductoRow(producto) {
+    try {
+        if (!Array.isArray(window.productos)) return loadProductos();
+        const id = producto?.id ?? producto?.Id;
+        if (!id) return loadProductos();
+        const idx = window.productos.findIndex(p => (p.id ?? p.Id) === id);
+        if (idx !== -1) {
+            window.productos[idx] = producto;
+            // Re-render tabla si existe
+            if (typeof renderProductosTable === 'function') renderProductosTable();
+        } else {
+            return loadProductos();
+        }
+    } catch (e) {
+        console.error('updateProductoRow error (merged):', e);
+        return loadProductos();
+    }
+}
+window.updateProductoRow = updateProductoRow;
