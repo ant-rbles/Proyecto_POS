@@ -1,4 +1,5 @@
-﻿// Muestra el dashboard después de login
+﻿
+// Muestra el dashboard después de login
 function showDashboard(user) {
     hideAllForms();
     if (dashboard) dashboard.style.display = 'block';
@@ -60,11 +61,35 @@ function hideAllContentSections() {
 }
 
 function showWelcomeView() {
+    hideAllForms();
     hideAllContentSections();
+    showDashboardMain();
+
     const welcome = document.getElementById('welcomeView');
     if (welcome) {
         welcome.style.display = 'block';
     }
+}
+
+function hideDashboard() {
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) {
+        dashboard.style.display = 'none';
+    }
+}
+
+function showDashboardMain() {
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) {
+        dashboard.style.display = 'block';
+    }
+}
+
+function hideAllForms() {
+    const forms = document.querySelectorAll('.form-section, .form-container, form');
+    forms.forEach(f => {
+        f.style.display = 'none';
+    });
 }
 
 
@@ -246,7 +271,7 @@ function openManagementTab(tabName) {
     console.log('Abriendo pestaña:', tabName);
 
     // Ocultar todas las secciones de contenido
-    hideAllContentSections();
+    hideAllContentSections()
 
     // Mostrar el contenedor de pestañas de gestión
     const managementTabs = document.getElementById('managementTabs');
