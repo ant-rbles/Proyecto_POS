@@ -54,7 +54,7 @@ function renderMovimientos(movimientos) {
     // Validación
     if (!Array.isArray(movimientos)) movimientos = [];
 
-    const tbody = document.getElementById("movimientosTableBody");
+    const tbody = document.getElementById("movimientosTableBody"); 
     tbody.innerHTML = "";
 
     if (movimientos.length === 0) {
@@ -135,8 +135,6 @@ async function guardarAjuste() {
     alert("Ajuste realizado correctamente");
 }
 
-
-
 // ✅ PRODUCTOS EN SELECTS
 function cargarProductosParaAjuste() {
     const select = document.getElementById("ajusteProductoId");
@@ -146,12 +144,13 @@ function cargarProductosParaAjuste() {
 
     select.innerHTML = '<option value="">Seleccionar producto</option>';
 
-    const lista = Array.isArray(window.productos) ? window.productos : [];
-    lista.filter(p => p.estado === true).forEach(p => {
-        select.innerHTML += `<option value="${p.id}">
-            ${p.nombre} (Stock: ${p.stockActual})
-        </option>`;
-    });
+    window.productos
+        .filter(p => p.estado === true)
+        .forEach(p => {
+            select.innerHTML += `<option value="${p.id}">
+                ${p.nombre} (Stock: ${p.stockActual})
+            </option>`;
+        });
 }
 
 function cargarProductosFiltro() {
@@ -188,8 +187,8 @@ async function cargarProductos() {
 document.addEventListener("DOMContentLoaded", async () => {
     await cargarProductos();
 
-    cargarProductosParaAjuste();
-    cargarProductosFiltro();
+    cargarProductosParaAjuste();   
+    cargarProductosFiltro();      
 
     document.getElementById("movimientoProductoId").addEventListener("change", () => {
         cargarMovimientos();
