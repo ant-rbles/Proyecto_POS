@@ -137,20 +137,26 @@ async function guardarAjuste() {
 
 // ✅ PRODUCTOS EN SELECTS
 function cargarProductosParaAjuste() {
-    const select = document.getElementById("ajusteProductoId");
-    if (!select || !window.productos) return;
+    const select = document.getElementById('productoAjuste');
+    if (!select) return;
 
-    console.log("🔄 Actualizando productos para AJUSTE...");
+    select.innerHTML = '<option value="">Seleccione un producto</option>';
 
-    select.innerHTML = '<option value="">Seleccionar producto</option>';
+    // Verificar que window.productos sea un array
+    if (!Array.isArray(window.productos)) {
+        console.error('window.productos no es un array válido');
+        window.productos = [];
+        return;
+    }
 
-    window.productos
-        .filter(p => p.estado === true)
-        .forEach(p => {
-            select.innerHTML += `<option value="${p.id}">
-                ${p.nombre} (Stock: ${p.stockActual})
-            </option>`;
-        });
+    const productosActivos = window.productos.filter(p => p.estado !== false);
+
+    productosActivos.forEach(producto => {
+        const option = document.createElement('option');
+        option.value = producto.id;
+        option.textContent = `${producto.codigo} - ${producto.nombre} (Stock: ${producto.stockActual || 0})`;
+        select.appendChild(option);
+    });
 }
 
 function cargarProductosFiltro() {

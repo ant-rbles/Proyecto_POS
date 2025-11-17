@@ -179,3 +179,49 @@ function togglePassword(inputId) {
         if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
     }
 }
+
+    function verificarYRenovarToken() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        // Redirigir al login si no hay token
+        window.location.href = 'index.html';
+        return false;
+    }
+
+    // Verificar si el token está próximo a expirar (opcional)
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const exp = payload.exp * 1000; // Convertir a milisegundos
+        const ahora = Date.now();
+        
+        // Si el token expira en menos de 5 minutos, renovarlo
+        if (exp - ahora < 5 * 60 * 1000) {
+            console.log('Token próximo a expirar, intentando renovar...');
+            // Aquí podrías implementar la renovación del token
+        }
+    } catch (error) {
+        console.error('Error verificando token:', error);
+    }
+    
+    return true;
+}
+
+// Interceptor para manejar errores de autenticación
+function setupAuthInterceptor() {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        return originalFetch.apply(this, args).then(response => {
+            if (response.status === 401) {
+                // Token inválido o expirado
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = 'index.html';
+                return Promise.reject(new Error('Sesión expirada'));
+            }
+            return response;
+        });
+    };
+}
+
+// Llamar al interceptor cuando se cargue el script
+setupAuthInterceptor();
