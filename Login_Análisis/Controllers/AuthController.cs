@@ -85,7 +85,7 @@ public class AuthController : ControllerBase
         return Ok(users);
     }
 
-    [HttpPut("users/{id}")]
+    [HttpGet("users/{id}")]
     [AuthorizeRole(Roles.Administrador)]
     public async Task<IActionResult> GetUser(int id)
     {

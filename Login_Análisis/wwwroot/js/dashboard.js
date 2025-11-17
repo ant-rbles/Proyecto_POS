@@ -46,6 +46,28 @@ function showDashboard(user) {
     setTimeout(() => setupManagementEventListeners(userRole), 100);
 }
 
+function hideAllContentSections() {
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Ocultar contenedor de pestañas de gestión
+    const managementTabs = document.getElementById('managementTabs');
+    if (managementTabs) {
+        managementTabs.style.display = 'none';
+    }
+}
+
+function showWelcomeView() {
+    hideAllContentSections();
+    const welcome = document.getElementById('welcomeView');
+    if (welcome) {
+        welcome.style.display = 'block';
+    }
+}
+
+
 // Función para configurar la interfaz según el rol
 function configurarInterfazPorRol(userRole) {
     console.log('Configurando interfaz para rol:', userRole);
