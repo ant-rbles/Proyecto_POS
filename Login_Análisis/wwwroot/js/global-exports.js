@@ -56,6 +56,7 @@ window.calcularTotalesVenta = calcularTotalesVenta;
 window.buscarClientePorNIT = buscarClientePorNIT;
 window.onProductoSelectChange = onProductoSelectChange;
 window.handleVentaSubmit = handleVentaSubmit;
+window.calcularTotalLinea = calcularTotalLinea;
 
 // Inventario
 window.loadInventario = loadInventario;

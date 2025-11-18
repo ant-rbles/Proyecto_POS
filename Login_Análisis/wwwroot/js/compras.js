@@ -360,6 +360,31 @@ async function loadCompras() {
     }
 }
 
+// Función para mostrar compras en tabla
+function mostrarComprasEnTabla(compras) {
+    const tbody = document.getElementById('comprasTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    compras.forEach(compra => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td>${compra.numeroFactura || 'N/A'}</td>
+            <td>${compra.proveedor?.nombre || 'N/A'}</td>
+            <td>${new Date(compra.fechaCompra).toLocaleDateString()}</td>
+            <td>Q${compra.subtotal?.toFixed(2) || '0.00'}</td>
+            <td>Q${compra.impuestos?.toFixed(2) || '0.00'}</td>
+            <td>Q${compra.total?.toFixed(2) || '0.00'}</td>
+            <td><span class="badge ${compra.estado === 'COMPLETADA' ? 'badge-success' : 'badge-warning'}">${compra.estado || 'PENDIENTE'}</span></td>
+            <td>
+                <button onclick="verCompra(${compra.id})" class="btn btn-sm btn-primary">Ver</button>
+                <button onclick="descargarCompraPDF(${compra.id})" class="btn btn-sm btn-secondary">PDF</button>
+            </td>
+        `;
+    });
+}
+
 // Función para renderizar tabla de compras
 function renderComprasTable() {
     const tbody = document.getElementById('comprasTableBody');

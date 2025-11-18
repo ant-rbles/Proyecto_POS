@@ -184,9 +184,16 @@ function cargarProductosParaAjuste() {
     const select = document.getElementById("ajusteProductoId");
     if (!select) return;
 
-    console.log("🔄 Actualizando productos para AJUSTE...");
+    select.innerHTML = '<option value="">Seleccione un producto</option>';
 
-    select.innerHTML = '<option value="">Seleccionar producto</option>';
+    // Verificar que window.productos sea un array
+    if (!Array.isArray(window.productos)) {
+        console.error('window.productos no es un array válido');
+        window.productos = [];
+        return;
+    }
+
+    const productosActivos = window.productos.filter(p => p.estado !== false);
 
     const lista = Array.isArray(window.productos) ? window.productos : [];
     lista.filter(p => p.estado === true).forEach(p => {
