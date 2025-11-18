@@ -448,43 +448,95 @@ async function handleVentaSubmit(e) {
     }
 }
 
-async function descargarFacturaPdf(ventaId) {
+async function descargarFacturaPdf(id) {
     try {
-        const response = await fetch(`/api/ventas/${ventaId}/pdf`);
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `factura_${ventaId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            showMessage('Factura descargada exitosamente', 'success');
-        } else {
-            const error = await response.json();
-            showMessage(error.message, 'error');
+        const authToken = localStorage.getItem('authToken') || localStorage.getItem('token') || null;
+        if (!authToken) {
+            showMessage && showMessage('Sesión no iniciada', 'error');
+            return;
         }
+
+        const response = await fetch(`https://localhost:7000/api/ventas/${id}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.status === 401) {
+            showMessage && showMessage('No autorizado para descargar PDF', 'error');
+            return;
+        }
+
+        if (!response.ok) {
+            const text = await response.text().catch(() => null);
+            console.error('Error descargando PDF:', response.status, text);
+            showMessage && showMessage('Error al descargar PDF', 'error');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `factura_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     } catch (error) {
-        showMessage('Error al descargar la factura', 'error');
+        console.error('descargarFacturaPdf error:', error);
+        showMessage && showMessage('Error al descargar PDF', 'error');
     }
 }
 
+
 async function cargarEstadisticasVentas() {
     try {
-        const response = await fetch('/api/ventas/estadisticas');
-        if (response.ok) {
-            const estadisticas = await response.json();
-            document.getElementById('ventasHoy').textContent = estadisticas.ventasHoy || 0;
-            document.getElementById('ingresosHoy').textContent = `Q${(estadisticas.ingresosHoy || 0).toFixed(2)}`;
-            document.getElementById('ventasMes').textContent = estadisticas.ventasMes || 0;
-            document.getElementById('ingresosMes').textContent = `Q${(estadisticas.ingresosMes || 0).toFixed(2)}`;
+        const token = localStorage.getItem("authToken");
+
+        if (!token) {
+            console.error("❌ No hay token en localStorage");
+            return;
         }
+
+        const response = await fetch("https://localhost:7000/api/ventas/estadisticas", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            console.error("❌ Error API estadísticas: ", response.status);
+            return;
+        }
+
+        const stats = await response.json();
+
+        // --- VALIDAR ELEMENTOS EN DOM ---
+        const ventasHoyEl = document.getElementById("ventasHoy");
+        const ingresosHoyEl = document.getElementById("ingresosHoy");
+        const ventasMesEl = document.getElementById("ventasMes");
+        const ingresosMesEl = document.getElementById("ingresosMes");
+
+        if (!ventasHoyEl || !ingresosHoyEl || !ventasMesEl || !ingresosMesEl) {
+            console.warn("⚠️ No existen elementos de tarjeta de ventas en DOM");
+            return;
+        }
+
+        // --- ASIGNAR DATOS ---
+        ventasHoyEl.textContent = stats.ventasHoy ?? 0;
+        ingresosHoyEl.textContent = `Q${(stats.ingresosHoy ?? 0).toFixed(2)}`;
+        ventasMesEl.textContent = stats.ventasMes ?? 0;
+        ingresosMesEl.textContent = `Q${(stats.ingresosMes ?? 0).toFixed(2)}`;
+
     } catch (error) {
-        console.error('Error al cargar estadísticas:', error);
+        console.error("❌ Error cargarEstadisticasVentas:", error);
     }
 }
+
+
 
 // Configuración de descuentos
 function configurarDescuentos() {
@@ -696,3 +748,5 @@ async function anularVenta(id) {
         showMessage("Error al anular la venta", "error");
     }
 }
+
+window.descargarFacturaPdf = descargarFacturaPdf;

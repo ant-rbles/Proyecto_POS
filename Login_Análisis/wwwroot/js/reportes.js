@@ -214,12 +214,23 @@
                 fechaFin: new Date().toISOString().split('T')[0]
             });
 
+            const token = localStorage.getItem("authToken");
+
             const [ventasResponse, inventarioResponse, comprasResponse, productosTopResponse] = await Promise.all([
-                fetch(`/api/ventas/estadisticas?${params}`),
-                fetch('/api/reportes/inventario'),
-                fetch(`/api/reportes/compras?${params}`),
-                fetch(`/api/reportes/productos-mas-vendidos?${params}`)
+                fetch(`/api/ventas/estadisticas?${params}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }),
+                fetch('/api/reportes/inventario', {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }),
+                fetch(`/api/reportes/compras?${params}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }),
+                fetch(`/api/reportes/productos-mas-vendidos?${params}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                })
             ]);
+
 
             const ventasData = await ventasResponse.json();
             const inventarioData = await inventarioResponse.json();

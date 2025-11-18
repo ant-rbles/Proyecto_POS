@@ -45,6 +45,7 @@ window.anularCompra = anularCompra;
 window.verDetalleCompra = verDetalleCompra;
 window.cerrarModalDetalleCompra = cerrarModalDetalleCompra;
 window.handleCompraSubmit = handleCompraSubmit;
+window.cargarCompras = cargarCompras;
 
 // Ventas
 window.showVentaForm = showVentaForm;

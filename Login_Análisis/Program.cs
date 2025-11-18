@@ -1,9 +1,9 @@
-using Login_An·lisis.Data;
-using Login_An·lisis.Services;
+Ôªøusing Login_An√°lisis.Data;
+using Login_An√°lisis.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Login_An·lisis.Middleware;
+using Login_An√°lisis.Middleware;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,7 +28,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<ProductoService>();
 
-// ConfiguraciÛn JWT
+// Configuraci√≥n JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
 var key = Encoding.ASCII.GetBytes(jwtSettings.Secret);
 
@@ -61,7 +61,7 @@ builder.Services.AddControllers()
         options.SuppressModelStateInvalidFilter = true;
     });
 
-// CORS - Mejorar la polÌtica
+// CORS - Mejorar la pol√≠tica
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -78,7 +78,7 @@ app.UseRouting();
 app.UseCors("AllowFrontend");
 app.UseAuthentication(); 
 app.UseAuthorization();   
-app.UseMiddleware<AuthorizationMiddleware>(); 
+//app.UseMiddleware<AuthorizationMiddleware>(); 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseDefaultFiles();

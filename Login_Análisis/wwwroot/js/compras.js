@@ -1,61 +1,61 @@
-﻿// Función para mostrar formulario de compra
-function showCompraForm() {
-    console.log('Mostrando formulario de compra');
+﻿window.detallesCompra = window.detallesCompra || [];
+window.unidadesMedida = window.unidadesMedida || [];
+window.productos = window.productos || [];
 
+// Mostrar formulario de compra
+function showCompraForm() {
     openManagementTab('compras');
 
     const form = document.getElementById('compraForm');
     if (form) {
         form.style.display = 'block';
-
         document.getElementById('compraFecha').value = new Date().toISOString().split('T')[0];
         document.getElementById('compraFactura').value = '';
         document.getElementById('compraFactura').placeholder = 'Se generará automáticamente';
-        document.getElementById("compraForm").style.display = "block";
 
         // Reiniciar detalles
         detallesCompra = [];
         renderDetallesTable();
         calcularTotalesCompra();
 
-        // Cargar selects
-        updateProveedoresSelect();
-        updateProductosSelects();
+        // Cargar selects locales (si existen)
+        if (typeof updateProveedoresSelect === 'function') updateProveedoresSelect();
+        if (typeof updateProductosSelects === 'function') updateProductosSelects();
         cargarUnidades();
-
     } else {
         console.error('No se encontró el formulario de compra');
     }
 }
 
-
-// Función para cargar unidades de medida en compras
 function cargarUnidades() {
     fetch('/api/unidadesmedida')
         .then(res => res.json())
         .then(unidades => {
+            unidadesMedida = unidades;
             const select = document.getElementById("detalleUnidad");
+            if (!select) return;
             select.innerHTML = '<option value="">Seleccionar unidad</option>';
-
             unidades.forEach(u => {
-                select.innerHTML += `
-                    <option value="${u.id}" data-factor="${u.factorConversion}">
-                        ${u.nombre} (${u.factorConversion} u)
-                    </option>
-                `;
+                select.innerHTML += `<option value="${u.id}" data-factor="${u.factorConversion}">${u.nombre} (${u.factorConversion})</option>`;
             });
         })
         .catch(err => console.error('Error cargando unidades:', err));
 }
 
 function cargarCompras() {
-    fetch('/api/compras')
-        .then(res => res.json())
+    fetch('/api/compras', { headers: (localStorage.getItem('authToken') ? { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } : {}) })
+        .then(res => {
+            if (!res.ok) throw new Error('Error al obtener compras');
+            return res.json();
+        })
         .then(data => {
             mostrarComprasEnTabla(data);
             console.log("Compras cargadas:", data);
         })
-        .catch(error => console.error('Error al cargar compras:', error));
+        .catch(error => {
+            console.error('Error al cargar compras:', error);
+            showMessage ? showMessage('Error al cargar compras', 'error') : null;
+        });
 }
 
 function hideCompraForm() {
@@ -167,6 +167,79 @@ function actualizarDetalleCompra() {
     const total = cantidadBase * precioUnitarioBase;
 
     document.getElementById("detalleTotal").value = total.toFixed(2);
+}
+
+function calcularTotalLinea() {
+    try {
+        const cantidad = parseFloat(document.getElementById('detalleCantidad')?.value) || 0;
+        const precio = parseFloat(document.getElementById('detallePrecio')?.value) || 0;
+        const unidadSelect = document.getElementById('detalleUnidad');
+        const factor = unidadSelect?.selectedOptions?.[0]?.dataset?.factor ? parseFloat(unidadSelect.selectedOptions[0].dataset.factor) : 1;
+
+        // Conversión a unidad base y cálculo
+        const cantidadBase = cantidad * (factor || 1);
+        const precioUnitarioBase = (factor && factor > 0) ? (precio / factor) : precio;
+        const total = cantidadBase * precioUnitarioBase;
+
+        const totalInput = document.getElementById('detalleTotal');
+        if (totalInput) totalInput.value = total.toFixed(2);
+    } catch (e) {
+        console.error('calcularTotalLinea error:', e);
+    }
+}
+
+function renderComprasTable() {
+    const tbody = document.getElementById('comprasTableBody');
+    if (!tbody) return;
+
+    if (!compras || compras.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="no-data">No hay compras registradas</td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = compras.map(c => {
+        const fecha = c.fechaCompra ? new Date(c.fechaCompra).toLocaleDateString() : 'N/A';
+        const proveedor = c.proveedor?.nombre || 'N/A';
+
+        return `
+            <tr>
+                <td>${c.numeroFactura || '-'}</td>
+                <td>${fecha}</td>
+                <td>${proveedor}</td>
+                <td>Q${c.total?.toFixed ? c.total.toFixed(2) : '0.00'}</td>
+                <td>
+                    <span class="badge ${c.estado === 'COMPLETADA' ? 'badge-success' : 'badge-danger'}">
+                        ${c.estado}
+                    </span>
+                </td>
+                <td class="actions-cell">
+
+                    <button class="action-btn view-btn" 
+                        onclick="verDetalleCompra(${c.id})" 
+                        title="Ver Detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+
+                    <button class="action-btn download-btn"
+                        onclick="descargarCompraPDF(${c.id})"
+                        title="Descargar PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+
+                    ${c.estado !== 'ANULADA' ? `
+                        <button class="action-btn delete-btn"
+                            onclick="anularCompra(${c.id})"
+                            title="Anular Compra">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function calcularTotalesCompra() {

@@ -44,7 +44,7 @@ namespace Login_Análisis.Middleware
 
         private bool TienePermiso(string role, string path, string method)
         {
-            // Rutas públicas que todos pueden acceder
+            // Rutas públicas
             if (path.Contains("/api/auth/login") ||
                 path.Contains("/api/auth/register") ||
                 path.Contains("/reset-password"))
@@ -52,7 +52,10 @@ namespace Login_Análisis.Middleware
                 return true;
             }
 
-            // Permisos específicos por rol y ruta
+            // 🔥 Solo ADMIN puede ver estadísticas de ventas
+            if (path.Contains("/api/ventas/estadisticas") && role == Roles.Administrador)
+                return true;
+
             return (role, path) switch
             {
                 // Administrador - acceso completo
