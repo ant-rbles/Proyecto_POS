@@ -25,6 +25,7 @@ namespace Login_Análisis.Controllers
         //Productos
 
         [HttpGet]
+        [AuthorizeRole(Roles.Administrador, Roles.Cajero, Roles.Vendedor)]
         public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
         {
             var productos = await _productoService.ObtenerProductosActivosAsync();

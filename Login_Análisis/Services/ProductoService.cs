@@ -816,6 +816,298 @@ namespace Login_Análisis.Services
             return $"FAC-{numero:000000}";
         }
 
+        // Métodos para Presupuestos
+        public async Task<(bool success, string message, PresupuestoResponse presupuesto)> CrearPresupuesto(PresupuestoRequest request, int usuarioId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Validar que el vendedor exista
+                var vendedor = await _context.Users.FindAsync(usuarioId);
+                if (vendedor == null)
+                    return (false, "Vendedor no encontrado", null);
+
+                // Generar número de presupuesto
+                var numeroPresupuesto = await GenerarNumeroPresupuesto();
+
+                // Crear entidad Presupuesto
+                var presupuesto = new Presupuesto
+                {
+                    NumeroPresupuesto = numeroPresupuesto,
+                    FechaPresupuesto = request.FechaPresupuesto,
+                    FechaVencimiento = request.FechaVencimiento,
+                    ClienteId = request.ClienteId,
+                    NombreCliente = request.NombreCliente,
+                    NITCliente = request.NITCliente,
+                    DireccionCliente = request.DireccionCliente,
+                    Observaciones = request.Observaciones,
+                    UsuarioCreacion = usuarioId,
+                    FechaCreacion = DateTime.UtcNow,
+                    Estado = "PENDIENTE"
+                };
+
+                // Calcular totales
+                decimal subtotal = 0;
+                var detalles = new List<DetallePresupuesto>();
+
+                foreach (var detalleRequest in request.Detalles)
+                {
+                    var producto = await _context.Productos.FindAsync(detalleRequest.ProductoId);
+                    if (producto == null)
+                        return (false, $"Producto con ID {detalleRequest.ProductoId} no encontrado", null);
+
+                    var unidadMedida = await _context.UnidadesMedida.FindAsync(detalleRequest.UnidadMedidaId);
+                    if (unidadMedida == null)
+                        return (false, "Unidad de medida no encontrada", null);
+
+                    // Aplicar descuento
+                    var precioConDescuento = detalleRequest.PrecioUnitario * (1 - (detalleRequest.DescuentoAplicado / 100));
+                    var totalLinea = detalleRequest.Cantidad * precioConDescuento;
+                    subtotal += totalLinea;
+
+                    var detalle = new DetallePresupuesto
+                    {
+                        ProductoId = detalleRequest.ProductoId,
+                        UnidadMedidaId = unidadMedida.Id,
+                        Cantidad = detalleRequest.Cantidad,
+                        PrecioUnitario = precioConDescuento,
+                        DescuentoAplicado = detalleRequest.DescuentoAplicado,
+                        TotalLinea = totalLinea,
+                        Observaciones = detalleRequest.Observaciones
+                    };
+
+                    detalles.Add(detalle);
+                }
+
+                // Calcular impuestos y total
+                presupuesto.Subtotal = subtotal;
+                presupuesto.Impuestos = request.AplicarIVA ? subtotal * 0.12m : 0;
+                presupuesto.Total = presupuesto.Subtotal + presupuesto.Impuestos;
+
+                // Guardar presupuesto
+                _context.Presupuestos.Add(presupuesto);
+                await _context.SaveChangesAsync();
+
+                // Guardar detalles
+                foreach (var detalle in detalles)
+                {
+                    detalle.PresupuestoId = presupuesto.Id;
+                    _context.DetallePresupuestos.Add(detalle);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Mapear a Response
+                var response = await MapearPresupuestoAResponse(presupuesto);
+
+                return (true, "Presupuesto creado exitosamente", response);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error al crear presupuesto: {ex.Message}", null);
+            }
+        }
+
+        private async Task<string> GenerarNumeroPresupuesto()
+        {
+            var ultimoPresupuesto = await _context.Presupuestos
+                .OrderByDescending(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            var numero = 1;
+            if (ultimoPresupuesto != null && ultimoPresupuesto.NumeroPresupuesto.StartsWith("COT-"))
+            {
+                var partes = ultimoPresupuesto.NumeroPresupuesto.Split('-');
+                if (partes.Length > 1 && int.TryParse(partes[1], out int ultimoNumero))
+                {
+                    numero = ultimoNumero + 1;
+                }
+            }
+
+            return $"COT-{numero:000000}";
+        }
+
+        public async Task<List<PresupuestoResponse>> ObtenerPresupuestosPorVendedor(int usuarioId)
+        {
+            var presupuestos = await _context.Presupuestos
+                .Include(p => p.Cliente)
+                .Include(p => p.Usuario)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .Where(p => p.UsuarioCreacion == usuarioId)
+                .OrderByDescending(p => p.FechaCreacion)
+                .ToListAsync();
+
+            var response = new List<PresupuestoResponse>();
+
+            foreach (var presupuesto in presupuestos)
+            {
+                response.Add(await MapearPresupuestoAResponse(presupuesto));
+            }
+
+            return response;
+        }
+
+        public async Task<PresupuestoResponse> ObtenerPresupuesto(int id, int usuarioId)
+        {
+            var presupuesto = await _context.Presupuestos
+                .Include(p => p.Cliente)
+                .Include(p => p.Usuario)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(p => p.Id == id && p.UsuarioCreacion == usuarioId);
+
+            if (presupuesto == null)
+                return null;
+
+            return await MapearPresupuestoAResponse(presupuesto);
+        }
+
+        private async Task<PresupuestoResponse> MapearPresupuestoAResponse(Presupuesto presupuesto)
+        {
+            var diasRestantes = (presupuesto.FechaVencimiento - DateTime.UtcNow).Days;
+
+            return new PresupuestoResponse
+            {
+                Id = presupuesto.Id,
+                NumeroPresupuesto = presupuesto.NumeroPresupuesto,
+                FechaPresupuesto = presupuesto.FechaPresupuesto,
+                FechaVencimiento = presupuesto.FechaVencimiento,
+                ClienteId = presupuesto.ClienteId,
+                NombreCliente = presupuesto.NombreCliente,
+                NITCliente = presupuesto.NITCliente,
+                DireccionCliente = presupuesto.DireccionCliente,
+                Subtotal = presupuesto.Subtotal,
+                Impuestos = presupuesto.Impuestos,
+                Total = presupuesto.Total,
+                Observaciones = presupuesto.Observaciones,
+                Estado = presupuesto.Estado,
+                UsuarioCreacionNombre = presupuesto.Usuario?.Nombre ?? "N/A",
+                FechaCreacion = presupuesto.FechaCreacion,
+                FechaAprobacion = presupuesto.FechaAprobacion,
+                DiasRestantes = diasRestantes,
+                Detalles = presupuesto.Detalles.Select(d => new DetallePresupuestoResponse
+                {
+                    Id = d.Id,
+                    ProductoId = d.ProductoId,
+                    ProductoNombre = d.Producto?.Nombre ?? "N/A",
+                    ProductoCodigo = d.Producto?.Codigo ?? "N/A",
+                    UnidadMedidaId = d.UnidadMedidaId,
+                    UnidadMedidaNombre = d.UnidadMedida?.Nombre ?? "N/A",
+                    UnidadMedidaAbreviatura = d.UnidadMedida?.Abreviatura ?? "N/A",
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    DescuentoAplicado = d.DescuentoAplicado,
+                    TotalLinea = d.TotalLinea,
+                    Observaciones = d.Observaciones
+                }).ToList()
+            };
+        }
+
+        public async Task<(bool success, string message)> CambiarEstadoPresupuesto(int presupuestoId, string estado, int usuarioId)
+        {
+            try
+            {
+                var presupuesto = await _context.Presupuestos
+                    .FirstOrDefaultAsync(p => p.Id == presupuestoId && p.UsuarioCreacion == usuarioId);
+
+                if (presupuesto == null)
+                    return (false, "Presupuesto no encontrado");
+
+                presupuesto.Estado = estado;
+                presupuesto.FechaActualizacion = DateTime.UtcNow;
+
+                if (estado == "APROBADO")
+                    presupuesto.FechaAprobacion = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return (true, $"Presupuesto {estado.ToLower()} exitosamente");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error al cambiar estado: {ex.Message}");
+            }
+        }
+
+        public async Task<(bool success, string message, int? ventaId)> ConvertirPresupuestoEnVenta(int presupuestoId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var presupuesto = await _context.Presupuestos
+                    .Include(p => p.Detalles)
+                    .FirstOrDefaultAsync(p => p.Id == presupuestoId);
+
+                if (presupuesto == null)
+                    return (false, "Presupuesto no encontrado", null);
+
+                // Crear request de venta desde el presupuesto
+                var ventaRequest = new VentaRequest
+                {
+                    FechaVenta = DateTime.UtcNow,
+                    ClienteId = presupuesto.ClienteId,
+                    NombreCliente = presupuesto.NombreCliente,
+                    NITCliente = presupuesto.NITCliente,
+                    AplicarIVA = true,
+                    Observaciones = $"Convertido desde presupuesto: {presupuesto.NumeroPresupuesto}",
+                    UsuarioCreacion = presupuesto.UsuarioCreacion,
+                    Detalles = presupuesto.Detalles.Select(d => new DetalleVentaRequest
+                    {
+                        ProductoId = d.ProductoId,
+                        UnidadMedidaId = d.UnidadMedidaId,
+                        Cantidad = d.Cantidad,
+                        PrecioUnitario = d.PrecioUnitario,
+                        DescuentoAplicado = d.DescuentoAplicado
+                    }).ToList()
+                };
+
+                // Crear la venta
+                var result = await CrearVenta(ventaRequest);
+
+                if (!result.success)
+                    return (false, result.message, null);
+
+                // Actualizar estado del presupuesto
+                presupuesto.Estado = "CONVERTIDO";
+                presupuesto.FechaActualizacion = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                return (true, "Presupuesto convertido a venta exitosamente", result.venta.Id);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return (false, $"Error al convertir presupuesto: {ex.Message}", null);
+            }
+        }
+
+        public async Task<byte[]> GenerarPresupuestoPdf(int presupuestoId, int usuarioId)
+        {
+            var presupuesto = await _context.Presupuestos
+                .Include(p => p.Cliente)
+                .Include(p => p.Usuario)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.UnidadMedida)
+                .FirstOrDefaultAsync(p => p.Id == presupuestoId && p.UsuarioCreacion == usuarioId);
+
+            if (presupuesto == null)
+                return null;
+
+            // Implementar generación de PDF similar a las facturas
+            // (Puedes adaptar el código existente de PdfService)
+            return await _pdfService.GenerarPresupuestoPdf(presupuesto);
+        }
+
 
         // Métodos para Movimientos de Inventario
         private async Task RegistrarMovimiento(int productoId, decimal cantidad, string tipo, string? observaciones, int? usuarioId, int? referenciaId = null, string? referenciaTipo = null)
