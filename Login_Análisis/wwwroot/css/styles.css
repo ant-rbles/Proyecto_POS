@@ -1662,3 +1662,40 @@ body {
 .reporte-content {
     animation: fadeIn 0.5s ease-out;
 }
+
+/* ---- TARJETAS DEL RESUMEN DE VENTAS (HORIZONTALES) ---- */
+.inventory-stats {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    justify-content: space-between;
+    align-items: stretch;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+    .inventory-stats .stat-card {
+        flex: 1;
+        min-width: 200px;
+        border-radius: 12px;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+.stat-card .stat-icon {
+    font-size: 28px;
+    opacity: 0.7;
+}
+
+/* Evita que se rompan en móvil */
+@media (max-width: 768px) {
+    .inventory-stats {
+        flex-wrap: wrap;
+    }
+
+        .inventory-stats .stat-card {
+            min-width: 100%;
+        }
+}

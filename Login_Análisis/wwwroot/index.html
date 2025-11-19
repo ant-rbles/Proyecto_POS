@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Centro Plástico Leonor - Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=2.0">
+    <link rel="stylesheet" href="css/styles.css?v=4.0">
 </head>
 <body>
     <!-- Contenedor de autenticación -->
@@ -136,7 +136,7 @@
                 </a>
 
                 <div class="sidebar-section" id="inventario-seccion">Inventario y Productos</div>
-                <a class="sidebar-item" id="productos-section" onclick="openManagementTab('productos')" data-tab="productos" data-role="Administrador">
+                <a class="sidebar-item" id="productos-section" onclick="openManagementTab('productos')" data-tab="productos" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-boxes"></i> Productos
                 </a>
                 <a class="sidebar-item" id="categorias-section" onclick="openManagementTab('categorias')" data-tab="categorias" data-role="Administrador">
@@ -160,6 +160,9 @@
                 <div class="sidebar-section" id="ventas-seccion">Ventas y Clientes</div>
                 <a class="sidebar-item" id="ventas-section" onclick="openManagementTab('ventas')" data-tab="ventas" data-role="Administrador,Cajero">
                     <i class="fas fa-cash-register"></i> Ventas
+                </a>
+                <a class="sidebar-item" id="presupuestos-section" onclick="openManagementTab('presupuestos')" data-tab="presupuestos" data-role="Vendedor,Administrador,Cajero">
+                    <i class="fas fa-file-invoice-dollar"></i> Presupuestos
                 </a>
                 <a class="sidebar-item" id="clientes-section" onclick="openManagementTab('clientes')" data-tab="clientes" data-role="Administrador">
                     <i class="fas fa-users"></i> Clientes
@@ -841,6 +844,68 @@
                         </div>
                     </div>
 
+                    <!-- Pestaña de Presupuestos -->
+                    <div id="tab-presupuestos" class="management-tab">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-file-invoice-dollar"></i> Gestión de Presupuestos</h3>
+                            <button class="btn btn-primary" id="btn-nuevo-presupuesto" onclick="abrirModalNuevoPresupuesto()">
+                                <i class="fas fa-plus"></i> Nuevo Presupuesto
+                            </button>
+                        </div>
+
+                        <!-- Filtros -->
+                        <div class="card shadow mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label>Estado</label>
+                                        <select class="form-control" id="filtro-estado-presupuesto" onchange="filtrarPresupuestos()">
+                                            <option value="TODOS">Todos los estados</option>
+                                            <option value="PENDIENTE">Pendientes</option>
+                                            <option value="APROBADO">Aprobados</option>
+                                            <option value="RECHAZADO">Rechazados</option>
+                                            <option value="VENCIDO">Vencidos</option>
+                                            <option value="CONVERTIDO">Convertidos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Fecha desde</label>
+                                        <input type="date" class="form-control" id="filtro-fecha-desde-presupuesto" onchange="filtrarPresupuestos()">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Fecha hasta</label>
+                                        <input type="date" class="form-control" id="filtro-fecha-hasta-presupuesto" onchange="filtrarPresupuestos()">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Cliente</label>
+                                        <input type="text" class="form-control" id="filtro-cliente-presupuesto" placeholder="Buscar cliente..." onkeyup="filtrarPresupuestos()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Presupuestos -->
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Cliente</th>
+                                        <th>Fecha</th>
+                                        <th>Vencimiento</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                        <th>Días Rest.</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-presupuestos-body">
+                                    <!-- Los presupuestos se cargarán aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Sección de Reportes -->
                     <div id="tab-reportes" class="management-tab" style="display: none;">
                         <div class="reportes-container">
@@ -1429,8 +1494,9 @@
     </div>
 
     <script src="js/utils.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
     <script src="js/clientes.js"></script>
     <script src="js/users.js"></script>
     <script src="js/proveedores.js"></script>
@@ -1445,6 +1511,7 @@
     <script src="js/inventario.js"></script>
     <script src="js/movimientos.js"></script>
     <script src="js/reportes.js"></script>
+    <script src="js/presupuestos.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/global-exports.js"></script>
 

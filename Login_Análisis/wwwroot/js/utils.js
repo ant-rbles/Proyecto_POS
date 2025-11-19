@@ -175,3 +175,20 @@ function calcularDescuentoPorCantidad(productoId, cantidad) {
     if (cantidad >= 10) return 2;
     return 0;
 }
+
+// Agregar en utils.js
+function calcularTotalLinea(cantidad, precioUnitario) {
+    const cantidadNum = parseFloat(cantidad) || 0;
+    const precioNum = parseFloat(precioUnitario) || 0;
+    return (cantidadNum * precioNum).toFixed(2);
+}
+
+function mostrarError(mensaje) {
+    // Puedes implementar un sistema de notificaciones más elegante
+    alert(`Error: ${mensaje}`);
+}
+
+function mostrarExito(mensaje) {
+    // Puedes implementar un sistema de notificaciones más elegante
+    alert(`Éxito: ${mensaje}`);
+}

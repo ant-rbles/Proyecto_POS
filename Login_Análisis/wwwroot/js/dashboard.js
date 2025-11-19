@@ -39,6 +39,12 @@ function showDashboard(user) {
     loadProductos();
     loadClientes();
 
+    if (user.rol === 'Vendedor' || user.rol === 'Administrador' || user.rol === 'Cajero') {
+        // Pre-cargar clientes y productos para presupuestos
+        cargarClientesParaPresupuesto();
+        cargarProductosParaPresupuesto();
+    }
+
     // Configurar event listeners para gestión y aplicar permisos por rol
     setTimeout(() => setupManagementEventListeners(user.rol || user.role), 100);
     // Aplicar permisos de visibilidad en sidebar y tarjetas
@@ -143,6 +149,9 @@ function openManagementTab(tabName) {
                     loadTarjetas();
                     setTimeout(() => initTarjetasModule(), 20);
                     break;
+                case 'presupuestos':
+                    cargarPresupuestos();
+                    break;
             }
         } else {
             console.error('No se encontró la pestaña:', `${tabName}Section`);
@@ -224,7 +233,24 @@ function applyRolePermissions(userRole) {
             const allowed = roles.split(',').map(r => r.trim());
             card.style.display = allowed.includes(userRole) ? 'block' : 'none';
         });
+        // ✅ NUEVO: Aplicar permisos específicos para botones en presupuestos
+        aplicarPermisosPresupuestos(userRole);
     } catch (e) {
         console.error('applyRolePermissions error:', e);
     }
 }
+
+// ✅ NUEVA FUNCIÓN: Aplicar permisos específicos para presupuestos
+function aplicarPermisosPresupuestos(userRole) {
+    const btnNuevoPresupuesto = document.getElementById('btn-nuevo-presupuesto');
+
+    if (btnNuevoPresupuesto) {
+        // Solo vendedores pueden crear nuevos presupuestos
+        if (userRole === 'Vendedor') {
+            btnNuevoPresupuesto.style.display = 'block';
+        } else {
+            btnNuevoPresupuesto.style.display = 'none';
+        }
+    }
+}
+

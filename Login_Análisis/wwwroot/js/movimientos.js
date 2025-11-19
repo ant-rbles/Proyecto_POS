@@ -1,38 +1,70 @@
-﻿async function cargarMovimientos() {
+﻿// wwwroot/js/movimientos.js
+// Movimientos - versión corregida y robusta
+// Reemplaza el archivo completo por este contenido.
+
+// ----------------------------- UTILIDADES -----------------------------
+const API_PREFIX = '/api';
+
+// Obtiene token guardado en localStorage (soporta 'authToken' y 'token')
+function getAuthToken() {
+    return localStorage.getItem('authToken') || localStorage.getItem('token') || null;
+}
+
+// Helper para realizar fetch con Authorization si hay token
+async function fetchWithOptionalAuth(endpoint, options = {}) {
+    const token = getAuthToken();
+    const headers = {
+        ...(options.headers || {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    const merged = { ...options, headers };
+    return await fetch(`${API_PREFIX}${endpoint}`, merged);
+}
+
+// ----------------------------- CARGAR MOVIMIENTOS -----------------------------
+async function cargarMovimientos() {
     console.log("cargarMovimientos() ejecutado");
 
     const fechaInicio = document.getElementById("movimientoFechaInicio")?.value || "";
     const fechaFin = document.getElementById("movimientoFechaFin")?.value || "";
     let tipo = document.getElementById("movimientoTipo")?.value || "";
-    let productoId = document.getElementById("movimientoProductoId").value.trim();
+    let productoIdEl = document.getElementById("movimientoProductoId");
+    let productoId = productoIdEl ? productoIdEl.value.trim() : null;
 
     console.log("Filtros actuales:", { fechaInicio, fechaFin, tipo, productoId });
 
-    // ✅ Si el usuario selecciona “Todos”, no enviamos ese filtro
-    if (tipo === "TODOS" || tipo === "" || tipo === null) {
-        tipo = null;
-    }
-
-    // ✅ PRODUCTO VACÍO = TODOS
-    if (productoId === "" || productoId === null) {
-        productoId = null;
-    }
+    if (tipo === "TODOS" || tipo === "" || tipo === null) tipo = null;
+    if (productoId === "" || productoId === null) productoId = null;
 
     const params = new URLSearchParams();
-
     if (fechaInicio) params.append("fechaInicio", fechaInicio);
     if (fechaFin) params.append("fechaFin", fechaFin);
     if (tipo) params.append("tipo", tipo);
     if (productoId) params.append("productoId", productoId);
 
-    const url = "/api/movimientos" + (params.toString() ? "?" + params.toString() : "");
-    console.log("🔗 Fetch URL:", url);
+    const url = "/movimientos" + (params.toString() ? "?" + params.toString() : "");
+    // Nota: fetchWithOptionalAuth añade el prefijo /api internamente.
+    console.log("🔗 Fetch URL (API):", `${API_PREFIX}${url}`);
 
     try {
-        const response = await fetch(url, { cache: "no-store" });
+        const response = await fetchWithOptionalAuth(url, { cache: "no-store", method: "GET" });
+
+        if (!response) {
+            console.error("No hubo respuesta de la API Movimientos");
+            renderMovimientos([]);
+            return;
+        }
+
+        if (response.status === 401) {
+            console.warn("401 recibido al cargar movimientos - token inválido o sesión expiró");
+            // Puedes mostrar mensaje de sesión expirada aquí si tienes showMessage
+            if (typeof showMessage === 'function') showMessage('Sesión expirada o no autorizada', 'error');
+            renderMovimientos([]);
+            return;
+        }
 
         if (!response.ok) {
-            console.error("❌ Error en API Movimientos");
+            console.error("❌ Error en API Movimientos:", response.status);
             renderMovimientos([]);
             return;
         }
@@ -40,21 +72,23 @@
         const movimientos = await response.json();
         console.log("📌 Movimientos recibidos:", movimientos);
 
-        renderMovimientos(Array.isArray(movimientos) ? movimientos : []);
-
+        renderMovimientos(Array.isArray(movimientos) ? movimientos : (Array.isArray(movimientos.data) ? movimientos.data : []));
     } catch (error) {
         console.error("Error al cargar Movimientos", error);
         renderMovimientos([]);
     }
 }
 
-
-// ✅ MOSTRAR MOVIMIENTOS EN LA TABLA
+// ----------------------------- RENDER MOVIMIENTOS -----------------------------
 function renderMovimientos(movimientos) {
-    // Validación
     if (!Array.isArray(movimientos)) movimientos = [];
 
     const tbody = document.getElementById("movimientosTableBody");
+    if (!tbody) {
+        console.warn("movimientosTableBody no encontrado en DOM");
+        return;
+    }
+
     tbody.innerHTML = "";
 
     if (movimientos.length === 0) {
@@ -67,15 +101,15 @@ function renderMovimientos(movimientos) {
 
         const fecha = m.fechaMovimiento
             ? new Date(m.fechaMovimiento).toLocaleString()
-            : "N/A";
+            : (m.fecha ? new Date(m.fecha).toLocaleString() : "N/A");
 
-        const productoNombre = m.producto?.nombre || "Desconocido";
+        const productoNombre = m.producto?.nombre || m.nombreProducto || "Desconocido";
 
         tr.innerHTML = `
             <td>${fecha}</td>
             <td>${productoNombre}</td>
-            <td>${m.tipoMovimiento}</td>
-            <td>${m.cantidad}</td>
+            <td>${m.tipoMovimiento || m.tipo || ''}</td>
+            <td>${m.cantidad ?? 0}</td>
             <td>${m.cantidadAnterior ?? 0}</td>
             <td>${m.cantidadNueva ?? 0}</td>
             <td>${m.observaciones ?? ""}</td>
@@ -84,20 +118,22 @@ function renderMovimientos(movimientos) {
         tbody.appendChild(tr);
     });
 }
-// ✅ FORMULARIO DE AJUSTE
 
+// ----------------------------- FORMULARIO AJUSTE -----------------------------
 function showAjusteForm() {
-    document.getElementById("ajusteForm").style.display = "block";
+    const form = document.getElementById("ajusteForm");
+    if (form) form.style.display = "block";
 }
 
 function hideAjusteForm() {
-    document.getElementById("ajusteForm").style.display = "none";
+    const form = document.getElementById("ajusteForm");
+    if (form) form.style.display = "none";
 }
 
 async function guardarAjuste() {
-    const productoId = document.getElementById("ajusteProductoId").value;
-    const cantidad = document.getElementById("ajusteCantidad").value;
-    const tipo = document.getElementById("ajusteTipo").value;
+    const productoId = document.getElementById("ajusteProductoId")?.value;
+    const cantidad = document.getElementById("ajusteCantidad")?.value;
+    const tipo = document.getElementById("ajusteTipo")?.value;
 
     if (!productoId) return alert("Seleccione un producto");
     if (!cantidad || Number(cantidad) <= 0) return alert("Ingrese una cantidad válida");
@@ -112,88 +148,163 @@ async function guardarAjuste() {
         tipo: tipo
     };
 
-    const response = await fetch("/api/movimientos/ajuste", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
+    try {
+        const resp = await fetchWithOptionalAuth("/movimientos/ajuste", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
 
-    if (!response.ok) return alert("Error al guardar el ajuste");
+        if (!resp) throw new Error("No response");
+        if (resp.status === 401) return alert("No autorizado para guardar ajuste");
 
-    hideAjusteForm();
+        if (!resp.ok) {
+            const text = await resp.text().catch(() => null);
+            console.error("Error guardando ajuste:", resp.status, text);
+            return alert("Error al guardar el ajuste");
+        }
 
-    // 🔥 RECARGAR productos del backend
-    await cargarProductos();
+        hideAjusteForm();
 
-    // 🔥 Reconstruir selects con stock actual
-    cargarProductosParaAjuste();
-    cargarProductosFiltro();
+        // RECARGAR productos y movimientos
+        await cargarProductos();
+        cargarProductosParaAjuste();
+        cargarProductosFiltro();
+        await cargarMovimientos();
 
-    // 🔥 Recargar movimientos
-    await cargarMovimientos();
-
-    alert("Ajuste realizado correctamente");
+        alert("Ajuste realizado correctamente");
+    } catch (err) {
+        console.error("guardarAjuste error:", err);
+        alert("Error al guardar el ajuste");
+    }
 }
 
-
-
-// ✅ PRODUCTOS EN SELECTS
+// ----------------------------- PRODUCTOS EN SELECTS -----------------------------
 function cargarProductosParaAjuste() {
     const select = document.getElementById("ajusteProductoId");
-    if (!select || !window.productos) return;
+    if (!select) return;
 
-    console.log("🔄 Actualizando productos para AJUSTE...");
+    select.innerHTML = '<option value="">Seleccione un producto</option>';
 
-    select.innerHTML = '<option value="">Seleccionar producto</option>';
+    // Verificar que window.productos sea un array
+    if (!Array.isArray(window.productos)) {
+        console.error('window.productos no es un array válido');
+        window.productos = [];
+        return;
+    }
+
+    const productosActivos = window.productos.filter(p => p.estado !== false);
 
     const lista = Array.isArray(window.productos) ? window.productos : [];
     lista.filter(p => p.estado === true).forEach(p => {
         select.innerHTML += `<option value="${p.id}">
-            ${p.nombre} (Stock: ${p.stockActual})
+            ${p.nombre} (Stock: ${p.stockActual ?? 0})
         </option>`;
     });
 }
 
 function cargarProductosFiltro() {
     const select = document.getElementById("movimientoProductoId");
-    if (!select || !window.productos) return;
+    if (!select) return;
 
     console.log("🔄 Actualizando productos en FILTRO...");
 
     select.innerHTML = '<option value="">Todos</option>';
 
-    window.productos
-        .filter(p => p.estado === true)
-        .forEach(p => {
-            select.innerHTML += `<option value="${p.id}">
-                ${p.nombre}
-            </option>`;
-        });
+    const lista = Array.isArray(window.productos) ? window.productos : [];
+    lista.filter(p => p.estado === true).forEach(p => {
+        select.innerHTML += `<option value="${p.id}">
+            ${p.nombre}
+        </option>`;
+    });
 }
 
-
-
-// ✅ CARGAR PRODUCTOS
+// ----------------------------- CARGAR PRODUCTOS -----------------------------
 async function cargarProductos() {
     console.log("📦 Cargando productos...");
 
-    const response = await fetch("/api/productos");
-    window.productos = await response.json();
+    try {
+        const resp = await fetchWithOptionalAuth("/productos", { method: "GET", cache: "no-store" });
 
-    console.log("✅ Productos cargados:", window.productos.length);
+        if (!resp) {
+            console.error("No se obtuvo respuesta al cargar productos");
+            window.productos = [];
+            return;
+        }
 
+        if (resp.status === 401) {
+            console.warn("401 en /api/productos - token inválido o sesión expirada");
+            window.productos = [];
+            return;
+        }
+
+        if (!resp.ok) {
+            console.error("Error al obtener productos:", resp.status);
+            // intentar parsear json alternativo
+            const txt = await resp.text().catch(() => null);
+            console.warn("Respuesta no OK productos:", txt);
+            window.productos = [];
+            return;
+        }
+
+        const data = await resp.json();
+
+        // Normalizar: admitir distintos formatos retornados por la API
+        if (Array.isArray(data)) {
+            window.productos = data;
+        } else if (Array.isArray(data.productos)) {
+            window.productos = data.productos;
+        } else if (Array.isArray(data.data)) {
+            window.productos = data.data;
+        } else {
+            // si es objeto con claves numéricas, convertir a array
+            try {
+                const maybeArray = Object.values(data).filter(v => v && typeof v === 'object');
+                window.productos = Array.isArray(maybeArray) ? maybeArray : [];
+            } catch (e) {
+                window.productos = [];
+            }
+        }
+
+        console.log("✅ Productos cargados:", Array.isArray(window.productos) ? window.productos.length : 0);
+    } catch (err) {
+        console.error("Error cargando productos:", err);
+        window.productos = [];
+    }
 }
 
-
+// ----------------------------- INIT / EVENTOS DOM -----------------------------
 document.addEventListener("DOMContentLoaded", async () => {
+    // Cargar productos primero para poblar selects
     await cargarProductos();
 
-    cargarProductosParaAjuste();
-    cargarProductosFiltro();
+    // Reconstruir selects usando los productos cargados
+    try { cargarProductosParaAjuste(); } catch (e) { console.error(e); }
+    try { cargarProductosFiltro(); } catch (e) { console.error(e); }
 
-    document.getElementById("movimientoProductoId").addEventListener("change", () => {
-        cargarMovimientos();
-    });
+    // Listener: cambio de filtro de producto
+    const filtroProductoEl = document.getElementById("movimientoProductoId");
+    if (filtroProductoEl) {
+        filtroProductoEl.addEventListener("change", () => {
+            cargarMovimientos();
+        });
+    }
 
+    // Otros listeners de filtros (si existen)
+    const inicioEl = document.getElementById("movimientoFechaInicio");
+    const finEl = document.getElementById("movimientoFechaFin");
+    const tipoEl = document.getElementById("movimientoTipo");
+    if (inicioEl) inicioEl.addEventListener("change", () => cargarMovimientos());
+    if (finEl) finEl.addEventListener("change", () => cargarMovimientos());
+    if (tipoEl) tipoEl.addEventListener("change", () => cargarMovimientos());
+
+    // Cargar inicialmente movimientos
     await cargarMovimientos();
 });
+
+// ----------------------------- EXPORTS GLOBALES (por si los invocas desde HTML) -----------------------------
+window.cargarMovimientos = cargarMovimientos;
+window.cargarProductos = cargarProductos;
+window.cargarProductosFiltro = cargarProductosFiltro;
+window.cargarProductosParaAjuste = cargarProductosParaAjuste;
+window.guardarAjuste = guardarAjuste;

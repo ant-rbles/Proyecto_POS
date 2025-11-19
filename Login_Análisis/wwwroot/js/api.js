@@ -1,14 +1,13 @@
-﻿// api.js - Funciones para hacer solicitudes autenticadas
-const API_BASE = 'https://localhost:7000/api';
+﻿const API_BASE = 'https://localhost:7000/api';
 
-// Función para hacer fetch con autenticación
+// Función para hacer fetch con autenticación (soporta 'authToken' y 'token')
 async function fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || null;
 
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
     };
 
@@ -17,7 +16,7 @@ async function fetchWithAuth(url, options = {}) {
         ...options,
         headers: {
             ...defaultOptions.headers,
-            ...options.headers
+            ...(options.headers || {})
         }
     };
 
@@ -25,25 +24,32 @@ async function fetchWithAuth(url, options = {}) {
         const response = await fetch(`${API_BASE}${url}`, mergedOptions);
 
         if (response.status === 401) {
-            // Token expirado o inválido
+            // Token inválido/expirado -> limpiar e indicar re-login
+            localStorage.removeItem('authToken');
             localStorage.removeItem('token');
-            localStorage.removeItem('userRole');
-            window.location.href = '/';
+            localStorage.removeItem('user');
+            // No redirecciono forzosamente para no romper flujos, pero devuelvo null
+            console.warn('API returned 401 - token inválido o expirado');
             return null;
         }
 
         if (!response.ok) {
-            throw new Error(`Error ${response.status}: ${response.statusText}`);
+            // devolvemos el objeto Response para que el caller pueda leer status / json si lo desea
+            const text = await response.text();
+            throw new Error(`Error ${response.status}: ${text || response.statusText}`);
         }
 
-        return await response.json();
+        // Si no es contenido JSON (por ejemplo PDF), el caller debe manejarlo.
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) return await response.json();
+        return response;
     } catch (error) {
         console.error('Error en solicitud API:', error);
         return null;
     }
 }
 
-// Funciones específicas de API
+// Funciones específicas de API (ejemplo)
 async function apiLoadProductos() {
     return await fetchWithAuth('/productos');
 }

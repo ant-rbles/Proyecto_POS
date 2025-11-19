@@ -21,6 +21,8 @@ namespace Login_Análisis.Data
         public DbSet<MovimientoInventario> MovimientosInventario { get; set; }
         public DbSet<Venta> Venta { get; set; }
         public DbSet<DetalleVenta> DetalleVenta { get; set; }
+        public DbSet<Presupuesto> Presupuestos { get; set; }
+        public DbSet<DetallePresupuesto> DetallePresupuestos { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<DescuentoProducto> DescuentosProducto { get; set; }
 
@@ -193,6 +195,54 @@ namespace Login_Análisis.Data
                 entity.HasOne(d => d.Venta)
                       .WithMany(v => v.Detalles)
                       .HasForeignKey(d => d.VentaId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(d => d.Producto)
+                      .WithMany()
+                      .HasForeignKey(d => d.ProductoId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(d => d.UnidadMedida)
+                      .WithMany()
+                      .HasForeignKey(d => d.UnidadMedidaId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Presupuesto>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.NumeroPresupuesto).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.NumeroPresupuesto).IsUnique();
+                entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Impuestos).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Observaciones).HasMaxLength(1000);
+                entity.Property(e => e.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("PENDIENTE");
+
+                entity.HasOne(p => p.Cliente)
+                      .WithMany()
+                      .HasForeignKey(p => p.ClienteId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.Usuario)
+                      .WithMany()
+                      .HasForeignKey(p => p.UsuarioCreacion)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración de DetallePresupuesto
+            modelBuilder.Entity<DetallePresupuesto>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Cantidad).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PrecioUnitario).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.DescuentoAplicado).HasColumnType("decimal(5,2)").HasDefaultValue(0);
+                entity.Property(e => e.TotalLinea).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Observaciones).HasMaxLength(500);
+
+                entity.HasOne(d => d.Presupuesto)
+                      .WithMany(p => p.Detalles)
+                      .HasForeignKey(d => d.PresupuestoId)
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(d => d.Producto)

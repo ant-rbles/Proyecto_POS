@@ -169,6 +169,45 @@ async function verificarCodigoProductoExistente(codigo, excludeId = null) {
     }
 }
 
+// En productos.js, mejorar la función de carga
+async function cargarProductos() {
+    try {
+        if (!verificarYRenovarToken()) {
+            return;
+        }
+
+        const response = await fetch('/api/productos', {
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401) {
+            throw new Error('No autorizado');
+        }
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Asegurarse de que sea un array
+        window.productos = Array.isArray(data) ? data : [];
+
+        console.log('Productos cargados:', window.productos.length);
+
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        window.productos = [];
+
+        if (error.message.includes('No autorizado') || error.message.includes('401')) {
+            mostrarError('Sesión expirada. Por favor, inicie sesión nuevamente.');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+    }
+}
+
 // Función para eliminar producto (desactivar)
 async function deleteProducto(id) {
     console.log('Intentando desactivar producto ID:', id);
