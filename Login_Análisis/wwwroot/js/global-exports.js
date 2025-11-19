@@ -1,105 +1,78 @@
-﻿// Autenticación / Usuarios
-window.registerUserByAdmin = registerUserByAdmin;
-window.clearRegistrationForm = clearRegistrationForm;
-window.togglePassword = togglePassword;
-window.viewUsers = viewUsers;
-window.toggleRegistrationForm = toggleRegistrationForm;
-window.editUser = editUser;
-window.deleteUser = deleteUser;
-window.activateUser = activateUser;
-window.logout = logout;
+﻿// =============================================
+// GLOBAL EXPORTS — SEGURO Y SIN ERRORES
+// =============================================
 
-// Navegación
-window.showWelcomeView = showWelcomeView;
-window.openManagementTab = openManagementTab;
-window.closeManagementTabs = closeManagementTabs;
-window.toggleSidebar = toggleSidebar;
-window.setupSidebarToggle = setupSidebarToggle;
+// Esta función global ayuda a exportar funciones sin romper el sistema
+function safeExport(name, fn) {
+    if (typeof fn === "function") {
+        window[name] = fn;
+        console.log("[EXPORTADO]", name);
+    } else {
+        console.warn("[NO EXPORTADO]", name, "→ no existe en este contexto");
+    }
+}
 
-// Proveedores
-window.showProveedorForm = showProveedorForm;
-window.hideProveedorForm = hideProveedorForm;
-window.deleteProveedor = deleteProveedor;
-window.activateProveedor = activateProveedor;
-window.handleProveedorSubmit = handleProveedorSubmit;
+// ================================
+// EXPORTS DE AUTH.JS
+// ================================
+safeExport("logout", window.logout);
+safeExport("togglePassword", window.togglePassword);
 
-// Productos
-window.showProductoForm = showProductoForm;
-window.hideProductoForm = hideProductoForm;
-window.editProducto = editProducto;
-window.deleteProducto = deleteProducto;
-window.activateProducto = activateProducto;
-window.updateProductoRow = updateProductoRow;
-window.toggleProductRegistrationForm = toggleProductRegistrationForm;
-window.handleProductoSubmit = handleProductoSubmit;
+// ================================
+// EXPORTS DE DASHBOARD.JS
+// ================================
+safeExport("showDashboard", window.showDashboard);
+safeExport("openManagementTab", window.openManagementTab);
+safeExport("closeManagementTabs", window.closeManagementTabs);
+safeExport("toggleSidebar", window.toggleSidebar);
+safeExport("setupSidebarToggle", window.setupSidebarToggle);
 
-// Compras
-window.showCompraForm = showCompraForm;
-window.hideCompraForm = hideCompraForm;
-window.agregarDetalle = agregarDetalle;
-window.eliminarDetalle = eliminarDetalle;
-window.calcularTotalLinea = calcularTotalLinea;
-window.calcularTotalesCompra = calcularTotalesCompra;
-window.loadCompras = loadCompras;
-window.anularCompra = anularCompra;
-window.verDetalleCompra = verDetalleCompra;
-window.cerrarModalDetalleCompra = cerrarModalDetalleCompra;
-window.handleCompraSubmit = handleCompraSubmit;
-window.cargarCompras = cargarCompras;
-
-// Ventas
-window.showVentaForm = showVentaForm;
-window.hideVentaForm = hideVentaForm;
-window.agregarDetalleVenta = agregarDetalleVenta;
-window.eliminarDetalleVenta = eliminarDetalleVenta;
-window.calcularTotalesVenta = calcularTotalesVenta;
-window.buscarClientePorNIT = buscarClientePorNIT;
-window.onProductoSelectChange = onProductoSelectChange;
-window.handleVentaSubmit = handleVentaSubmit;
-window.calcularTotalLinea = calcularTotalLinea;
-
-// Inventario
-window.loadInventario = loadInventario;
-
-// Categorías
-window.showCategoriaForm = showCategoriaForm;
-window.hideCategoriaForm = hideCategoriaForm;
-window.deleteCategoria = deleteCategoria;
-window.handleCategoriaSubmit = handleCategoriaSubmit;
-
-// Unidades
-window.showUnidadForm = showUnidadForm;
-window.hideUnidadForm = hideUnidadForm;
-window.deleteUnidad = deleteUnidad;
-window.handleUnidadSubmit = handleUnidadSubmit;
+// ================================
+// EXPORTS COMUNES EN MÓDULOS
+// SOLO SI EXISTEN
+// ================================
 
 // Clientes
-window.showClienteForm = showClienteForm;
-window.hideClienteForm = hideClienteForm;
-window.editCliente = editCliente;
-window.deleteCliente = deleteCliente;
-window.activateCliente = activateCliente;
-window.handleClienteSubmit = handleClienteSubmit;
+safeExport("loadClientes", window.loadClientes);
+safeExport("guardarCliente", window.guardarCliente);
+safeExport("editarCliente", window.editarCliente);
+safeExport("actualizarCliente", window.actualizarCliente);
+
+// Productos
+safeExport("loadProductos", window.loadProductos);
+safeExport("guardarProducto", window.guardarProducto);
+safeExport("eliminarProducto", window.eliminarProducto);
+
+// Proveedores
+safeExport("loadProveedores", window.loadProveedores);
+safeExport("guardarProveedor", window.guardarProveedor);
+
+// Categorías
+safeExport("loadCategorias", window.loadCategorias);
+
+// Unidades
+safeExport("loadUnidadesMedida", window.loadUnidadesMedida);
+
+// Compras
+safeExport("cargarCompras", window.cargarCompras);
+safeExport("registrarCompra", window.registrarCompra);
+
+// Ventas
+safeExport("cargarVentas", window.cargarVentas);
+safeExport("registrarVenta", window.registrarVenta);
+
+// Inventario
+safeExport("cargarInventario", window.cargarInventario);
+
+// Movimientos
+safeExport("cargarMovimientos", window.cargarMovimientos);
 
 // Reportes
-window.cambiarTipoReporte = cambiarTipoReporte;
-window.cargarReporte = cargarReporte;
-window.generarReporteVentas = generarReporteVentas;
-window.descargarReporteInventarioPdf = descargarReporteInventarioPdf;
-window.descargarReporteComprasPdf = descargarReporteComprasPdf;
-window.actualizarBotonesReporte = actualizarBotonesReporte;
-window.resetFiltrosReporte = resetFiltrosReporte;
-window.inicializarSeccionReportes = inicializarSeccionReportes;
-window.ReportesManager = ReportesManager;
+safeExport("cargarReporteVentas", window.cargarReporteVentas);
 
-// Movimientos 
-window.cargarMovimientos = cargarMovimientos;
-window.guardarAjuste = guardarAjuste;
-window.handleAjusteSubmit = handleAjusteSubmit;
-window.cargarMovimientos = cargarMovimientos;
-window.showAjusteForm = showAjusteForm;
-window.hideAjusteForm = hideAjusteForm;
-window.guardarAjuste = guardarAjuste;
-window.cargarProductosParaAjuste = cargarProductosParaAjuste;
-window.cargarProductosFiltroMovimientos = cargarProductosFiltroMovimientos;
-window.inicializarSeccionMovimientos = inicializarSeccionMovimientos;
+// Presupuestos
+safeExport("cargarPresupuestos", window.cargarPresupuestos);
+safeExport("crearPresupuesto", window.crearPresupuesto);
+
+// FIN
+console.log("✔ global-exports.js cargado correctamente.");

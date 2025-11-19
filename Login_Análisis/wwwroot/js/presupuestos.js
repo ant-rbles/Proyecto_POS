@@ -36,6 +36,15 @@ async function cargarListaPresupuestos() {
     }
 }
 
+async function cargarPresupuestos() {
+    try {
+        // puedes llamar la función que ya tengas para llenar la tabla; aquí llamamos a las dos cargas
+        await cargarClientesParaPresupuesto();
+        await cargarProductosParaPresupuesto();
+        // y luego tu lógica para listar presupuestos (si ya existe)
+    } catch (e) { console.error(e); }
+}
+
 // Renderizar tabla de presupuestos
 function renderizarTablaPresupuestos() {
     const tbody = document.getElementById('tabla-presupuestos');
@@ -286,54 +295,30 @@ function cerrarModalPresupuesto() {
 }
 
 // Cargar clientes en el select del modal
-async function cargarClientesPresupuesto() {
+async function cargarClientesParaPresupuesto() {
     try {
-        const response = await fetch('/api/Clientes/todos');
-        if (response.ok) {
-            const clientes = await response.json();
-            const select = document.getElementById('presupuesto-cliente');
-            if (select) {
-                select.innerHTML = '<option value="">Seleccionar cliente existente</option>';
-                
-                clientes.forEach(cliente => {
-                    if (cliente.estado) {
-                        const option = document.createElement('option');
-                        option.value = cliente.id;
-                        option.textContent = cliente.nombre + (cliente.nit ? ` (${cliente.nit})` : '');
-                        select.appendChild(option);
-                    }
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Error al cargar clientes:', error);
-        mostrarError('Error al cargar la lista de clientes');
-    }
+        const token = localStorage.getItem('authToken');
+        const resp = await fetch('https://localhost:7000/api/clientes/todos', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const select = document.getElementById('presupuesto-cliente');
+        if (!select) return;
+        select.innerHTML = '<option value="">Seleccionar cliente</option>' + data.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    } catch (e) { console.error(e); }
 }
 
-// Cargar productos en el select del modal
-async function cargarProductosPresupuesto() {
+async function cargarProductosParaPresupuesto() {
     try {
-        const response = await fetch('/api/Productos');
-        if (response.ok) {
-            const productos = await response.json();
-            const select = document.getElementById('presupuesto-producto');
-            if (select) {
-                select.innerHTML = '<option value="">Seleccionar producto</option>';
-                
-                productos.forEach(producto => {
-                    const option = document.createElement('option');
-                    option.value = producto.id;
-                    option.textContent = `${producto.nombre} - Q${producto.precioVenta} - Stock: ${producto.stockActual}`;
-                    option.setAttribute('data-precio', producto.precioVenta);
-                    select.appendChild(option);
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Error al cargar productos:', error);
-        mostrarError('Error al cargar la lista de productos');
-    }
+        const token = localStorage.getItem('authToken');
+        const resp = await fetch('https://localhost:7000/api/productos/todos', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) return;
+        const productos = await resp.json();
+        const select = document.getElementById('presupuesto-producto');
+        if (!select) return;
+        select.innerHTML = '<option value="">Seleccionar producto...</option>' +
+            productos.map(p => `<option value="${p.id}" data-precio="${p.precioVenta || 0}">${p.nombre}</option>`).join('');
+        window.productos = productos;
+    } catch (e) { console.error(e); }
 }
 
 // Cargar datos del cliente seleccionado

@@ -1,4 +1,9 @@
-﻿//Funciones Productos   
+﻿// productos.js o app.js
+window.proveedores = window.proveedores || [];
+window.productos = window.productos || [];
+
+
+//Funciones Productos   
 function showProductoForm(producto = null) {
     openManagementTab('productos');
     loadProveedores();

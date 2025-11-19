@@ -2,7 +2,10 @@
 
 // Función para hacer fetch con autenticación (soporta 'authToken' y 'token')
 async function fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || null;
+    const token =
+        localStorage.getItem('authToken') ||
+        localStorage.getItem('token') ||
+        null;
 
     const defaultOptions = {
         headers: {
@@ -22,15 +25,9 @@ async function fetchWithAuth(url, options = {}) {
 
     try {
         const response = await fetch(`${API_BASE}${url}`, mergedOptions);
-
         if (response.status === 401) {
-            // Token inválido/expirado -> limpiar e indicar re-login
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            // No redirecciono forzosamente para no romper flujos, pero devuelvo null
-            console.warn('API returned 401 - token inválido o expirado');
-            return null;
+            console.warn('API returned 401 - token inválido o expirado (no se borra token automáticamente).');
+            return response;
         }
 
         if (!response.ok) {
@@ -39,10 +36,14 @@ async function fetchWithAuth(url, options = {}) {
             throw new Error(`Error ${response.status}: ${text || response.statusText}`);
         }
 
-        // Si no es contenido JSON (por ejemplo PDF), el caller debe manejarlo.
+        // Si el contenido no es JSON (por ejemplo un PDF), se devuelve tal cual
         const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) return await response.json();
+        if (contentType.includes('application/json')) {
+            return await response.json();
+        }
+
         return response;
+
     } catch (error) {
         console.error('Error en solicitud API:', error);
         return null;
