@@ -1,4 +1,4 @@
-﻿let presupuestos = [];
+﻿let presupuestos = []; 
 let presupuestoEditando = null;
 let productosPresupuesto = []; // Nueva variable global para los productos del presupuesto
 
@@ -120,11 +120,11 @@ function filtrarPresupuestos() {
 // Función para abrir modal de nuevo presupuesto (MODAL DINÁMICO)
 function abrirModalNuevoPresupuesto() {
     console.log('Abriendo modal de presupuesto...');
-
+    
     // Resetear variables
     productosPresupuesto = [];
     presupuestoEditando = null;
-
+    
     // Crear modal dinámicamente (similar al de compras)
     const modalHTML = `
         <div id="modalPresupuesto" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:1000;">
@@ -262,16 +262,16 @@ function abrirModalNuevoPresupuesto() {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-
+    
     // Establecer fechas por defecto
     const hoy = new Date().toISOString().split('T')[0];
     const vencimiento = new Date();
     vencimiento.setDate(vencimiento.getDate() + 15);
     const vencimientoStr = vencimiento.toISOString().split('T')[0];
-
+    
     document.getElementById('presupuesto-fecha').value = hoy;
     document.getElementById('presupuesto-vencimiento').value = vencimientoStr;
-
+    
     // Cargar datos
     cargarClientesPresupuesto();
     cargarProductosPresupuesto();
@@ -294,7 +294,7 @@ async function cargarClientesPresupuesto() {
             const select = document.getElementById('presupuesto-cliente');
             if (select) {
                 select.innerHTML = '<option value="">Seleccionar cliente existente</option>';
-
+                
                 clientes.forEach(cliente => {
                     if (cliente.estado) {
                         const option = document.createElement('option');
@@ -320,7 +320,7 @@ async function cargarProductosPresupuesto() {
             const select = document.getElementById('presupuesto-producto');
             if (select) {
                 select.innerHTML = '<option value="">Seleccionar producto</option>';
-
+                
                 productos.forEach(producto => {
                     const option = document.createElement('option');
                     option.value = producto.id;
@@ -340,7 +340,7 @@ async function cargarProductosPresupuesto() {
 function cargarDatosCliente() {
     const clienteId = document.getElementById('presupuesto-cliente').value;
     const clientes = document.getElementById('presupuesto-cliente').options;
-
+    
     if (clienteId) {
         const clienteSeleccionado = Array.from(clientes).find(opt => opt.value === clienteId);
         if (clienteSeleccionado) {
@@ -357,10 +357,10 @@ function agregarProductoPresupuesto() {
     const productoId = productoSelect.value;
     const productoTexto = productoSelect.options[productoSelect.selectedIndex].text;
     const productoNombre = productoTexto.split(' - ')[0];
-
+    
     const cantidad = parseFloat(document.getElementById('presupuesto-cantidad').value) || 1;
-    const precio = parseFloat(document.getElementById('presupuesto-precio').value) ||
-        parseFloat(productoSelect.selectedOptions[0].getAttribute('data-precio')) || 0;
+    const precio = parseFloat(document.getElementById('presupuesto-precio').value) || 
+                  parseFloat(productoSelect.selectedOptions[0].getAttribute('data-precio')) || 0;
     const descuento = parseFloat(document.getElementById('presupuesto-descuento').value) || 0;
 
     // Validaciones
@@ -395,7 +395,7 @@ function agregarProductoPresupuesto() {
     };
 
     productosPresupuesto.push(producto);
-
+    
     // Actualizar interfaz
     actualizarListaProductosPresupuesto();
     calcularTotalesPresupuesto();
@@ -411,7 +411,7 @@ function agregarProductoPresupuesto() {
 function actualizarListaProductosPresupuesto() {
     const tbody = document.getElementById('lista-productos-presupuesto');
     if (!tbody) return;
-
+    
     tbody.innerHTML = '';
 
     productosPresupuesto.forEach((producto, index) => {
@@ -448,7 +448,7 @@ function calcularTotalesPresupuesto() {
     const subtotalElement = document.getElementById('presupuesto-subtotal');
     const ivaElement = document.getElementById('presupuesto-iva');
     const totalElement = document.getElementById('presupuesto-total');
-
+    
     if (subtotalElement) subtotalElement.textContent = `Q ${subtotal.toFixed(2)}`;
     if (ivaElement) ivaElement.textContent = `Q ${iva.toFixed(2)}`;
     if (totalElement) totalElement.textContent = `Q ${total.toFixed(2)}`;

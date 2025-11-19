@@ -1,227 +1,287 @@
-﻿// Maneja el inicio de sesión de usuario
-if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = emailInput ? emailInput.value : '';
-        const password = passwordInput ? passwordInput.value : '';
-        const loginBtn = document.getElementById('loginBtn');
+﻿// =======================================================
+// =============== VARIABLES PRINCIPALES =================
+// =======================================================
 
-        // Validaciones previas
-        if (!validateEmail(email)) {
-            showMessage('Por favor ingresa un email válido', 'error');
-            if (emailGroup) emailGroup.classList.add('invalid');
-            return;
-        }
-        if (!validatePassword(password)) {
-            showMessage('La contraseña debe tener al menos 12 caracteres', 'error');
-            if (passwordGroup) passwordGroup.classList.add('invalid');
-            return;
-        }
+// LOGIN
+const loginForm = document.getElementById('loginForm');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const emailGroup = document.getElementById('emailGroup');
+const passwordGroup = document.getElementById('passwordGroup');
 
-        // Deshabilitar botón mientras se hace la petición
-        if (loginBtn) {
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<span class="loading"></span> Iniciando sesión...';
-        }
+// RECUPERACIÓN DE CONTRASEÑA
+const showForgotPasswordLink = document.getElementById('showForgotPassword');
+const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+const backToLoginLink = document.getElementById('backToLogin');
+const backToLoginSuccessBtn = document.getElementById('backToLoginSuccess');
+const recoveryEmailInput = document.getElementById('recoveryEmail');
+const recoveryEmailGroup = document.getElementById('recoveryEmailGroup');
+const successView = document.getElementById('successView');
+const sentEmailSpan = document.getElementById('sentEmail');
 
-        try {
-            const response = await fetch('https://localhost:7000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ login: email, password })
-            });
-            const data = await response.json();
+const messageDiv = document.getElementById('message');
 
-            if (response.ok) {
-                showMessage(data.message, 'success');
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                localStorage.setItem('usuarioId', data.user.id);
-                showDashboard(data.user);
-            } else {
-                showMessage(data.message || 'Credenciales incorrectas', 'error');
-            }
-        } catch (err) {
-            showMessage('Error de conexión. Intenta nuevamente.', 'error');
-            console.error('Login error:', err);
-        } finally {
-            if (loginBtn) {
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Iniciar Sesión';
-            }
-        }
-    });
+
+// =======================================================
+// ===================== UTILIDADES =======================
+// =======================================================
+
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
 }
 
-function handleLoginSuccess(data) {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('userRole', data.user.rol);
-    localStorage.setItem('userName', data.user.nombre);
-
-    // Redirigir al dashboard según el rol
-    redirectToDashboard(data.user.rol);
+function validatePassword(password) {
+    return typeof password === 'string' && password.length >= 8;
 }
 
-function redirectToDashboard(role) {
-    switch (role) {
-        case 'Administrador':
-            window.location.href = '/dashboard-admin.html';
-            break;
-        case 'Cajero':
-            window.location.href = '/dashboard-cajero.html';
-            break;
-        case 'Vendedor':
-            window.location.href = '/dashboard-vendedor.html';
-            break;
-        default:
-            window.location.href = '/dashboard.html';
+function showMessage(msg, type) {
+    if (messageDiv) {
+        messageDiv.textContent = msg;
+        messageDiv.className = type === "success" ? "message success" : "message error";
     }
 }
 
-// Manejo de vistas del formulario de recuperación de contraseña
-if (showForgotPasswordLink) {
-    showForgotPasswordLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        hideAllForms();
-        if (forgotPasswordForm) forgotPasswordForm.classList.remove('hidden');
-        clearMessage();
-    });
-}
-if (backToLoginLink) {
-    backToLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        hideAllForms();
-        if (loginForm) loginForm.classList.remove('hidden');
-        clearMessage();
-    });
-}
-if (backToLoginSuccessBtn) {
-    backToLoginSuccessBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        hideAllForms();
-        if (loginForm) loginForm.classList.remove('hidden');
-        clearMessage();
-    });
+function clearMessage() {
+    if (messageDiv) {
+        messageDiv.textContent = "";
+        messageDiv.className = "";
+    }
 }
 
-// Envío de solicitud de recuperación
-if (forgotPasswordForm) {
-    forgotPasswordForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = recoveryEmailInput ? recoveryEmailInput.value.trim() : '';
-        const recoveryBtn = document.getElementById('recoveryBtn');
+function hideAllForms() {
+    loginForm?.classList.add("hidden");
+    forgotPasswordForm?.classList.add("hidden");
+    successView.style.display = "none";
+}
 
-        // Validar email
+
+// =======================================================
+// =========== VALIDACIONES DINÁMICAS (TIEMPO REAL) =======
+// =======================================================
+
+emailInput?.addEventListener("input", () => {
+    const value = emailInput.value.trim();
+
+    if (validateEmail(value)) {
+        emailGroup.classList.remove("invalid");
+        emailGroup.classList.add("valid");
+        document.getElementById("emailError").style.display = "none";
+    } else {
+        emailGroup.classList.remove("valid");
+        emailGroup.classList.add("invalid");
+        document.getElementById("emailError").style.display = "block";
+    }
+});
+
+passwordInput?.addEventListener("input", () => {
+    const value = passwordInput.value.trim();
+
+    if (validatePassword(value)) {
+        passwordGroup.classList.remove("invalid");
+        passwordGroup.classList.add("valid");
+        document.getElementById("passwordError").style.display = "none";
+    } else {
+        passwordGroup.classList.remove("valid");
+        passwordGroup.classList.add("invalid");
+        document.getElementById("passwordError").style.display = "block";
+    }
+});
+
+
+// =======================================================
+// ======================== LOGIN =========================
+// =======================================================
+
+if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        clearMessage();
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+        const loginBtn = document.getElementById("loginBtn");
+
+        let hasErrors = false;
+
+        // =============== VALIDACIONES EXACTAS COMO ANTES ===============
         if (!validateEmail(email)) {
-            showMessage('Por favor ingresa un email válido', 'error');
-            if (recoveryEmailGroup) recoveryEmailGroup.classList.add('invalid');
-            return;
+            emailGroup.classList.add("invalid");
+            document.getElementById("emailError").style.display = "block";
+            hasErrors = true;
+        } else {
+            emailGroup.classList.remove("invalid");
+            document.getElementById("emailError").style.display = "none";
         }
 
-        // Deshabilitar botón durante petición
-        if (recoveryBtn) {
-            recoveryBtn.disabled = true;
-            recoveryBtn.innerHTML = '<span class="loading"></span> Enviando...';
+        if (!validatePassword(password)) {
+            passwordGroup.classList.add("invalid");
+            document.getElementById("passwordError").style.display = "block";
+            hasErrors = true;
+        } else {
+            passwordGroup.classList.remove("invalid");
+            document.getElementById("passwordError").style.display = "none";
         }
+
+        if (hasErrors) return;
+
+        // ================= BLOQUEAR BOTÓN =================
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<span class="loading"></span> Iniciando sesión...';
+
+        // ================= PETICIÓN =================
+        try {
+            const response = await fetch("https://localhost:7000/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ login: email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage(data.message, "success");
+
+                localStorage.setItem("authToken", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                localStorage.setItem("usuarioId", data.user.id);
+
+                // Si existe showDashboard, úsalo
+                if (typeof showDashboard === "function") {
+                    showDashboard(data.user);
+                } else {
+                    window.location.href = "dashboard.html";
+                }
+
+            } else {
+                showMessage(data.message || "Credenciales incorrectas", "error");
+            }
+
+        } catch (error) {
+            console.error("Login error:", error);
+            showMessage("Error de conexión. Intenta nuevamente.", "error");
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Iniciar Sesión";
+        }
+    });
+}
+
+
+// =======================================================
+// ================== RECUPERAR CONTRASEÑA ================
+// =======================================================
+
+if (showForgotPasswordLink) {
+    showForgotPasswordLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        hideAllForms();
+        forgotPasswordForm.classList.remove("hidden");
+        clearMessage();
+    });
+}
+
+if (backToLoginLink) {
+    backToLoginLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        hideAllForms();
+        loginForm.classList.remove("hidden");
+        clearMessage();
+    });
+}
+
+if (backToLoginSuccessBtn) {
+    backToLoginSuccessBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        hideAllForms();
+        loginForm.classList.remove("hidden");
+        clearMessage();
+    });
+}
+
+if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearMessage();
+
+        const email = recoveryEmailInput.value.trim();
+        const recoveryBtn = document.getElementById("recoveryBtn");
+
+        let hasErrors = false;
+
+        if (!validateEmail(email)) {
+            recoveryEmailGroup.classList.add("invalid");
+            showMessage("Por favor ingresa un email válido", "error");
+            hasErrors = true;
+        } else {
+            recoveryEmailGroup.classList.remove("invalid");
+        }
+
+        if (hasErrors) return;
+
+        recoveryBtn.disabled = true;
+        recoveryBtn.innerHTML = '<span class="loading"></span> Enviando...';
 
         try {
-            const response = await fetch('https://localhost:7000/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch("https://localhost:7000/api/auth/forgot-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email })
             });
+
             const data = await response.json();
 
             if (response.ok) {
                 hideAllForms();
-                if (successView) successView.style.display = 'block';
-                if (sentEmailSpan) sentEmailSpan.textContent = email;
+                successView.style.display = "block";
+                sentEmailSpan.textContent = email;
+
             } else {
-                showMessage(data.message || 'Error al enviar el correo.', 'error');
+                showMessage(data.message || "Error al enviar el correo.", "error");
             }
-        } catch (err) {
-            showMessage('Error de conexión. Intenta nuevamente.', 'error');
-            console.error('Recovery error:', err);
+
+        } catch (error) {
+            console.error("Recovery error:", error);
+            showMessage("Error de conexión. Intenta nuevamente.", "error");
+
         } finally {
-            if (recoveryBtn) {
-                recoveryBtn.disabled = false;
-                recoveryBtn.textContent = 'Enviar Instrucciones';
-            }
+            recoveryBtn.disabled = false;
+            recoveryBtn.textContent = "Enviar Instrucciones";
         }
     });
 }
 
-// Cierra sesión
-function logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    if (loginForm) loginForm.reset();
-    if (forgotPasswordForm) forgotPasswordForm.reset();
-    hideAllForms();
-    if (loginForm) loginForm.classList.remove('hidden');
-    showMessage('Sesión cerrada correctamente', 'success');
-}
 
-// Toggle password visibility
+// =======================================================
+// ================= SHOW / HIDE PASSWORD =================
+// =======================================================
+
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
 
-    const toggleButton = input.parentNode.querySelector('.toggle-password');
-    if (!toggleButton) return;
+    const toggleBtn = input.parentNode.querySelector(".toggle-password");
+    const icon = toggleBtn?.querySelector("i");
 
-    const icon = toggleButton.querySelector('i');
-    if (input.type === 'password') {
-        input.type = 'text';
-        if (icon) icon.classList.replace('fa-eye', 'fa-eye-slash');
+    if (input.type === "password") {
+        input.type = "text";
+        icon?.classList.replace("fa-eye", "fa-eye-slash");
     } else {
-        input.type = 'password';
-        if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
+        input.type = "password";
+        icon?.classList.replace("fa-eye-slash", "fa-eye");
     }
 }
 
-    function verificarYRenovarToken() {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-        // Redirigir al login si no hay token
-        window.location.href = 'index.html';
-        return false;
-    }
 
-    // Verificar si el token está próximo a expirar (opcional)
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const exp = payload.exp * 1000; // Convertir a milisegundos
-        const ahora = Date.now();
-        
-        // Si el token expira en menos de 5 minutos, renovarlo
-        if (exp - ahora < 5 * 60 * 1000) {
-            console.log('Token próximo a expirar, intentando renovar...');
-            // Aquí podrías implementar la renovación del token
-        }
-    } catch (error) {
-        console.error('Error verificando token:', error);
-    }
-    
-    return true;
+// =======================================================
+// ========================= LOGOUT ========================
+// =======================================================
+
+function logout() {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("usuarioId");
+
+    // Igual que antes → redirigir directamente
+    window.location.href = "index.html";
 }
-
-// Interceptor para manejar errores de autenticación
-function setupAuthInterceptor() {
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        return originalFetch.apply(this, args).then(response => {
-            if (response.status === 401) {
-                // Token inválido o expirado
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userData');
-                window.location.href = 'index.html';
-                return Promise.reject(new Error('Sesión expirada'));
-            }
-            return response;
-        });
-    };
-}
-
-// Llamar al interceptor cuando se cargue el script
-setupAuthInterceptor();
