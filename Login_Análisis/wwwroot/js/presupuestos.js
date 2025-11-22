@@ -36,51 +36,49 @@ function safeCall(fn, ...args) {
 }
 
 // ======================================================================
-//  CARGAR UNIDADES DE MEDIDA - VERSIÓN ROBUSTA
+//  CARGAR UNIDADES DE MEDIDA 
 // ======================================================================
 async function cargarUnidadesParaPresupuesto() {
+    const selectUM = document.getElementById("productoUnidadBase");
+    if (!selectUM) {
+        console.warn("No se encontró #productoUnidadBase");
+        return;
+    }
+
+    selectUM.innerHTML = `<option value="">Cargando...</option>`;
+
     try {
-        console.log("🔧 Cargando unidades de medida...");
-        
         const resp = await fetch("https://localhost:7000/api/unidadesmedida", {
-            headers: { "Authorization": `Bearer ${getAuthToken()}` }
+            headers: {
+                "Authorization": "Bearer " + localStorage.getItem("authToken")
+            }
         });
 
-        if (handle401(resp)) {
-            console.error("❌ Error 401 al cargar unidades");
-            return [];
-        }
-        
         if (!resp.ok) {
-            console.error(`❌ Error HTTP ${resp.status} al cargar unidades`);
-            return [];
+            selectUM.innerHTML = `<option value="">Error al cargar</option>`;
+            console.error(await resp.text());
+            return;
         }
 
         const unidades = await resp.json();
-        console.log("✅ Unidades cargadas:", unidades);
-
-        // Guardar globalmente para uso posterior
         window.unidadesMedida = unidades;
 
-        // Llenar el select
-        const select = document.getElementById("productoUnidadBase");
-        if (select) {
-            select.innerHTML = 
-                `<option value="">Seleccionar unidad...</option>` +
-                unidades.map(u => 
-                    `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`
-                ).join('');
-            console.log("✅ Select de unidades llenado correctamente");
-        } else {
-            console.error("❌ No se encontró el select productoUnidadBase");
-        }
+        selectUM.innerHTML = `<option value="">Seleccione...</option>`;
 
-        return unidades;
+        unidades.forEach(u => {
+            selectUM.innerHTML += `
+                <option value="${u.id}">
+                    ${u.abreviatura}
+                </option>
+            `;
+        });
+
     } catch (e) {
-        console.error("❌ Error al cargar unidades de medida:", e);
-        return [];
+        console.error("Error cargando UM:", e);
+        selectUM.innerHTML = `<option value="">Error</option>`;
     }
 }
+
 
 // ======================================================================
 //  CARGAR LISTA DE PRESUPUESTOS
@@ -351,10 +349,14 @@ function abrirModalNuevoPresupuesto() {
                             <select id="presupuesto-producto" class="form-control" style="padding: 10px; border-radius: 6px; border: 1px solid #ced4da;"></select>
                         </div>
 
-                        <div>
+                       <div>
                             <label style="font-weight: 600; margin-bottom: 8px; display: block;">Unidad *</label>
-                            <select id="productoUnidadBase" class="form-control" style="padding: 10px; border-radius: 6px; border: 1px solid #ced4da;"></select>
+                            <select id="productoUnidadBase"
+                                    class="form-control"
+                                    style="padding: 10px; border-radius: 6px; border: 1px solid #ced4da; width: 100%; min-width: 120px;">
+                            </select>
                         </div>
+
 
                         <div>
                             <label style="font-weight: 600; margin-bottom: 8px; display: block;">Cantidad *</label>
@@ -466,10 +468,13 @@ function abrirModalNuevoPresupuesto() {
     cargarClientesParaPresupuesto();
     cargarProductosParaPresupuesto();
     
-    // Cargar unidades con retardo para asegurar que el DOM esté listo
-    setTimeout(() => {
-        cargarUnidadesParaPresupuesto();
-    }, 100);
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            cargarUnidadesParaPresupuesto();
+        });
+    });
+
+
 
     // Configurar evento de cambio en producto para auto-completar precio
     const productoSelect = document.getElementById("presupuesto-producto");
@@ -842,5 +847,5 @@ window.verPresupuesto = verPresupuesto;
 window.descargarPDF = descargarPDF;
 window.editarPresupuesto = editarPresupuesto;
 window.cambiarEstadoPresupuesto = cambiarEstadoPresupuesto;
-window.convertirEnVenta = convertirEnVenta;
+//window.convertirEnVenta = convertirEnVenta;
 window.guardarPresupuesto = guardarPresupuesto;
