@@ -78,13 +78,18 @@ function mostrarErrorMembresia(mensaje) {
 }
 
 function obtenerToken() {
-    const token = localStorage.getItem('token');
+    const token =
+        localStorage.getItem('authToken') ||  
+        localStorage.getItem('token') ||      
+        null;
+
     if (!token) {
         mostrarErrorMembresia('No se encontró el token de autenticación. Por favor, inicie sesión nuevamente.');
         return null;
     }
     return token;
 }
+
 
 async function cargarMembresias() {
     console.log('Cargando membresías...');
@@ -108,12 +113,13 @@ async function cargarMembresias() {
             `;
         }
 
-        const response = await fetch('/api/membresias', {
+        const response = await fetch(`${API_BASE}/membresias`, {
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
             }
         });
+
 
         console.log('Respuesta del servidor:', response.status);
 
