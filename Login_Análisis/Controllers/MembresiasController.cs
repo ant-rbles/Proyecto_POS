@@ -57,7 +57,6 @@ namespace Login_Análisis.Controllers
             }
         }
 
-        // Obtener por id
         [HttpGet("{id}")]
         public async Task<IActionResult> Obtener(int id)
         {

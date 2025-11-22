@@ -1030,116 +1030,6 @@
                         </div>
                     </div>
 
-                    <!-- Modal para Nueva/Editar Membresía -->
-                    <div class="modal fade" id="modalMembresia" tabindex="-1" aria-labelledby="modalMembresiaLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header bg-primary text-white">
-                                    <h5 class="modal-title" id="modalMembresiaLabel">
-                                        <i class="fas fa-id-card me-2"></i>
-                                        <span id="modalTitle">Nueva Membresía</span>
-                                    </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <form id="formMembresia">
-                                    <div class="modal-body">
-                                        <input type="hidden" id="membresiaId" name="membresiaId">
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="Codigo" class="form-label">Código de Membresía *</label>
-                                                <input type="text" class="form-control" id="Codigo" name="Codigo" required
-                                                       placeholder="Ej: MEM-001">
-                                                <div class="form-text">Código único para identificar la membresía</div>
-                                            </div>
-
-                                            <div class="col-md-6 mb-3">
-                                                <label for="Tipo" class="form-label">Tipo de Membresía *</label>
-                                                <select class="form-select" id="Tipo" name="Tipo" required>
-                                                    <option value="">Seleccionar tipo</option>
-                                                    <option value="BASICA">Básica</option>
-                                                    <option value="PREMIUM">Premium</option>
-                                                    <option value="VIP">VIP</option>
-                                                    <option value="ANUAL">Anual</option>
-                                                    <option value="MENSUAL">Mensual</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="ClienteNIT" class="form-label">Buscar Cliente por NIT</label>
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" id="ClienteNIT"
-                                                           placeholder="Ingrese NIT del cliente">
-                                                    <button class="btn btn-outline-secondary" type="button" id="buscarClienteBtn">
-                                                        <i class="fas fa-search"></i>
-                                                    </button>
-                                                </div>
-                                                <div class="form-text">Busque un cliente existente por NIT</div>
-                                            </div>
-
-                                            <div class="col-md-6 mb-3">
-                                                <label for="NombreCliente" class="form-label">Nombre del Cliente *</label>
-                                                <input type="text" class="form-control" id="NombreCliente" name="NombreCliente" required
-                                                       placeholder="Nombre completo del cliente">
-                                                <input type="hidden" id="ClienteId" name="ClienteId">
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="FechaInicio" class="form-label">Fecha de Inicio *</label>
-                                                <input type="date" class="form-control" id="FechaInicio" name="FechaInicio" required>
-                                            </div>
-
-                                            <div class="col-md-6 mb-3">
-                                                <label for="FechaVencimiento" class="form-label">Fecha de Vencimiento *</label>
-                                                <input type="date" class="form-control" id="FechaVencimiento" name="FechaVencimiento" required>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="MontoPagado" class="form-label">Monto Pagado</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text">Q</span>
-                                                    <input type="number" class="form-control" id="MontoPagado" name="MontoPagado"
-                                                           step="0.01" min="0" value="0">
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6 mb-3">
-                                                <label for="MetodoPago" class="form-label">Método de Pago</label>
-                                                <select class="form-select" id="MetodoPago" name="MetodoPago">
-                                                    <option value="">Seleccionar método</option>
-                                                    <option value="EFECTIVO">Efectivo</option>
-                                                    <option value="TARJETA">Tarjeta</option>
-                                                    <option value="TRANSFERENCIA">Transferencia</option>
-                                                    <option value="CHEQUE">Cheque</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="TelefonoContacto" class="form-label">Teléfono de Contacto</label>
-                                            <input type="tel" class="form-control" id="TelefonoContacto" name="TelefonoContacto"
-                                                   placeholder="Número de teléfono">
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                            <i class="fas fa-times me-1"></i>Cancelar
-                                        </button>
-                                        <button type="submit" class="btn btn-primary" id="btnGuardarMembresia">
-                                            <i class="fas fa-save me-1"></i>Guardar Membresía
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Pestaña de Presupuestos -->
                     <div id="tab-presupuestos" class="management-tab">
                         <div class="tab-header">
@@ -1814,6 +1704,116 @@
     <script src="js/management.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/global-exports.js"></script>
+
+    <!-- Modal para Nueva/Editar Membresía -->
+    <div class="modal fade" id="modalMembresia" tabindex="-1" aria-labelledby="modalMembresiaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalMembresiaLabel">
+                        <i class="fas fa-id-card me-2"></i>
+                        <span id="modalTitle">Nueva Membresía</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formMembresia">
+                    <div class="modal-body">
+                        <input type="hidden" id="membresiaId" name="membresiaId">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Codigo" class="form-label">Código de Membresía *</label>
+                                <input type="text" class="form-control" id="Codigo" name="Codigo" required
+                                       placeholder="Ej: MEM-001">
+                                <div class="form-text">Código único para identificar la membresía</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="Tipo" class="form-label">Tipo de Membresía *</label>
+                                <select class="form-select" id="Tipo" name="Tipo" required>
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="BASICA">Básica</option>
+                                    <option value="PREMIUM">Premium</option>
+                                    <option value="VIP">VIP</option>
+                                    <option value="ANUAL">Anual</option>
+                                    <option value="MENSUAL">Mensual</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ClienteNIT" class="form-label">Buscar Cliente por NIT</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="ClienteNIT"
+                                           placeholder="Ingrese NIT del cliente">
+                                    <button class="btn btn-outline-secondary" type="button" id="buscarClienteBtn">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Busque un cliente existente por NIT</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="NombreCliente" class="form-label">Nombre del Cliente *</label>
+                                <input type="text" class="form-control" id="NombreCliente" name="NombreCliente" required
+                                       placeholder="Nombre completo del cliente">
+                                <input type="hidden" id="ClienteId" name="ClienteId">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="FechaInicio" class="form-label">Fecha de Inicio *</label>
+                                <input type="date" class="form-control" id="FechaInicio" name="FechaInicio" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="FechaVencimiento" class="form-label">Fecha de Vencimiento *</label>
+                                <input type="date" class="form-control" id="FechaVencimiento" name="FechaVencimiento" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="MontoPagado" class="form-label">Monto Pagado</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Q</span>
+                                    <input type="number" class="form-control" id="MontoPagado" name="MontoPagado"
+                                           step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="MetodoPago" class="form-label">Método de Pago</label>
+                                <select class="form-select" id="MetodoPago" name="MetodoPago">
+                                    <option value="">Seleccionar método</option>
+                                    <option value="EFECTIVO">Efectivo</option>
+                                    <option value="TARJETA">Tarjeta</option>
+                                    <option value="TRANSFERENCIA">Transferencia</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="TelefonoContacto" class="form-label">Teléfono de Contacto</label>
+                            <input type="tel" class="form-control" id="TelefonoContacto" name="TelefonoContacto"
+                                   placeholder="Número de teléfono">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarMembresia">
+                            <i class="fas fa-save me-1"></i>Guardar Membresía
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
