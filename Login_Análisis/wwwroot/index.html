@@ -175,6 +175,12 @@
                 <a class="sidebar-item" id="reportes-section" onclick="openManagementTab('reportes')" data-tab="reportes" data-role="Administrador,Cajero,Vendedor">
                     <i class="fas fa-chart-bar"></i> Reportes
                 </a>
+
+                <div class="sidebar-section">Membresías</div>
+
+                <a class="sidebar-item" id="membresias-section" onclick="openManagementTab('membresias')" data-tab="membresias" data-role="Administrador,Cajero,Vendedor">
+                    <i class="fas fa-id-card"></i> Membresías
+                </a>
             </div>
 
             <div class="dashboard-content">
@@ -839,6 +845,53 @@
                                     <tbody>
                                         <tr><td colspan="7" class="no-data">No hay ventas registradas</td></tr>
                                     </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña Membresías -->
+                    <div id="tab-membresias" class="management-tab" style="display:none;">
+                        <div class="tab-header">
+                            <h3><i class="fas fa-id-card"></i> Membresías</h3>
+                            <div class="tab-actions">
+                                <button id="btnNewMembresia" class="btn btn-primary">Nueva Membresía</button>
+                            </div>
+                        </div>
+
+                        <div class="tab-body">
+                            <div id="membresiaFormContainer" style="display:none;">
+                                <!-- formulario dinámico -->
+                                <form id="membresiaForm">
+                                    <input type="hidden" id="membresiaId" />
+                                    <div class="form-row">
+                                        <label>Código</label><input id="mCodigo" required />
+                                        <label>Nombre Cliente</label><input id="mNombre" required />
+                                        <label>Tipo</label>
+                                        <select id="mTipo">
+                                            <option value="mensual">Mensual</option>
+                                            <option value="trimestral">Trimestral</option>
+                                            <option value="anual">Anual</option>
+                                        </select>
+                                        <label>Fecha Inicio</label><input id="mFechaInicio" type="date" required />
+                                        <label>Fecha Vencimiento</label><input id="mFechaVencimiento" type="date" required />
+                                        <label>Monto Pagado</label><input id="mMontoPagado" type="number" min="0" step="0.01" required />
+                                        <label>Método Pago</label><input id="mMetodoPago" />
+                                        <label>Teléfono</label><input id="mTelefono" />
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" id="saveMembresia" class="btn btn-success">Guardar</button>
+                                        <button type="button" id="cancelMembresia" class="btn btn-secondary">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div id="membresiasList">
+                                <table id="tablaMembresias" class="table">
+                                    <thead>
+                                        <tr><th>ID</th><th>Código</th><th>Cliente</th><th>Tipo</th><th>Vence</th><th>Estado</th><th>Acciones</th></tr>
+                                    </thead>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>

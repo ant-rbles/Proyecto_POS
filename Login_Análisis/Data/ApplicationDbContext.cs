@@ -25,6 +25,9 @@ namespace Login_Análisis.Data
         public DbSet<DetallePresupuesto> DetallePresupuestos { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<DescuentoProducto> DescuentosProducto { get; set; }
+        public DbSet<Membresia> Membresias { get; set; }
+        public DbSet<MembresiaOperacion> MembresiaOperaciones { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -255,6 +258,58 @@ namespace Login_Análisis.Data
                       .HasForeignKey(d => d.UnidadMedidaId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
+
+            modelBuilder.Entity<Membresia>()
+                .HasIndex(m => m.Codigo)
+                .IsUnique();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.Codigo)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.NombreCliente)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.Tipo)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.FechaInicio)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.FechaVencimiento)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .Property(m => m.Estado)
+                .IsRequired();
+
+            modelBuilder.Entity<Membresia>()
+                .HasMany(m => m.Operaciones)
+                .WithOne(o => o.Membresia)
+                .HasForeignKey(o => o.MembresiaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MembresiaOperacion>()
+                .Property(o => o.Accion)
+                .IsRequired();
+
+            modelBuilder.Entity<MembresiaOperacion>()
+                .Property(o => o.UsuarioId)
+                .IsRequired();
+
+            modelBuilder.Entity<MembresiaOperacion>()
+                .Property(o => o.Fecha)
+                .IsRequired();
+
+            modelBuilder.Entity<User>()
+            .HasIndex(u => u.Usuario)
+            .IsUnique();
+
+
 
             // Configuración de MovimientoInventario
             modelBuilder.Entity<MovimientoInventario>(entity =>

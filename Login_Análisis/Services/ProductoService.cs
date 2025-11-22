@@ -816,6 +816,152 @@ namespace Login_Análisis.Services
             return $"FAC-{numero:000000}";
         }
 
+        //Métodos para Membresías
+        public async Task<(bool success, string message, Membresia membresia)> CrearMembresia(MembresiaRequest req, int usuarioId)
+        {
+            // Validaciones mínimas
+            if (req.FechaVencimiento < req.FechaInicio)
+                return (false, "La fecha de vencimiento no puede ser anterior a la fecha de inicio", null);
+
+            if (req.MontoPagado < 0)
+                return (false, "El monto pagado no puede ser negativo", null);
+
+            // verificar código único
+            var existe = await Context.Membresias.AnyAsync(m => m.Codigo == req.Codigo);
+            if (existe)
+                return (false, "Código de membresía ya existe", null);
+
+            // validar teléfono (mínimo 8 dígitos si viene)
+            if (!string.IsNullOrEmpty(req.TelefonoContacto))
+            {
+                var digitos = new string(req.TelefonoContacto.Where(char.IsDigit).ToArray());
+                if (digitos.Length < 8)
+                    return (false, "Teléfono de contacto inválido (mínimo 8 dígitos)", null);
+            }
+
+            var membresia = new Membresia
+            {
+                Codigo = req.Codigo,
+                NombreCliente = req.NombreCliente,
+                ClienteId = req.ClienteId,
+                Tipo = req.Tipo,
+                FechaInicio = req.FechaInicio,
+                FechaVencimiento = req.FechaVencimiento,
+                Estado = "Activa",
+                MontoPagado = req.MontoPagado,
+                MetodoPago = req.MetodoPago,
+                TelefonoContacto = req.TelefonoContacto,
+                UsuarioCreacionId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            Context.Membresias.Add(membresia);
+            await Context.SaveChangesAsync();
+
+            // registrar operación
+            var op = new MembresiaOperacion
+            {
+                MembresiaId = membresia.Id,
+                Accion = "Creación",
+                UsuarioId = usuarioId,
+                Fecha = DateTime.UtcNow,
+                Detalle = "Membresía creada"
+            };
+
+            Context.MembresiaOperaciones.Add(op);
+            await Context.SaveChangesAsync();
+
+            return (true, "Membresía creada", membresia);
+        }
+
+        public async Task<List<Membresia>> ObtenerMembresiasPorUsuario(int usuarioId)
+        {
+            // Si quieres devolver todas para admin, o filtrar por creador según necesidad.
+            return await Context.Membresias
+                .Include(m => m.Operaciones)
+                .OrderByDescending(m => m.FechaCreacion)
+                .ToListAsync();
+        }
+
+        public async Task<Membresia> ObtenerMembresia(int id)
+        {
+            return await Context.Membresias
+                .Include(m => m.Operaciones)
+                .FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        public async Task<(bool success, string message)> ModificarMembresia(int id, MembresiaRequest req, int usuarioId)
+        {
+            var m = await Context.Membresias.FindAsync(id);
+            if (m == null) return (false, "Membresía no encontrada");
+
+            if (m.Estado == "Cancelada") return (false, "No se permiten operaciones sobre membresías canceladas");
+
+            if (req.FechaVencimiento < req.FechaInicio)
+                return (false, "La fecha de vencimiento no puede ser anterior a la fecha de inicio");
+
+            if (req.MontoPagado < 0)
+                return (false, "El monto pagado no puede ser negativo");
+
+            var telefono = req.TelefonoContacto ?? "";
+            var digitos = new string(telefono.Where(char.IsDigit).ToArray());
+            if (!string.IsNullOrEmpty(telefono) && digitos.Length < 8)
+                return (false, "Teléfono de contacto inválido (mínimo 8 dígitos)");
+
+            // Actualizar campos permitidos
+            m.NombreCliente = req.NombreCliente;
+            m.Tipo = req.Tipo;
+            m.FechaInicio = req.FechaInicio;
+            m.FechaVencimiento = req.FechaVencimiento;
+            m.MontoPagado = req.MontoPagado;
+            m.MetodoPago = req.MetodoPago;
+            m.TelefonoContacto = req.TelefonoContacto;
+            m.UsuarioUltimaAccionId = usuarioId;
+            m.FechaUltimaAccion = DateTime.UtcNow;
+
+            await Context.SaveChangesAsync();
+
+            Context.MembresiaOperaciones.Add(new MembresiaOperacion
+            {
+                MembresiaId = m.Id,
+                Accion = "Modificación",
+                UsuarioId = usuarioId,
+                Fecha = DateTime.UtcNow,
+                Detalle = "Datos modificados"
+            });
+
+            await Context.SaveChangesAsync();
+            return (true, "Membresía actualizada");
+        }
+
+        public async Task<(bool success, string message)> CambiarEstadoMembresia(int id, string nuevoEstado, int usuarioId)
+        {
+            var m = await Context.Membresias.FindAsync(id);
+            if (m == null) return (false, "Membresía no encontrada");
+
+            // gobierno de estados simple: Solo Admin puede cancelar/reactivar
+            if (m.Estado == "Cancelada" && nuevoEstado != "Activa")
+                return (false, "Solo se puede reactivar una membresía cancelada");
+
+            // actualizar
+            m.Estado = nuevoEstado;
+            m.UsuarioUltimaAccionId = usuarioId;
+            m.FechaUltimaAccion = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+
+            Context.MembresiaOperaciones.Add(new MembresiaOperacion
+            {
+                MembresiaId = m.Id,
+                Accion = $"CambioEstado:{nuevoEstado}",
+                UsuarioId = usuarioId,
+                Fecha = DateTime.UtcNow,
+                Detalle = $"Estado cambiado a {nuevoEstado}"
+            });
+            await Context.SaveChangesAsync();
+
+            return (true, "Estado cambiado");
+        }
+
         // Métodos para Presupuestos
         public async Task<(bool success, string message, PresupuestoResponse presupuesto)> CrearPresupuesto(PresupuestoRequest request, int usuarioId)
         {
